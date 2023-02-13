@@ -303,6 +303,91 @@ DE
 
 #################################################################################################
 #################################################################################################
+################### Filename and pathes establishment ##########################################
+#################################################################################################
+
+
+
+
+# The Figures Title is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
+
+if (params$actions$filter_by_NPC_type == "TRUE") {
+  title_PCA = paste("PCA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+  title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+  title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+  title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+  title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+  title_treemap = paste("Treemap", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+  title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+  title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+  title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+} else if (params$actions$filter_by_NPC_type == "FALSE") {
+  title_PCA = paste("PCA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
+  title_PCA3D = paste("PCA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
+  title_PCoA = paste("PCoA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
+  title_PCoA3D = paste("PCoA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ")
+  title_volcano = paste("Volcano plot", "for the full dataset.", sep = " ")
+  title_treemap = paste("Treemap", "for the full dataset.", sep = " ")
+  title_random_forest = paste("Random Forest results", "for the full dataset.", sep = " ")
+  title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for the full dataset.", sep = " ")
+  title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for the full dataset.", sep = " ")
+}
+
+# The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
+
+if (params$actions$filter_by_NPC_type == "TRUE") {
+  filename_PCA <- paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_", params$polarity, ".html", sep = "")
+  filename_PCA3D <- paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_", params$polarity, ".html", sep = "")
+  filename_PCoA <- paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")
+  filename_PCoA3D <- paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".html", sep = "")
+  filename_volcano <- paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")
+  filename_volcano_interactive <- paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
+  filename_treemap <- paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
+  filename_random_forest <- paste(params$mapp_batch, "_RF_importance_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
+  filename_random_forest_model <- paste(params$mapp_batch, "_RF_model_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".txt", sep = "")
+  filename_box_plots <- paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")
+  filename_box_plots_interactive <- paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
+  filename_heatmap <- paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
+  filename_summary_stats_table <- paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".csv", sep = "")
+  filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")
+  filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_params.yaml", sep = "")
+  filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_session_info.txt", sep = "")
+
+} else if (params$actions$filter_by_NPC_type == "FALSE") {
+  filename_PCA <- paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
+  filename_PCA3D <- paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
+  filename_PCoA <- paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
+  filename_PCoA3D <- paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".html", sep = "")
+  filename_volcano <- paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
+  filename_volcano_interactive <- paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
+  filename_treemap <- paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
+  filename_random_forest <- paste(params$mapp_batch, "_RF_importance_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
+  filename_random_forest_model <- paste(params$mapp_batch, "_RF_model_", params$filters$metadata_variable, "_", params$polarity,".txt", sep = "")
+  filename_box_plots <- paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
+  filename_box_plots_interactive <- paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
+  filename_heatmap <- paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
+  filename_summary_stats_table <- paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".csv", sep = "")
+  filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")
+  filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_params.yaml", sep = "")
+  filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_",params$polarity, "_session_info.txt", sep = "")
+}
+
+
+
+if (params$actions$filter_by_NPC_type == "TRUE") {
+file_path = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, sep = '_'), sep = "")
+} else if (params$actions$filter_by_NPC_type == "FALSE") {
+file_path = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
+}
+
+dir.create(file_path)
+setwd(file_path)
+
+
+
+
+#################################################################################################
+#################################################################################################
 #################################################################################################
 ##### PCA filtered data #######################################################################
 
@@ -354,33 +439,6 @@ C = pca_scores_plot(
 PCA = chart_plot(C, DE_PCA[length(DE_PCA)])
 
 
-# The PCA Title is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
-
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  title_PCA = paste("PCA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-  title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-  title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_treemap = paste("Treemap", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  title_PCA = paste("PCA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCA3D = paste("PCA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCoA = paste("PCoA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCoA3D = paste("PCoA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ")
-  title_volcano = paste("Volcano plot", "for the full dataset.", sep = " ")
-  title_treemap = paste("Treemap", "for the full dataset.", sep = " ")
-  title_random_forest = paste("Random Forest results", "for the full dataset.", sep = " ")
-  title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for the full dataset.", sep = " ")
-  title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for the full dataset.", sep = " ")
-}
-
-
-
-
 
 fig_PCA = ggplotly(PCA + theme_classic() + facet_wrap(~ PCA$labels$title) + ggtitle(title_PCA))
 
@@ -401,19 +459,16 @@ legend = list(title=list(text=params$pca$factor_name)),
 title = title_PCA3D
 )
 
+
+
 # The files are exported
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  fig_PCA %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-  fig_PCA3D %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  fig_PCA %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-  fig_PCA3D %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-}
+fig_PCA %>%
+    htmlwidgets::saveWidget(file = filename_PCA, selfcontained = TRUE)
+fig_PCA3D %>%
+    htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
+
+
 
 #################################################################################################
 #################################################################################################
@@ -567,15 +622,9 @@ legend = list(title=list(text=params$filters$metadata_variable)))
 
 # The files are exported
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  ggsave(plot = fig_PCoA, filename = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")), width = 10, height = 10)
+  ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
   fig_PCoA3D %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  ggsave(plot = fig_PCoA, filename = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")), width = 10, height = 10)
-  fig_PCoA3D %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable,"_",params$polarity, ".html", sep = "")), selfcontained = TRUE)
-}
+    htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE)
 
 
 
@@ -744,15 +793,10 @@ fig_volcano_interactive = ggplotly(fig_volcano_interactive)
 
 # The files are exported
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  ggsave(plot = fig_volcano, filename = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")), width = 10, height = 10)
+  ggsave(plot = fig_volcano, filename = filename_volcano , width = 10, height = 10)
   fig_volcano_interactive %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  ggsave(plot = fig_volcano, filename = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")), width = 10, height = 10)
-  fig_volcano_interactive %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-}
+    htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
+
 
 
 #############################################################################
@@ -826,14 +870,9 @@ layout(title = list(text = title_treemap, y = 0.02))
 # The files is exported
 # The title should be updated !!! 
 
+  fig_treemap %>%
+    htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE)
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  fig_treemap %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  fig_treemap %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-}
 
 
 #############################################################################
@@ -844,6 +883,7 @@ if (params$actions$filter_by_NPC_type == "TRUE") {
 
 message("Launching Random Forest calculations ...")
 
+sink(filename_random_forest_model)
 
 imp_filter1 = paste("X", matt_volcano_tot$mol[matt_volcano_tot$p.value < params$posthoc$p_value ], sep = "")
 
@@ -857,8 +897,7 @@ summary(ozone.rp)
 
 f = plotImportance(ozone.rp, plot.type = "bar", plot = FALSE)
 
-Sys.sleep(10)
-
+sink()
 
 ########### plot importance
 
@@ -872,13 +911,9 @@ fig_rf = subplot(fig_rf) %>%
 # The title should be updated !!! 
 
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
   fig_rf %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_RF_importance_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  fig_rf %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_RF_importance_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-}
+    htmlwidgets::saveWidget(file = filename_random_forest , selfcontained = TRUE)
+
 
 
 #############################################################################
@@ -924,15 +959,9 @@ fig_boxplotly = data_subset_norm_boxplot %>%
 
 # The files are exported
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  ggsave(plot = fig_boxplot, filename = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")), width = 10, height = 10)
+  ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
   fig_boxplotly %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  ggsave(plot = fig_boxplot, filename = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")), width = 10, height = 10)
-  fig_boxplotly %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-}
+    htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
 
 
 #############################################################################
@@ -989,15 +1018,8 @@ heatmap_filtered = heatmap_filtered %>% layout(title = list(text = title_heatmap
 
 # The file is exported
 
-
-if (params$actions$filter_by_NPC_type == "TRUE") {
   heatmap_filtered %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  heatmap_filtered %>%
-    htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")), selfcontained = TRUE)
-}
-
+    htmlwidgets::saveWidget(file = filename_heatmap, selfcontained = TRUE)
 
 
 #############################################################################
@@ -1042,13 +1064,7 @@ summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all
 
 # The file is exported
 
-
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  write.table(summary_stat_output, file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".csv", sep = "")), sep = ",")
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  write.table(summary_stat_output, file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable,"_",params$polarity, ".csv", sep = "")), sep = ",")
-}
-
+  write.table(summary_stat_output, file = filename_summary_stats_table, sep = ",")
 
 
 #############################################################################
@@ -1108,10 +1124,23 @@ V(net_gnps)$RF_importance = matrix_atrr_new_order$RF_importance
 # The file is exported
 
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  write_graph(net_gnps, file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")), format = "graphml")
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  write_graph(net_gnps, file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_",params$polarity,".graphml", sep = "")), format = "graphml")
-}
+write_graph(net_gnps, file = filename_graphml, format = "graphml")
+
+
+## We save the used params.yaml
+
+message("Writing params.yaml ...")
+
+params$created_at = as.character(Sys.time())
+write_yaml(params, file = filename_params)
+
+
+message("... and the R session info file !")
+
+
+sink(filename_session_info)
+sessionInfo()
+sink()
+
 
 message("Done !")
