@@ -773,7 +773,7 @@ fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.va
   geom_hline(yintercept = -log10(0.05), col = "red") +
   # scale_color_manual(values= wes_palette("Darjeeling1")) +
   ggtitle(title_volcano)
-Sys.sleep(10)
+
 
 # We need to have the feature id displayed on the Volcano plots !
 # The label = paste(lab_plotly, mol, sep ="_")) works but is not ideal
