@@ -41,6 +41,7 @@ rm(r)
 # To organize alphabetically
 
 usePackage("ape")
+usePackage("base")
 usePackage("BiocFileCache")
 usePackage("cowplot")
 usePackage("data.table")
@@ -55,6 +56,7 @@ usePackage("ggrepel")
 usePackage("ggtree")
 usePackage("graphlayouts")
 usePackage("gridExtra")
+usePackage("here")
 usePackage("heatmaply")
 usePackage("igraph")
 usePackage("openxlsx")
@@ -67,6 +69,7 @@ usePackage("rfPermute")
 usePackage("rgl")
 usePackage("ropls")
 usePackage("structToolbox")
+usePackage("this.path")
 usePackage("tidyverse")
 usePackage("vegan")
 usePackage("viridis")
@@ -81,6 +84,13 @@ usePackage("yaml")
 ################################    LOAD & FORMAT  DATA    #################################
 ############################################################################################
 ############################################################################################
+
+
+# We set the wd
+current_script <- deparse(substitute())
+script_path <- file.path(getwd(), current_script)
+
+print(script_path)
 
 # We call the external params
 
@@ -352,6 +362,7 @@ if (params$actions$filter_by_NPC_type == "TRUE") {
   filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")
   filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_params.yaml", sep = "")
   filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_session_info.txt", sep = "")
+  filename_R_script <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_R_script_backup.R", sep = "")
 
 } else if (params$actions$filter_by_NPC_type == "FALSE") {
   filename_PCA <- paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
@@ -370,18 +381,19 @@ if (params$actions$filter_by_NPC_type == "TRUE") {
   filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")
   filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_params.yaml", sep = "")
   filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_",params$polarity, "_session_info.txt", sep = "")
+  filename_R_script <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$polarity, "_R_script_backup.R", sep = "")
 }
 
 
 
 if (params$actions$filter_by_NPC_type == "TRUE") {
-file_path = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, sep = '_'), sep = "")
+output_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, sep = '_'), sep = "")
 } else if (params$actions$filter_by_NPC_type == "FALSE") {
-file_path = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
+output_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
 }
 
-dir.create(file_path)
-setwd(file_path)
+dir.create(output_directory)
+setwd(output_directory)
 
 
 
@@ -1135,12 +1147,31 @@ params$created_at = as.character(Sys.time())
 write_yaml(params, file = filename_params)
 
 
-message("... and the R session info file !")
-
+message("... the R session info file ...")
 
 sink(filename_session_info)
 sessionInfo()
 sink()
 
+message("... and the R script file !")
+
+print(getwd())
+
+setwd(script_path)
+
+# Print the current wd
+print(getwd())
+
+get_filename <- function() {
+  c_args <- commandArgs()
+  r_file <- c_args[grepl("\\.R$", c_args, ignore.case = TRUE)]
+  r_file <- gsub("--file=", "", r_file)
+  r_file <- normalizePath(r_file)
+  return(r_file)
+}
+
+script_name <- get_filename()
+
+file.copy(script_name, file.path(output_directory,filename_R_script))
 
 message("Done !")
