@@ -7,7 +7,7 @@ actions:
   filter_by_NPC_type : TRUE
 
 paths:
-  docs: './docs'
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/adria-leboeuf-group/docs'
   pandoc : "/usr/local/bin/pandoc" # Can be required for the savewidget to work
   graphml : ''
   sirius: 
@@ -28,7 +28,7 @@ colnames:
     #  - "replicate"
 
 filters:
-  molecular_pathway_target: "Carbohydrates" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
+  molecular_pathway_target: "Alkaloids" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
   metadata_variable: "colony_status" # This variable will be used throughout the whole script
   to_include: # define the sample_types to be included
      # - "QC"
