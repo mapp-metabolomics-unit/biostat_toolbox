@@ -8,7 +8,7 @@ dataset_experiment :
   description: "Old versus young TF metabolomics - Adria Leboeuf"
 
 actions:
-  filter_by_NPC_type : FALSE
+  filter_by_NPC_type : TRUE
 
 paths:
   docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/adria-leboeuf-group/docs'
@@ -32,7 +32,7 @@ colnames:
     #  - "replicate"
 
 filters:
-  molecular_pathway_target: "Terpenoids" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
+  molecular_pathway_target: "Alkaloids" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
   metadata_variable: "colony_status" # This variable will be used throughout the whole script
   to_include: # define the sample_types to be included
      # - "QC"

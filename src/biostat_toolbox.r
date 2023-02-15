@@ -181,14 +181,6 @@ colnames(data_metannot) = paste(colnames(data_metannot), "metannot", sep = "_")
 
 colnames(data_metannot)[colnames(data_metannot) == "feature_id_metannot"] = "feature_id"
 
-glimpse(data_canopus)
-
-View(data_canopus)
-
-
-View(data_sirius)
-
-View(data_metannot)
 
 ######################  MERGE Sirius-Canopus-met_annot_enhancer  ###########################
 ############################################################################################
