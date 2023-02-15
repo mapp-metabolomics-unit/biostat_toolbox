@@ -103,10 +103,24 @@ params = yaml.load_file("./params/params.yaml")
 # setwd("G:/My Drive/taf/git_repository/andrea-brenna-group")
 # In case it's required this should be more generic setwd(dirname(getwd()))
 
+# We set the working directory
+
+working_directory = file.path(params$path$docs, params$mapp_project, params$mapp_batch, params$polarity)
+
+# We set the output directory
+
+if (params$actions$filter_by_NPC_type == "TRUE") {
+output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, sep = '_'), sep = "")
+} else if (params$actions$filter_by_NPC_type == "FALSE") {
+output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
+}
+
+dir.create(output_directory)
+
 
 ################################### load peak table ########################################
 ############################################################################################
-data = read_delim(file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "mzmine", params$filenames$mzmine_feature_table),
+data = read_delim(file.path(working_directory,  "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
   delim = ",", escape_double = FALSE,
   trim_ws = TRUE
 )
@@ -153,7 +167,7 @@ feature_list = data.frame(feature_id, row_ID, row_mz_full, row_rt_full)
 ############################################################################################
 
 
-data_sirius = read_delim(file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "sirius", params$polarity, params$filenames$sirius_annotations),
+data_sirius = read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
@@ -162,7 +176,7 @@ data_sirius = read_delim(file.path(params$paths$docs, params$mapp_project, param
 
 colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
 
-data_canopus = read_delim(file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "sirius", params$polarity, params$filenames$canopus_annotations),
+data_canopus = read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
@@ -171,7 +185,7 @@ colnames(data_canopus) = paste(colnames(data_canopus), "canopus", sep = "_")
 
 
 ## TODo : read without rownames
-data_metannot = read_delim(file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
+data_metannot = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
@@ -212,7 +226,7 @@ X[X == 0] = NA
 
 # Later on ... implement a test stage where we check for the presence of a "species" and "sample_type" column in the metadata file.
 
-metadata = read_delim(file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "metadata", "treated", paste(params$mapp_batch, params$polarity, "metadata.txt", sep = "_")),
+metadata = read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch,  "metadata.txt", sep = "_")),
   delim = "\t",
   escape_double = FALSE,
   trim_ws = TRUE
@@ -311,6 +325,16 @@ message("DatasetExperiment object properties: ")
 DE
 
 
+# Overall Pareto scaling (test)
+
+M = pareto_scale()
+M = model_train(M,DE)
+M = model_predict(M,DE)
+
+
+DE = M$scaled
+
+
 #################################################################################################
 #################################################################################################
 ################### Filename and pathes establishment ##########################################
@@ -368,7 +392,7 @@ if (params$actions$filter_by_NPC_type == "TRUE") {
   filename_PCA <- paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
   filename_PCA3D <- paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
   filename_PCoA <- paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
-  filename_PCoA3D <- paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".html", sep = "")
+  filename_PCoA3D <- paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_",params$polarity, ".html", sep = "")
   filename_volcano <- paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
   filename_volcano_interactive <- paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
   filename_treemap <- paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
@@ -377,22 +401,17 @@ if (params$actions$filter_by_NPC_type == "TRUE") {
   filename_box_plots <- paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
   filename_box_plots_interactive <- paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
   filename_heatmap <- paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
-  filename_summary_stats_table <- paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".csv", sep = "")
-  filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")
-  filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_params.yaml", sep = "")
+  filename_summary_stats_table <- paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_",params$polarity, ".csv", sep = "")
+  filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_",params$polarity, ".graphml", sep = "")
+  filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_",params$polarity, "_params.yaml", sep = "")
   filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_",params$polarity, "_session_info.txt", sep = "")
   filename_R_script <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$polarity, "_R_script_backup.R", sep = "")
 }
 
 
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-output_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, sep = '_'), sep = "")
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-output_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
-}
+# We move to the output directory
 
-dir.create(output_directory)
 setwd(output_directory)
 
 
@@ -425,7 +444,7 @@ MS_PCA <- filter_smeta(mode = "include", levels = params$filters$to_include, fac
   filter_na_count(threshold = 1, factor_name = "sample_type") +
   knn_impute(neighbours = 5) +
   vec_norm() +
-  log_transform(base = 10) +
+ #log_transform(base = 10) +
   filter_by_name(mode = "include", dimension = "variable", names = names_var) +
   mean_centre() +
   PCA(number_components = 3)
@@ -495,7 +514,7 @@ fig_PCA3D %>%
 # MS_hclust = filter_smeta(mode = "exclude", levels = "QC", factor_name = "sample_type") +
 #   filter_smeta(mode = "exclude", levels = "BK", factor_name = "sample_type") +
 #   # filter_smeta(mode = var_filter_type, levels= var_levels, factor_name = var_filter) +
-#   log_transform(base = 10) +
+#  #log_transform(base = 10) +
 #   filter_by_name(mode = "include", dimension = "variable", names = names_var)
 
 # # apply model sequence
@@ -578,7 +597,7 @@ message("Launching PCoA calculations ...")
 # prepare model sequence
 
 MS_PCOA = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
-  log_transform(base = 10) +
+ #log_transform(base = 10) +
   filter_by_name(mode = "include", dimension = "variable", names = names_var)
 
 # apply model sequence
@@ -664,7 +683,7 @@ fig_PCoA3D %>%
 # data_dbclust_merge = data.frame(sample_raw_id, ATTRIBUTE, db_cluster, PC1, PC2, PC3)
 
 
-# write.table(data_dbclust_merge, file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste(params$mapp_batch, "_", "data_dbclust_merge", ".csv", sep = "")), sep = ",")
+# write.table(data_dbclust_merge, file = file.path(working_directory, "results", "stats", paste(params$mapp_batch, "_", "data_dbclust_merge", ".csv", sep = "")), sep = ",")
 
 # ellipse = ellipse3d(cov(data_dbclust_merge[c("PC1", "PC2", "PC3")]))
 
@@ -688,7 +707,7 @@ fig_PCoA3D %>%
 # # Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/bin/quarto/bin/tools") ### for seflcontained
 
 # DBscan_3D %>%
-#   htmlwidgets::saveWidget(file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", paste("DBscan_3D", var_treatment, "_", mol_family, ".html", sep = "")), selfcontained = TRUE)
+#   htmlwidgets::saveWidget(file = file.path(working_directory, "results", "stats", paste("DBscan_3D", var_treatment, "_", mol_family, ".html", sep = "")), selfcontained = TRUE)
 
 #################################################################################################
 #################################################################################################
@@ -702,7 +721,7 @@ message("Launching Volcano Plots calculations ...")
 # prepare model sequence
 
 MS_heatmap = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
-  log_transform(base = 10) +
+ #log_transform(base = 10) +
   filter_by_name(mode = "include", dimension = "variable", names = names_var)
 
 
@@ -741,7 +760,7 @@ data_subset_norm_rf = data.frame(data_subset_norm_rf)
 matt_volcano_posthoc = NULL
 matt_volcano_lm_sum = NULL
 for (i in c(1:(ncol(data_subset_norm_rf) - 1))) {
-  peak = scale(data_subset_norm_rf[, i])
+  peak = data_subset_norm_rf[, i]
   if (sum(peak, na.rm = T) == 0) {
     next
   }
@@ -1092,7 +1111,7 @@ message("Generating GraphML output ...")
 
 # We first load the GNPS graphml file 
 
-graphml_file = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml", params$filenames$gnps_graphml)
+graphml_file = file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml", params$filenames$gnps_graphml)
 
 
 g = read.graph(file = graphml_file, format = "graphml")

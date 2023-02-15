@@ -1,39 +1,39 @@
-mapp_project : mapp_project_00010
-mapp_batch : mapp_batch_00010
-met_annot_enhancer_folder : mapp_batch_00010
-gnps_job_id : 2628a7a4b4d3434496bfbf572120a196
+mapp_project : mapp_project_00021
+mapp_batch : mapp_batch_00037
+met_annot_enhancer_folder : mapp_batch_00037
+gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
 
 dataset_experiment : 
-  name: "mapp_batch_00010 LCMS metabolomics dataset"
-  description: "Old versus young TF metabolomics - Adria Leboeuf"
+  name: "mapp_batch_00037 LCMS metabolomics dataset"
+  description: "Andrea Brenna"
 
 actions:
   filter_by_NPC_type : FALSE
 
 paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/adria-leboeuf-group/docs'
-  pandoc : "/usr/local/bin/pandoc" # Can be required for the savewidget to work
-  graphml : ''
-  sirius: 
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs'
+  # pandoc : "/usr/local/bin/pandoc" # Can be required for the savewidget to work
+  # graphml : ''
+  # sirius: 
 
 polarity: "pos"
-ms_files_extension: ".mzXML"
+ms_files_extension: ".mzML"
 
 filenames:
-  mzmine_feature_table: mapp1_12_x_pos_quant.csv
+  # mzmine_feature_table: mapp1_12_x_pos_quant.csv
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: e164fe8f6e724e6a885b71a61c43dceb.graphml
+  gnps_graphml: 7aa7f1801b564637aa5848c99367d1d4.graphml
 
 colnames:
   to_combine: 
-     - "species"
-     - "colony_status"
+     - "age"
+     - "genotype"
     #  - "replicate"
 
 filters:
   molecular_pathway_target: "Alkaloids" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
-  metadata_variable: "colony_status" # This variable will be used throughout the whole script
+  metadata_variable: "age_genotype" # This variable will be used throughout the whole script
   to_include: # define the sample_types to be included
      # - "QC"
      #- "BK"
@@ -46,7 +46,7 @@ metadata:
     value_sample: "sample"
 
 pca:
-  factor_name: "colony_status" # (character) The name of a sample-meta column to use.
+  factor_name: "age_genotype" # (character) The name of a sample-meta column to use.
   label_factor: "sample_id" #(character) The column name of sample_meta to use for labelling samples on the plot. "rownames" will use the row names from sample_meta. The default is "rownames".
 
 
@@ -54,8 +54,8 @@ boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.08 # p-Value for filtering th RF inputs
+  p_value: 0.2 # p-Value for filtering th RF inputs
 
 heatmap:
-  topN : 150 # N for TopN features to output in the heatmap
+  topN : 300 # N for TopN features to output in the heatmap
 
