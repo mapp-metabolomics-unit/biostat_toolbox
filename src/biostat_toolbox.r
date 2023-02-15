@@ -181,6 +181,14 @@ colnames(data_metannot) = paste(colnames(data_metannot), "metannot", sep = "_")
 
 colnames(data_metannot)[colnames(data_metannot) == "feature_id_metannot"] = "feature_id"
 
+glimpse(data_canopus)
+
+View(data_canopus)
+
+
+View(data_sirius)
+
+View(data_metannot)
 
 ######################  MERGE Sirius-Canopus-met_annot_enhancer  ###########################
 ############################################################################################
@@ -301,8 +309,8 @@ DE = DatasetExperiment(
   data = X_pond,
   sample_meta = SMDF,
   variable_meta = VM,
-  name = "mapp_batch_00037 Metabolomics LCMS",
-  description = "Andrea Brenna metabolomics data"
+  name = params$dataset_experiment$name,
+  description = params$dataset_experiment$description
 )
 
 # We display the properties of the DatasetExperiment object to the user.
@@ -634,8 +642,9 @@ legend = list(title=list(text=params$filters$metadata_variable)))
 
 # The files are exported
 
-  ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
-  fig_PCoA3D %>%
+ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
+
+fig_PCoA3D %>%
     htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE)
 
 
@@ -805,8 +814,9 @@ fig_volcano_interactive = ggplotly(fig_volcano_interactive)
 
 # The files are exported
 
-  ggsave(plot = fig_volcano, filename = filename_volcano , width = 10, height = 10)
-  fig_volcano_interactive %>%
+ggsave(plot = fig_volcano, filename = filename_volcano , width = 10, height = 10)
+
+fig_volcano_interactive %>%
     htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
 
 
@@ -882,7 +892,7 @@ layout(title = list(text = title_treemap, y = 0.02))
 # The files is exported
 # The title should be updated !!! 
 
-  fig_treemap %>%
+fig_treemap %>%
     htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE)
 
 
@@ -923,7 +933,7 @@ fig_rf = subplot(fig_rf) %>%
 # The title should be updated !!! 
 
 
-  fig_rf %>%
+fig_rf %>%
     htmlwidgets::saveWidget(file = filename_random_forest , selfcontained = TRUE)
 
 
@@ -971,8 +981,8 @@ fig_boxplotly = data_subset_norm_boxplot %>%
 
 # The files are exported
 
-  ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
-  fig_boxplotly %>%
+ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
+fig_boxplotly %>%
     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
 
 
@@ -1030,7 +1040,7 @@ heatmap_filtered = heatmap_filtered %>% layout(title = list(text = title_heatmap
 
 # The file is exported
 
-  heatmap_filtered %>%
+heatmap_filtered %>%
     htmlwidgets::saveWidget(file = filename_heatmap, selfcontained = TRUE)
 
 
@@ -1076,7 +1086,7 @@ summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all
 
 # The file is exported
 
-  write.table(summary_stat_output, file = filename_summary_stats_table, sep = ",")
+write.table(summary_stat_output, file = filename_summary_stats_table, sep = ",")
 
 
 #############################################################################
@@ -1094,49 +1104,96 @@ graphml_file = file.path(params$paths$docs, params$mapp_project, params$mapp_bat
 
 
 g = read.graph(file = graphml_file, format = "graphml")
-net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
+# net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
+
+df_from_graph_edges = igraph::as_data_frame(g, what = c("edges"))
+df_from_graph_vertices = igraph::as_data_frame(g, what = c("vertices"))
+
+# We define drop the from and to columns from the edges dataframe
+# And then rename the node 1 and node 2 columns to from and to, respectively
+# These columns are placed at the beginning of the dataframe
+# and converted to numerics
+
+df_from_graph_edges = df_from_graph_edges  %>%
+  select(-from, -to) %>%
+  rename(from = node1, to = node2) %>%
+  select(from, to, everything()) %>%
+  mutate_at(vars(from, to), as.numeric)
+
+# the id column of the vertices dataframe is converted to numerics
+
+df_from_graph_vertices = df_from_graph_vertices %>%
+  mutate_at(vars(id), as.numeric)
+
+
+# glimpse(df_from_graph_vertices)
+
+# We then add the attributes to the vertices dataframe
+# For this we merge the vertices dataframe with the VM output using the id column and the feature_id column, respectively
+
+df_from_graph_vertices_plus = merge(df_from_graph_vertices, VM, by.x = "id", by.y = "feature_id", all.x = T)
+
+# Now we will add the results of the statistical outputs to the vertices dataframe
+# For this we merge the vertices dataframe with the summary_stat_output using the id column and the feature_id column, respectively
+
+# First we clean the summary_stat_output dataframe
+# For this we remove columns that are not needed. The one containing the sirius and canopus pattern in the column names. Indeed they arr already present in the VM dataframe
+
+summary_stat_output = summary_stat_output %>%
+  select(-contains("sirius")) %>%
+  select(-contains("canopus")) %>% 
+  select(-contains("_raw_id"))
+
+
+df_from_graph_vertices_plus = merge(df_from_graph_vertices_plus, summary_stat_output, by.x = "id", by.y = "feature_id", all.x = T)
+
+# We then add the attributes to the edges dataframe and generate the igraph object
+
+generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus)
+
+
 
 ################################################################################
 ################################################################################
 ##### add annotations to igraph
 
-# I dont get the part below .... 
+# # I dont get the part below .... 
 
-cluster_index = vertex_attr(net_gnps, "cluster index", index = V(net_gnps))
-ordered_attributes = c(1:length(cluster_index))
+# cluster_index = vertex_attr(net_gnps, "cluster index", index = V(net_gnps))
+# ordered_attributes = c(1:length(cluster_index))
 
-matrix_atrr_merge = data.frame(cluster_index, ordered_attributes)
+# matrix_atrr_merge = data.frame(cluster_index, ordered_attributes)
 
-matrix_toMerge = summary_stat_output
+# matrix_toMerge = summary_stat_output
 
-matrix_atrr_new = merge(matrix_atrr_merge, matrix_toMerge, by.x = "cluster_index", by.y = "feature_id", all.x = T)
-matrix_atrr_new_order = matrix_atrr_new[order(matrix_atrr_new$ordered_attributes), ]
+# matrix_atrr_new = merge(matrix_atrr_merge, matrix_toMerge, by.x = "cluster_index", by.y = "feature_id", all.x = T)
+# matrix_atrr_new_order = matrix_atrr_new[order(matrix_atrr_new$ordered_attributes), ]
 
-colnames(matrix_atrr_new_order)
+# colnames(matrix_atrr_new_order)
 
-# matrix_atrr_new_order$"NPC#superclass_canopus"[is.na(matrix_atrr_new_order$"NPC#superclass_canopus")] = "N"
+# # matrix_atrr_new_order$"NPC#superclass_canopus"[is.na(matrix_atrr_new_order$"NPC#superclass_canopus")] = "N"
 
 
-##### add metadata
+# ##### add metadata
 
-###############################################################################
+# ###############################################################################
 
-# V(net_gnps)$feature_id = matrix_atrr_new_order$feature_id
-V(net_gnps)$sample_raw_id = matrix_atrr_new_order$sample_raw_id
-V(net_gnps)$name_sirius = matrix_atrr_new_order$name_sirius
-V(net_gnps)$smiles_sirius = matrix_atrr_new_order$smiles_sirius
-V(net_gnps)$InChI_sirius = matrix_atrr_new_order$InChI_sirius
-V(net_gnps)$NPC.pathway_canopus = matrix_atrr_new_order$NPC.pathway_canopus
-V(net_gnps)$NPC.superclass_canopus = matrix_atrr_new_order$NPC.superclass_canopus
-V(net_gnps)$RF_importance = matrix_atrr_new_order$RF_importance
-# V(net_gnps)$day_night.posthoc_Pvalue = matrix_atrr_new_order$"day - night.posthoc_Pvalue" ### change name treatment
-# Here we need to find a way to aggregate everything into the final graphml
+# # V(net_gnps)$feature_id = matrix_atrr_new_order$feature_id
+# V(net_gnps)$sample_raw_id = matrix_atrr_new_order$sample_raw_id
+# V(net_gnps)$name_sirius = matrix_atrr_new_order$name_sirius
+# V(net_gnps)$smiles_sirius = matrix_atrr_new_order$smiles_sirius
+# V(net_gnps)$InChI_sirius = matrix_atrr_new_order$InChI_sirius
+# V(net_gnps)$NPC.pathway_canopus = matrix_atrr_new_order$NPC.pathway_canopus
+# V(net_gnps)$NPC.superclass_canopus = matrix_atrr_new_order$NPC.superclass_canopus
+# V(net_gnps)$RF_importance = matrix_atrr_new_order$RF_importance
+# # V(net_gnps)$day_night.posthoc_Pvalue = matrix_atrr_new_order$"day - night.posthoc_Pvalue" ### change name treatment
+# # Here we need to find a way to aggregate everything into the final graphml
 
 
 # The file is exported
 
 
-write_graph(net_gnps, file = filename_graphml, format = "graphml")
+write_graph(generated_g, file = filename_graphml, format = "graphml")
 
 
 ## We save the used params.yaml

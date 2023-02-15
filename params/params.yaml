@@ -3,8 +3,12 @@ mapp_batch : mapp_batch_00010
 met_annot_enhancer_folder : mapp_batch_00010
 gnps_job_id : 2628a7a4b4d3434496bfbf572120a196
 
+dataset_experiment : 
+  name: "mapp_batch_00010 LCMS metabolomics dataset"
+  description: "Old versus young TF metabolomics - Adria Leboeuf"
+
 actions:
-  filter_by_NPC_type : TRUE
+  filter_by_NPC_type : FALSE
 
 paths:
   docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/adria-leboeuf-group/docs'
