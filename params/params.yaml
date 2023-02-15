@@ -8,7 +8,7 @@ dataset_experiment :
   description: "Old versus young TF metabolomics - Adria Leboeuf"
 
 actions:
-  filter_by_NPC_type : TRUE
+  filter_by_NPC_type : FALSE
 
 paths:
   docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/adria-leboeuf-group/docs'
@@ -54,8 +54,8 @@ boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.2 # p-Value for filtering th RF inputs
+  p_value: 0.08 # p-Value for filtering th RF inputs
 
 heatmap:
-  topN : 300 # N for TopN features to output in the heatmap
+  topN : 150 # N for TopN features to output in the heatmap
 
