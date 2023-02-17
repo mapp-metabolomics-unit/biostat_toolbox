@@ -985,7 +985,7 @@ fig_boxplotly = data_subset_norm_boxplot %>%
       layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
       layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
   }) %>%
-  subplot(margin = 0.02, nrows = 5, titleX = TRUE)  %>% 
+  subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>% 
   layout(title = title_box_plots,
   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
 
@@ -1117,15 +1117,15 @@ graphml_file = file.path(working_directory, "results", "met_annot_enhancer", par
 g = read.graph(file = graphml_file, format = "graphml")
 # net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
 
-df_from_graph_edges = igraph::as_data_frame(g, what = c("edges"))
-df_from_graph_vertices = igraph::as_data_frame(g, what = c("vertices"))
+df_from_graph_edges_original = igraph::as_data_frame(g, what = c("edges"))
+df_from_graph_vertices_original = igraph::as_data_frame(g, what = c("vertices"))
 
 # We define drop the from and to columns from the edges dataframe
 # And then rename the node 1 and node 2 columns to from and to, respectively
 # These columns are placed at the beginning of the dataframe
 # and converted to numerics
 
-df_from_graph_edges = df_from_graph_edges  %>%
+df_from_graph_edges = df_from_graph_edges_original  %>%
   select(-from, -to) %>%
   rename(from = node1, to = node2) %>%
   select(from, to, everything()) %>%
@@ -1133,7 +1133,7 @@ df_from_graph_edges = df_from_graph_edges  %>%
 
 # the id column of the vertices dataframe is converted to numerics
 
-df_from_graph_vertices = df_from_graph_vertices %>%
+df_from_graph_vertices = df_from_graph_vertices_original %>%
   mutate_at(vars(id), as.numeric)
 
 
@@ -1157,6 +1157,7 @@ summary_stat_output = summary_stat_output %>%
 
 
 df_from_graph_vertices_plus = merge(df_from_graph_vertices_plus, summary_stat_output, by.x = "id", by.y = "feature_id", all.x = T)
+
 
 # We then add the attributes to the edges dataframe and generate the igraph object
 
