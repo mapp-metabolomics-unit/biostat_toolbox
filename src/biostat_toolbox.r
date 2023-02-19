@@ -425,6 +425,9 @@ filename_DE_model              <- paste(file_prefix, "_DE_description.txt", sep 
 #   filename_R_script <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$polarity, "_R_script_backup.R", sep = "")
 # }
 
+# We move to the output directory
+
+setwd(output_directory)
 
 
 
@@ -445,18 +448,17 @@ DE_original = DatasetExperiment(
 
 if (params$actions$scale_data == "FALSE") {
 
-sink(filename_DE_model)
-
 DE = DE_original
 
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
 
-DE
+sink(filename_DE_model)
+
+print(DE)
 
 sink() } else if (params$actions$scale_data == "TRUE") {
 
-sink(filename_DE_model)
 # Overall Pareto scaling (test)
 
 M = pareto_scale()
@@ -467,16 +469,16 @@ DE = M$scaled
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
 
-DE
+sink(filename_DE_model)
+
+print(DE)
 
 sink() 
 } else {
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
 
-# We move to the output directory
 
-setwd(output_directory)
 
 
 # Here we check first wether the dataset should be filtered according to CANOPUS NPClassifier classifications or not. 

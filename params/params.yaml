@@ -60,8 +60,8 @@ boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.8 # p-Value for filtering th RF inputs
+  p_value: 1 # p-Value for filtering th RF inputs
 
 heatmap:
-  topN : 300 # N for TopN features to output in the heatmap
+  topN : 150 # N for TopN features to output in the heatmap
 
