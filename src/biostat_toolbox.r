@@ -311,7 +311,7 @@ if (any(row.names(SMDF) != row.names(X_pond))) {
 
 # The DatasetExperiment object is created using the X_pond, SMDF and VM objects.
 
-DE = DatasetExperiment(
+DE_original = DatasetExperiment(
   data = X_pond,
   sample_meta = SMDF,
   variable_meta = VM,
@@ -322,14 +322,14 @@ DE = DatasetExperiment(
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
 
-DE
+DE_original
 
 
 # Overall Pareto scaling (test)
 
 M = pareto_scale()
-M = model_train(M,DE)
-M = model_predict(M,DE)
+M = model_train(M,DE_original)
+M = model_predict(M,DE_original)
 
 
 DE = M$scaled
@@ -1159,9 +1159,64 @@ summary_stat_output = summary_stat_output %>%
 df_from_graph_vertices_plus = merge(df_from_graph_vertices_plus, summary_stat_output, by.x = "id", by.y = "feature_id", all.x = T)
 
 
+# We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
+
+merged_D_SM = merge(DE_original$sample_meta, DE_original$data, by = 'row.names', all = TRUE)
+
+
+# The function below weill allow to group data by multiple factors and return a dataframe with the mean of each group
+
+dfList <- list()
+
+factor = c("age", "genotype")
+
+# for (i in factor) {
+#   dfList[[i]] <- merged_D_SM %>%
+#     group_by(!!as.symbol(i)) %>%
+#     summarise(across(contains("_peak"), mean),
+#       .groups = "drop"
+#     ) %>%
+#     select(!!i, contains("_peak")) %>%
+#     pivot_longer(-!!i) %>%
+#     pivot_wider(names_from = i, values_from = value)  %>% 
+#     # We prefix all columns with the factor name
+#     rename_with(.cols=-name, ~paste0("mean_int", "_", i, "_", .x))
+# }
+
+for (i in factor) {
+  dfList[[i]] <- merged_D_SM %>%
+    group_by(!!as.symbol(i)) %>%
+    summarise(across(contains("_peak"), mean),
+      .groups = "drop"
+    ) %>%
+    select(!!any_of(i), contains("_peak")) %>%
+    pivot_longer(-!!i) %>%
+    pivot_wider(names_from = any_of(i), values_from = value)  %>% 
+    # We prefix all columns with the factor name
+    rename_with(.cols=-name, ~paste0("mean_int", "_", i, "_", .x))
+}
+
+
+flat_dfList = reduce(dfList, full_join, by = "name")
+
+# We now add the raw feature list to the dataframe
+
+full_flat_dfList = merge(flat_dfList, t(DE_original$data), by.x = 'name', by.y = 'row.names', all = TRUE)
+
+
+# We add the raw feature list
+
+df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "row_ID", by.y = "name", all.x = T)
+
+# We set back the id column as the first column of the dataframe
+
+df_from_graph_vertices_plus_plus = df_from_graph_vertices_plus_plus %>%
+  select(id, everything())
+
+
 # We then add the attributes to the edges dataframe and generate the igraph object
 
-generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus)
+generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
 
 
 

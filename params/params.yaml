@@ -1,7 +1,7 @@
 mapp_project : mapp_project_00021
 mapp_batch : mapp_batch_00037
 met_annot_enhancer_folder : mapp_batch_00037
-gnps_job_id : 12d2ebc397ea4644ba5f26b16a264349
+gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
 
 dataset_experiment : 
   name: "mapp_batch_00037 LCMS metabolomics dataset"
@@ -16,24 +16,29 @@ paths:
   # graphml : ''
   # sirius: 
 
-polarity: "neg"
+polarity: "pos"
 ms_files_extension: ".mzML"
 
 filenames:
   # mzmine_feature_table: mapp1_12_x_pos_quant.csv
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 16ee5f9750cc4a7ea4718ba17460a7d0.graphml
+  gnps_graphml: 7aa7f1801b564637aa5848c99367d1d4.graphml
 
 colnames:
   to_combine: 
      - "age"
      - "genotype"
     #  - "replicate"
+  to_output:
+     - "age"
+     - "genotype"
+     - "age_genotype"
+     
 
 filters:
   molecular_pathway_target: "Alkaloids" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
-  metadata_variable: "age" # This variable will be used throughout the whole script
+  metadata_variable: "genotype" # This variable will be used throughout the whole script
   to_include: # define the sample_types to be included
      # - "QC"
      #- "BK"
@@ -54,7 +59,7 @@ boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 1 # p-Value for filtering th RF inputs
+  p_value: 0.1 # p-Value for filtering th RF inputs
 
 heatmap:
   topN : 300 # N for TopN features to output in the heatmap
