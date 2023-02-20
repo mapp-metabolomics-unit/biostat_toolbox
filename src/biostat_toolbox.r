@@ -228,7 +228,7 @@ row.names(VM) = VM$row_ID
 # raw data
 X = data_t[, 1:ncol(data_t)]
 # convert 0 to NA, Should we ?
-X[X == 0] = NA
+# X[X == 0] = NA
 # force to numeric; any non-numerics will become NA
 # X=data.frame(lapply(X,as.numeric),check.names = FALSE)
 
@@ -480,6 +480,37 @@ sink()
 
 
 
+
+# filter <- filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type")
+
+# # apply model sequence
+# DE_filtered = model_apply(filter, DE)
+
+# DE_f = DE_filtered$filtered
+
+# alcalo_select = colnames(DE$data[which(DE$variable_meta$NPC.pathway_canopus=='Alkaloids')])
+# terpeno_select = colnames(DE$data[which(DE$variable_meta$NPC.pathway_canopus=='Terpenoids')])
+
+# feature_to_plot = '225_448.34_0.6_peak'
+# # chart object
+# C = feature_boxplot(feature_to_plot=feature_to_plot,factor_name='genotype',label_outliers=TRUE,  fill = TRUE, jitter = TRUE, style = "boxplot")
+# g1=chart_plot(C,DE_f)+ggtitle(feature_to_plot)+ylab('intensity')
+# C = feature_boxplot(feature_to_plot=feature_to_plot,factor_name='age',label_outliers=TRUE, fill = TRUE, jitter = TRUE, style = "boxplot")
+# g2=chart_plot(C,DE_f)+ggtitle(feature_to_plot)+ylab('intensity')
+# C = feature_boxplot(feature_to_plot=feature_to_plot,factor_name='age_genotype',label_outliers=TRUE, fill = TRUE, jitter = TRUE, style = "boxplot")
+# g3=chart_plot(C,DE_f)+ggtitle(feature_to_plot)+ylab('intensity')
+# plot_grid(g1,g2,g3,nrow=1,align='vh',axis='tblr')
+
+
+# # We plot the plot_grid as plotly objkect
+
+# p <- ggplotly(g1, g2, g3)
+# p
+
+# subplot(g1, g2, g3, nrows = 1, margin = 0.04, heights = c(1))
+
+
+# DE
 
 # Here we check first wether the dataset should be filtered according to CANOPUS NPClassifier classifications or not. 
 
