@@ -62,6 +62,7 @@ usePackage("igraph")
 usePackage("openxlsx")
 usePackage("plotly")
 usePackage("pmp")
+usePackage("pls")
 usePackage("randomcoloR")
 usePackage("randomForest")
 usePackage("readr")
@@ -477,7 +478,6 @@ sink()
 } else {
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
-
 
 
 
