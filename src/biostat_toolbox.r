@@ -111,21 +111,29 @@ working_directory = file.path(params$path$docs, params$mapp_project, params$mapp
 
 # We set the output directory
 
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, sep = '_'), sep = "")
-# } else if (params$actions$filter_by_NPC_type == "FALSE") {
+# if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "TRUE") {
+# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, "scaled", sep = '_'), sep = "")
+# } else if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "FALSE") {
+# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, "not_scaled", sep = '_'), sep = "")
+# } else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "TRUE") {
+# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, "scaled", sep = '_'), sep = "")
+# } else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "FALSE") {
 # output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
 # }
 
-if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "TRUE") {
-output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, "scaled", sep = '_'), sep = "")
-} else if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "FALSE") {
-output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, "not_scaled", sep = '_'), sep = "")
-} else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "TRUE") {
-output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, "scaled", sep = '_'), sep = "")
-} else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "FALSE") {
-output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
-}
+
+if (params$actions$scale_data == "TRUE") {
+scaling_status = "scaled"
+} else { scaling_status = "not_scaled" }
+
+if (params$actions$filter_by_NPC_type == "TRUE") {
+npc_filter_level = params$filters$molecular_pathway_target
+} else { npc_filter_level = "allNPC" }
+
+
+output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, npc_filter_level, scaling_status, sep = '_'), sep = "")
+
+
 
 
 dir.create(output_directory)
@@ -330,41 +338,68 @@ if (any(row.names(SMDF) != row.names(X_pond))) {
 
 # The Figures Title is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
 
+
+
+if (params$actions$scale_data == "TRUE") {
+scaling_status = "scaled"
+} else { scaling_status = "not_scaled" }
+
 if (params$actions$filter_by_NPC_type == "TRUE") {
-  title_PCA = paste("PCA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-  title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-  title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_treemap = paste("Treemap", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-  title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  title_PCA = paste("PCA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCA3D = paste("PCA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCoA = paste("PCoA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-  title_PCoA3D = paste("PCoA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ")
-  title_volcano = paste("Volcano plot", "for the full dataset.", sep = " ")
-  title_treemap = paste("Treemap", "for the full dataset.", sep = " ")
-  title_random_forest = paste("Random Forest results", "for the full dataset.", sep = " ")
-  title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for the full dataset.", sep = " ")
-  title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for the full dataset.", sep = " ")
-}
+npc_filter_level = params$filters$molecular_pathway_target
+} else { npc_filter_level = "allNPC" }
+
+
+title_PCA = paste("PCA", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
+title_treemap = paste("Treemap", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
+title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
+title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
+title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
+
+
+
+# if (params$actions$filter_by_NPC_type == "TRUE") {
+#   title_PCA = paste("PCA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+#   title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+#   title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+#   title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+#   title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+#   title_treemap = paste("Treemap", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+#   title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+#   title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+#   title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
+# } else if (params$actions$filter_by_NPC_type == "FALSE") {
+#   title_PCA = paste("PCA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
+#   title_PCA3D = paste("PCA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
+#   title_PCoA = paste("PCoA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
+#   title_PCoA3D = paste("PCoA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ")
+#   title_volcano = paste("Volcano plot", "for the full dataset.", sep = " ")
+#   title_treemap = paste("Treemap", "for the full dataset.", sep = " ")
+#   title_random_forest = paste("Random Forest results", "for the full dataset.", sep = " ")
+#   title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for the full dataset.", sep = " ")
+#   title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for the full dataset.", sep = " ")
+# }
 
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
 
 # We make and if statement to check if the user has chosen to filter the dataset according to CANOPUS NPClassifier classifications and if the scaleing option as been checked or not.
 
-if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "TRUE") {
-  file_prefix = paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, params$polarity, "scaled", sep = "_")
-} else if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "FALSE") {
-  file_prefix = paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, params$polarity, "not_scaled", sep = "_")
-} else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "TRUE") {
-  file_prefix = paste(params$mapp_batch, params$filters$metadata_variable, params$polarity, "scaled", sep = "_")
-} else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "FALSE") {
-  file_prefix = paste(params$mapp_batch, params$filters$metadata_variable, params$polarity, "not_scaled", sep = "_")
-}
+
+
+if (params$actions$scale_data == "TRUE") {
+scaling_status = "scaled"
+} else { scaling_status = "not_scaled" }
+
+if (params$actions$filter_by_NPC_type == "TRUE") {
+npc_filter_level = params$filters$molecular_pathway_target
+} else { npc_filter_level = "allNPC" }
+
+
+file_prefix = paste(params$mapp_batch, params$filters$metadata_variable, npc_filter_level, params$polarity, scaling_status, sep = "_")
+
 
 
 filename_PCA                   <- paste(file_prefix, "_PCA.html", sep = "")
@@ -387,45 +422,6 @@ filename_R_script              <- paste(file_prefix, "_R_script_backup.R", sep =
 filename_DE_model              <- paste(file_prefix, "_DE_description.txt", sep = "")
 
 
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-#   filename_PCA <- paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_", params$polarity, ".html", sep = "")
-#   filename_PCA3D <- paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_", params$polarity, ".html", sep = "")
-#   filename_PCoA <- paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")
-#   filename_PCoA3D <- paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".html", sep = "")
-#   filename_volcano <- paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")
-#   filename_volcano_interactive <- paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
-#   filename_treemap <- paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
-#   filename_random_forest <- paste(params$mapp_batch, "_RF_importance_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
-#   filename_random_forest_model <- paste(params$mapp_batch, "_RF_model_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".txt", sep = "")
-#   filename_box_plots <- paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".pdf", sep = "")
-#   filename_box_plots_interactive <- paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
-#   filename_heatmap <- paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target, "_",params$polarity,".html", sep = "")
-#   filename_summary_stats_table <- paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".csv", sep = "")
-#   filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, ".graphml", sep = "")
-#   filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_params.yaml", sep = "")
-#   filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_session_info.txt", sep = "")
-#   filename_R_script <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$filters$molecular_pathway_target,"_",params$polarity, "_R_script_backup.R", sep = "")
-
-# } else if (params$actions$filter_by_NPC_type == "FALSE") {
-#   filename_PCA <- paste(params$mapp_batch, "_PCA_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
-#   filename_PCA3D <- paste(params$mapp_batch, "_PCA3D_", params$filters$metadata_variable, "_", params$polarity, ".html", sep = "")
-#   filename_PCoA <- paste(params$mapp_batch, "_PCoA_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
-#   filename_PCoA3D <- paste(params$mapp_batch, "_PCoA3D_", params$filters$metadata_variable, "_",params$polarity, ".html", sep = "")
-#   filename_volcano <- paste(params$mapp_batch, "_Volcano_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
-#   filename_volcano_interactive <- paste(params$mapp_batch, "_Volcano_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
-#   filename_treemap <- paste(params$mapp_batch, "_Treemap_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
-#   filename_random_forest <- paste(params$mapp_batch, "_RF_importance_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
-#   filename_random_forest_model <- paste(params$mapp_batch, "_RF_model_", params$filters$metadata_variable, "_", params$polarity,".txt", sep = "")
-#   filename_box_plots <- paste(params$mapp_batch, "_Boxplots_", params$filters$metadata_variable, "_",params$polarity,".pdf", sep = "")
-#   filename_box_plots_interactive <- paste(params$mapp_batch, "_Boxplots_interactive_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
-#   filename_heatmap <- paste(params$mapp_batch, "_Heatmap_", params$filters$metadata_variable, "_",params$polarity,".html", sep = "")
-#   filename_summary_stats_table <- paste(params$mapp_batch, "_summary_stats_table_", params$filters$metadata_variable, "_",params$polarity, ".csv", sep = "")
-#   filename_graphml <-  paste(params$mapp_batch, "_graphml_", params$filters$metadata_variable, "_",params$polarity, ".graphml", sep = "")
-#   filename_params <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_",params$polarity, "_params.yaml", sep = "")
-#   filename_session_info <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_",params$polarity, "_session_info.txt", sep = "")
-#   filename_R_script <- paste(params$mapp_batch, "_", params$filters$metadata_variable, "_", params$polarity, "_R_script_backup.R", sep = "")
-# }
-
 # We move to the output directory
 
 setwd(output_directory)
@@ -446,6 +442,14 @@ DE_original = DatasetExperiment(
   description = params$dataset_experiment$description
 )
 
+### Filtering steps
+# MS_filter <- filter_smeta(mode = "include", levels = "old", factor_name = "age")
+
+
+# # apply model sequence
+# DE_original_filtered = model_apply(MS_filter, DE_original)
+
+# DE_original = DE_original_filtered@filtered
 
 if (params$actions$scale_data == "FALSE") {
 

@@ -39,7 +39,7 @@ colnames:
 
 filters:
   molecular_pathway_target: "Amino acids and Peptides" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
-  metadata_variable: "age_genotype" # This variable will be used throughout the whole script
+  metadata_variable: "genotype" # This variable will be used throughout the whole script
   to_include: # define the sample_types to be included
      # - "QC"
      #- "BK"
