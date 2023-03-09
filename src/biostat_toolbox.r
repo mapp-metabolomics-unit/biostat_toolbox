@@ -420,6 +420,9 @@ filename_params                <- paste(file_prefix, "_params.yaml", sep = "")
 filename_session_info          <- paste(file_prefix, "_session_info.txt", sep = "")
 filename_R_script              <- paste(file_prefix, "_R_script_backup.R", sep = "")
 filename_DE_model              <- paste(file_prefix, "_DE_description.txt", sep = "")
+filename_formatted_peak_table       <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
+filename_formatted_annotation_table <- paste(file_prefix, "_formatted_annotation_table.txt", sep = "")
+filename_formatted_metadata_table   <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
 
 
 # We move to the output directory
