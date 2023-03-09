@@ -530,7 +530,33 @@ if (params$actions$filter_by_NPC_type == "TRUE") {
   stop("Please check the value of the 'filter_by_NPC_type' parameter in the params file.")
 }
 
+################################################################################################
+################################################################################################
+######################## structool box formatted data export 
 
+formatted_peak_table <- DE$data
+
+formatted_annotation_table <- DE$variable_meta ### need to be filter with only usefull output
+col_filter <- c("feature_id", "row_ID" ,"row_mz_full" ,"row_rt_full","molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
+"name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "NPC.pathway_canopus","NPC.pathway.Probability_canopus",
+"NPC.superclass_canopus", "NPC.class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
+"ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
+"...1_metannot","structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
+"short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
+"structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
+"organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
+"organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
+"matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
+"matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
+"structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
+"freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
+formatted_annotation_table_filtered <- formatted_annotation_table[col_filter]
+
+formatted_metadata_table <- DE$sample_meta
+
+write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",")
+write.table(formatted_annotation_table_filtered, file = filename_formatted_annotation_table, sep = ",")
+write.table(formatted_annotation_table_filtered, file = filename_formatted_metadata_table, sep = ",")
 
 
 #################################################################################################
