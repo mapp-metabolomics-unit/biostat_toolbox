@@ -104,6 +104,7 @@ path_to_params = "./params/params.yaml"
 params = yaml.load_file(path_to_params)
 
 
+
 # We set the working directory
 
 working_directory = file.path(params$path$docs, params$mapp_project, params$mapp_batch, params$polarity)
@@ -113,8 +114,7 @@ working_directory = file.path(params$path$docs, params$mapp_project, params$mapp
 
 if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
-} else { scaling_status = "" }
-
+} else { scaling_status = "raw" }
 
 if (params$actions$filter_variable_metadata == "TRUE") {
 filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
@@ -338,61 +338,21 @@ if (any(row.names(SMDF) != row.names(X_pond))) {
 
 
 
-if (params$actions$scale_data == "TRUE") {
-scaling_status = "scaled"
-} else { scaling_status = "not_scaled" }
-
-
-if (params$actions$filter_variable_metadata == "TRUE") {
-filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
-params$filter_variable_metadata$factor_name,
-params$filter_variable_metadata$levels,
-sep = "_")
-} else { filter_variable_metadata_status = "no_vm_filter" }
-
-if (params$actions$filter_sample_metadata == "TRUE") {
-filter_sample_metadata_status = paste(params$filter_sample_metadata$mode,
-params$filter_sample_metadata$factor_name,
-params$filter_sample_metadata$levels,
-sep = "_")
-} else { filter_sample_metadata_status = "no_sm_filter" }
-
-
-
-title_PCA = paste("PCA", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_treemap = paste("Treemap", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 
 
 
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
 
 # We make and if statement to check if the user has chosen to filter the dataset according to CANOPUS NPClassifier classifications and if the scaleing option as been checked or not.
-
-
-if (params$actions$scale_data == "TRUE") {
-scaling_status = "scaled"
-} else { scaling_status = "not_scaled" }
-
-if (params$actions$filter_variable_metadata == "TRUE") {
-filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
-params$filter_variable_metadata$factor_name,
-params$filter_variable_metadata$levels,
-sep = "_")
-} else { filter_variable_metadata_status = "no_vm_filter" }
-
-if (params$actions$filter_sample_metadata == "TRUE") {
-filter_sample_metadata_status = paste(params$filter_sample_metadata$mode,
-params$filter_sample_metadata$factor_name,
-params$filter_sample_metadata$levels,
-sep = "_")
-} else { filter_sample_metadata_status = "no_sm_filter" }
 
 
 file_prefix = paste(params$mapp_batch, 
@@ -428,6 +388,15 @@ filename_formatted_annotation_table <- paste(file_prefix, "_formatted_annotation
 filename_formatted_metadata_table   <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
 
 
+
+## We save the used params.yaml
+
+message("Writing params.yaml ...")
+
+
+file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
+
+
 # We move to the output directory
 
 setwd(output_directory)
@@ -450,6 +419,19 @@ DE_original = DatasetExperiment(
 
 
 ## Filtering steps
+
+if (params$actions$filter_sample_type == "TRUE") {
+
+MS_filter <- filter_smeta(mode = params$filter_sample_type$mode,
+                          factor_name = params$filter_sample_type$factor_name,
+                          levels = params$filter_sample_type$levels)
+
+# apply model sequence
+DE_original_filtered = model_apply(MS_filter, DE_original)
+
+DE_original = DE_original_filtered@filtered
+
+}
 
 if (params$actions$filter_sample_metadata == "TRUE") {
 
@@ -602,6 +584,22 @@ fig_PCA %>%
     htmlwidgets::saveWidget(file = filename_PCA, selfcontained = TRUE)
 fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
+
+
+
+#################################################################################################
+#################################################################################################
+#################################################################################################
+##### PLSDA filtered data #######################################################################
+
+# prepare model sequence
+M = autoscale() + PLSDA(factor_name='genotype')
+M = model_apply(M,DE)
+
+
+C = pls_scores_plot(factor_name = 'genotype')
+chart_plot(C,M[2])
+
 
 
 #################################################################################################
@@ -1339,14 +1337,6 @@ get_filename <- function() {
 script_name <- get_filename()
 
 file.copy(script_name, file.path(output_directory,filename_R_script), overwrite = TRUE)
-
-
-## We save the used params.yaml
-
-message("Writing params.yaml ...")
-
-
-file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
 
 
 message("Done !")

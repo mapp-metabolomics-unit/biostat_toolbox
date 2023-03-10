@@ -1,29 +1,37 @@
-mapp_project : mapp_project_00021
-mapp_batch : mapp_batch_00037
-met_annot_enhancer_folder : mapp_batch_00037
-gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
+mapp_project : mapp_project_00013
+mapp_batch : mapp_batch_00027
+met_annot_enhancer_folder : mapp_batch_00027
+gnps_job_id : 69b8ca5151584e33ac8fc31cd524a351
 
 dataset_experiment : 
-  name: "mapp_batch_00037 LCMS metabolomics dataset"
-  description: "Andrea Brenna"
+  name: "mapp_batch_00027 LCMS metabolomics dataset"
+  description: "Katrin"
 
 actions:
   scale_data : TRUE
-  filter_variable_metadata : TRUE
+  filter_sample_type : TRUE
   filter_sample_metadata : TRUE
+  filter_variable_metadata : FALSE
 
-filter_variable_metadata :
-  mode : 'include'
-  factor_name : 'NPC.pathway_canopus'
-  levels : 'Terpenoids'
-
-filter_sample_metadata :
+filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
   levels : 'sample'
 
+filter_sample_metadata :
+  mode : 'include'
+  factor_name : 'brainregion'
+  levels : 'C'
+
+filter_variable_metadata :
+  mode : 'include'
+  factor_name : 'NPC.pathway_canopus'
+  levels : 'Fatty acids' 
+
+# E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+
 paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs'
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs'
 
 polarity: "pos"
 ms_files_extension: ".mzML"
@@ -35,29 +43,22 @@ filenames:
 
 colnames:
   to_combine: 
-     - "age"
+     - "brainregion"
      - "genotype"
 
   to_output:
-     - "age"
+     - "brainregion"
      - "genotype"
-     - "age_genotype"
      
 filters:
-  metadata_variable: "genotype" # This variable will be used throughout the whole script
-
-metadata: 
-  sample_type:
-    value_QC: "QC"
-    value_BK: "BK"
-    value_sample: "sample"
+  metadata_variable: "period" # This variable will be used throughout the whole script
 
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.8 # p-Value for filtering th RF inputs
+  p_value: 0.05 # p-Value for filtering th RF inputs
 
 heatmap:
   topN : 150 # N for TopN features to output in the heatmap
