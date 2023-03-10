@@ -77,6 +77,7 @@ usePackage("wesanderson")
 usePackage("yaml")
 
 # We use the MAPPstructToolbox package 
+# Uncomment the lines below to download the MAPPstructToolbox package from github
 
 # library(devtools)
 # install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
@@ -103,36 +104,17 @@ path_to_params = "./params/params.yaml"
 params = yaml.load_file(path_to_params)
 
 
-
-# Make this more generic
-
-# setwd("G:/My Drive/taf/git_repository/andrea-brenna-group")
-# In case it's required this should be more generic setwd(dirname(getwd()))
-
 # We set the working directory
 
 working_directory = file.path(params$path$docs, params$mapp_project, params$mapp_batch, params$polarity)
 
 # We set the output directory
 
-# if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "TRUE") {
-# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, "scaled", sep = '_'), sep = "")
-# } else if (params$actions$filter_by_NPC_type == "TRUE" & params$actions$scale_data == "FALSE") {
-# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, params$filters$molecular_pathway_target, "not_scaled", sep = '_'), sep = "")
-# } else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "TRUE") {
-# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, "scaled", sep = '_'), sep = "")
-# } else if (params$actions$filter_by_NPC_type == "FALSE" & params$actions$scale_data == "FALSE") {
-# output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, sep = '_'), sep = "")
-# }
-
 
 if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "" }
 
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-# npc_filter_level = params$filters$molecular_pathway_target
-# } else { npc_filter_level = "allNPC" }
 
 if (params$actions$filter_variable_metadata == "TRUE") {
 filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
@@ -148,6 +130,7 @@ params$filter_sample_metadata$levels,
 sep = "_")
 } else { filter_sample_metadata_status = "no_sm_filter" }
 
+
 output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = '_'), sep = "")
 
 
@@ -156,6 +139,7 @@ dir.create(output_directory)
 
 ################################### load peak table ########################################
 ############################################################################################
+
 data = read_delim(file.path(working_directory,  "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
   delim = ",", escape_double = FALSE,
   trim_ws = TRUE
@@ -279,7 +263,7 @@ df = SM %>%
 # Here we call the list of columns to be combined from the params file
 
 cols = c(params$colnames$to_combine)
-# cols = c("age", "genotype","replicate")
+
 
 for (n in 1:length(cols)) {
   combos = combn(cols, n, simplify = FALSE)
@@ -345,9 +329,8 @@ if (any(row.names(SMDF) != row.names(X_pond))) {
 
 #################################################################################################
 #################################################################################################
-################### Filename and pathes establishment ##########################################
+################### Filename and paths establishment ##########################################
 #################################################################################################
-
 
 
 
@@ -359,9 +342,6 @@ if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "not_scaled" }
 
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-# npc_filter_level = params$filters$molecular_pathway_target
-# } else { npc_filter_level = "allNPC" }
 
 if (params$actions$filter_variable_metadata == "TRUE") {
 filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
@@ -391,41 +371,14 @@ title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest fil
 
 
 
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-#   title_PCA = paste("PCA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-#   title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-#   title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-#   title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-#   title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-#   title_treemap = paste("Treemap", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-#   title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-#   title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-#   title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", params$filters$molecular_pathway_target, "level.", sep = " ")
-# } else if (params$actions$filter_by_NPC_type == "FALSE") {
-#   title_PCA = paste("PCA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-#   title_PCA3D = paste("PCA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-#   title_PCoA = paste("PCoA", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ") 
-#   title_PCoA3D = paste("PCoA3D", "for full dataset.","Colored according to", params$filters$metadata_variable, sep = " ")
-#   title_volcano = paste("Volcano plot", "for the full dataset.", sep = " ")
-#   title_treemap = paste("Treemap", "for the full dataset.", sep = " ")
-#   title_random_forest = paste("Random Forest results", "for the full dataset.", sep = " ")
-#   title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for the full dataset.", sep = " ")
-#   title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for the full dataset.", sep = " ")
-# }
-
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
 
 # We make and if statement to check if the user has chosen to filter the dataset according to CANOPUS NPClassifier classifications and if the scaleing option as been checked or not.
 
 
-
 if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "not_scaled" }
-
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-# npc_filter_level = params$filters$molecular_pathway_target
-# } else { npc_filter_level = "allNPC" }
 
 if (params$actions$filter_variable_metadata == "TRUE") {
 filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
@@ -496,7 +449,6 @@ DE_original = DatasetExperiment(
 )
 
 
-
 ## Filtering steps
 
 if (params$actions$filter_sample_metadata == "TRUE") {
@@ -558,50 +510,6 @@ sink()
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
 
-# filter <- filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type")
-
-# # apply model sequence
-# DE_filtered = model_apply(filter, DE)
-
-# DE_f = DE_filtered$filtered
-
-# alcalo_select = colnames(DE$data[which(DE$variable_meta$NPC.pathway_canopus=='Alkaloids')])
-# terpeno_select = colnames(DE$data[which(DE$variable_meta$NPC.pathway_canopus=='Terpenoids')])
-
-# feature_to_plot = '225_448.34_0.6_peak'
-# # chart object
-# C = feature_boxplot(feature_to_plot=feature_to_plot,factor_name='genotype',label_outliers=TRUE,  fill = TRUE, jitter = TRUE, style = "boxplot")
-# g1=chart_plot(C,DE_f)+ggtitle(feature_to_plot)+ylab('intensity')
-# C = feature_boxplot(feature_to_plot=feature_to_plot,factor_name='age',label_outliers=TRUE, fill = TRUE, jitter = TRUE, style = "boxplot")
-# g2=chart_plot(C,DE_f)+ggtitle(feature_to_plot)+ylab('intensity')
-# C = feature_boxplot(feature_to_plot=feature_to_plot,factor_name='age_genotype',label_outliers=TRUE, fill = TRUE, jitter = TRUE, style = "boxplot")
-# g3=chart_plot(C,DE_f)+ggtitle(feature_to_plot)+ylab('intensity')
-# plot_grid(g1,g2,g3,nrow=1,align='vh',axis='tblr')
-
-
-# # We plot the plot_grid as plotly objkect
-
-# p <- ggplotly(g1, g2, g3)
-# p
-
-# subplot(g1, g2, g3, nrows = 1, margin = 0.04, heights = c(1))
-
-
-# DE
-
-# Here we check first wether the dataset should be filtered according to CANOPUS NPClassifier classifications or not. 
-
-# if (params$actions$filter_by_NPC_type == "TRUE") {
-#   message(sprintf("The dataset will be filtered according to the CANOPUS NPClassifier classifications at the %s pathway level.", params$filters$molecular_pathway_target))
-
-#   names_var = na.omit(DE$variable_meta$row_ID[DE$variable_meta$NPC.pathway_canopus == params$filters$molecular_pathway_target])
-# } else if (params$actions$filter_by_NPC_type == "FALSE") {
-#   message("The dataset will not be filtered according to the CANOPUS NPClassifier classifications.")
-
-#   names_var = na.omit(DE$variable_meta$row_ID)
-# } else {
-#   stop("Please check the value of the 'filter_by_NPC_type' parameter in the params file.")
-# }
 
 ################################################################################################
 ################################################################################################
@@ -640,14 +548,11 @@ write.table(formatted_annotation_table_filtered, file = filename_formatted_metad
 message("Launching PCA calculations ...")
 
 
-
 MS_PCA <- 
-# filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
   filter_na_count(threshold = 1, factor_name = "sample_type") +
   knn_impute(neighbours = 5) +
   vec_norm() +
  #log_transform(base = 10) +
-  # filter_by_name(mode = "include", dimension = "variable", names = names_var) +
   mean_centre() +
   PCA(number_components = 3)
 
@@ -672,9 +577,7 @@ C = pca_scores_plot(
 PCA = chart_plot(C, DE_PCA[length(DE_PCA)])
 
 
-
 fig_PCA = ggplotly(PCA + theme_classic() + facet_wrap(~ PCA$labels$title) + ggtitle(title_PCA))
-
 
 # We merge PCA scores and metadata info in a single df
 
@@ -693,7 +596,6 @@ title = title_PCA3D
 )
 
 
-
 # The files are exported
 
 fig_PCA %>%
@@ -702,14 +604,11 @@ fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
 
 
-
 #################################################################################################
 #################################################################################################
 #################################################################################################
 ##### HClustering
 #################################################################################################
-
-
 
 # # prepare model sequence
 
@@ -834,8 +733,6 @@ cols = data_PCOA_merge[params$filters$metadata_variable]
 cols = cols[, 1]
 
 
-
-
 fig_PCoA = ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
   geom_point() +
   ggtitle(title_PCoA) +
@@ -860,7 +757,6 @@ ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
 
 fig_PCoA3D %>%
     htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE)
-
 
 
 #################################################################################################
@@ -920,7 +816,6 @@ fig_PCoA3D %>%
 message("Launching Volcano Plots calculations ...")
 
 
-
 # # prepare model sequence
 
 # MS_heatmap = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
@@ -936,8 +831,6 @@ message("Launching Volcano Plots calculations ...")
 
 ######################################################
 ######################################################
-
-
 ################# heat filter
 
 data_RF = DE
@@ -1110,7 +1003,6 @@ fig_treemap %>%
     htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE)
 
 
-
 #############################################################################
 #############################################################################
 ############## Random Forest ################################################
@@ -1137,7 +1029,6 @@ sink()
 
 ########### plot importance
 
-
 fig_rf = ggplotly(f[[(length(f) - 1)]] + theme_classic() + facet_wrap(~ f[[(length(f) - 1)]]$labels$title))
 fig_rf = subplot(fig_rf) %>%
   layout(title = title_random_forest)
@@ -1149,7 +1040,6 @@ fig_rf = subplot(fig_rf) %>%
 
 fig_rf %>%
     htmlwidgets::saveWidget(file = filename_random_forest , selfcontained = TRUE)
-
 
 
 #############################################################################
@@ -1375,23 +1265,6 @@ merged_D_SM[is.na(merged_D_SM)] <- 0
 
 dfList <- list()
 
-# i = "age"
-
-# test <- merged_D_SM %>%
-#   group_by(!!as.symbol(i)) %>%
-#   summarise(across(contains("_peak"), mean),
-#     .groups = "drop"
-#   ) %>%
-#   select(!!i, contains("_peak")) %>%
-#   pivot_longer(-!!i) %>%
-#   pivot_wider(names_from = i, values_from = value)  %>% 
-#   # We prefix all columns with the factor name
-#   rename_with(.cols=-name, ~paste0("mean_int", "_", i, "_", .x))
-
-# View(test)
-
-
-
 for (i in params$colnames$to_output) {
   dfList[[i]] <- merged_D_SM %>%
     group_by(!!as.symbol(i)) %>%
@@ -1428,42 +1301,9 @@ df_from_graph_vertices_plus_plus = df_from_graph_vertices_plus_plus %>%
 generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
 
 
-
 ################################################################################
 ################################################################################
 ##### add annotations to igraph
-
-# # I dont get the part below .... 
-
-# cluster_index = vertex_attr(net_gnps, "cluster index", index = V(net_gnps))
-# ordered_attributes = c(1:length(cluster_index))
-
-# matrix_atrr_merge = data.frame(cluster_index, ordered_attributes)
-
-# matrix_toMerge = summary_stat_output
-
-# matrix_atrr_new = merge(matrix_atrr_merge, matrix_toMerge, by.x = "cluster_index", by.y = "feature_id", all.x = T)
-# matrix_atrr_new_order = matrix_atrr_new[order(matrix_atrr_new$ordered_attributes), ]
-
-# colnames(matrix_atrr_new_order)
-
-# # matrix_atrr_new_order$"NPC#superclass_canopus"[is.na(matrix_atrr_new_order$"NPC#superclass_canopus")] = "N"
-
-
-# ##### add metadata
-
-# ###############################################################################
-
-# # V(net_gnps)$feature_id = matrix_atrr_new_order$feature_id
-# V(net_gnps)$sample_raw_id = matrix_atrr_new_order$sample_raw_id
-# V(net_gnps)$name_sirius = matrix_atrr_new_order$name_sirius
-# V(net_gnps)$smiles_sirius = matrix_atrr_new_order$smiles_sirius
-# V(net_gnps)$InChI_sirius = matrix_atrr_new_order$InChI_sirius
-# V(net_gnps)$NPC.pathway_canopus = matrix_atrr_new_order$NPC.pathway_canopus
-# V(net_gnps)$NPC.superclass_canopus = matrix_atrr_new_order$NPC.superclass_canopus
-# V(net_gnps)$RF_importance = matrix_atrr_new_order$RF_importance
-# # V(net_gnps)$day_night.posthoc_Pvalue = matrix_atrr_new_order$"day - night.posthoc_Pvalue" ### change name treatment
-# # Here we need to find a way to aggregate everything into the final graphml
 
 
 # The file is exported
