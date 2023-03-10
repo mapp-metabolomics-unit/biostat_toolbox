@@ -52,27 +52,29 @@ ms_files_extension: ".mzML"
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 7aa7f1801b564637aa5848c99367d1d4.graphml
+  gnps_graphml: 6f3896667250486b9c16b20238cbfe6a.graphml
 
 colnames:
   to_combine: 
      - "brainregion"
      - "genotype"
+     - "period"
 
   to_output:
      - "brainregion"
      - "genotype"
+     - "period"
      
 filters:
-  metadata_variable: "period" # This variable will be used throughout the whole script
+  metadata_variable: "genotype_period" # This variable will be used throughout the whole script
 
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.05 # p-Value for filtering th RF inputs
+  p_value: 0.02 # p-Value for filtering th RF inputs
 
 heatmap:
-  topN : 150 # N for TopN features to output in the heatmap
+  topN : 100 # N for TopN features to output in the heatmap
 

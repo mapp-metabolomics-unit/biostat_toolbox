@@ -128,7 +128,8 @@ sep = "_")
 filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
 params$filter_sample_metadata_one$factor_name,
 params$filter_sample_metadata_one$levels,
-sep = "_") else { filter_sample_metadata_status = "no_sm_filter" }
+sep = "_") 
+} else { filter_sample_metadata_status = "no_sm_filter" }
 
 
 if (params$actions$filter_variable_metadata_one == "TRUE" & params$actions$filter_variable_metadata_two == "TRUE") {
@@ -143,7 +144,8 @@ sep = "_")
 filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
 params$filter_variable_metadata_one$factor_name,
 params$filter_variable_metadata_one$levels,
-sep = "_") else { filter_variable_metadata_status = "no_vm_filter" }
+sep = "_") 
+} else { filter_variable_metadata_status = "no_vm_filter" }
 
 
 
@@ -460,11 +462,38 @@ DE_original = DE_original_filtered@filtered
 
 }
 
+if (params$actions$filter_sample_metadata_two == "TRUE") {
+
+MS_filter <- filter_smeta(mode = params$filter_sample_metadata_two$mode,
+                          factor_name = params$filter_sample_metadata_two$factor_name,
+                          levels = params$filter_sample_metadata_two$levels)
+
+# apply model sequence
+DE_original_filtered = model_apply(MS_filter, DE_original)
+
+DE_original = DE_original_filtered@filtered
+
+}
+
+
 if (params$actions$filter_variable_metadata_one == "TRUE") {
 
 MS_filter <- filter_vmeta(mode = params$filter_variable_metadata_one$mode,
                           factor_name = params$filter_variable_metadata_one$factor_name,
                           levels = params$filter_variable_metadata_one$levels)
+
+# apply model sequence
+DE_original_filtered = model_apply(MS_filter, DE_original)
+
+DE_original = DE_original_filtered@filtered
+
+}
+
+if (params$actions$filter_variable_metadata_two == "TRUE") {
+
+MS_filter <- filter_vmeta(mode = params$filter_variable_metadata_two$mode,
+                          factor_name = params$filter_variable_metadata_two$factor_name,
+                          levels = params$filter_variable_metadata_two$levels)
 
 # apply model sequence
 DE_original_filtered = model_apply(MS_filter, DE_original)
