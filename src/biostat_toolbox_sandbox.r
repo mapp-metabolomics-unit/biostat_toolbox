@@ -488,3 +488,7 @@ M = fold_change_int(factor_name=c('genotype','brainregion'))
 M = model_apply(M,DE_original)
 
 chart_plot(C,M)
+
+
+glimpse(M$fold_change)
+glimpse(M$significant)
