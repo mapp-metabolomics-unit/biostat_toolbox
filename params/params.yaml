@@ -10,25 +10,38 @@ dataset_experiment :
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata : TRUE
-  filter_variable_metadata : FALSE
+  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_two : TRUE
+  filter_variable_metadata_one : FALSE
+  filter_variable_metadata_two : FALSE
 
 filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
   levels : 'sample'
 
-filter_sample_metadata :
+filter_sample_metadata_one :
   mode : 'include'
   factor_name : 'brainregion'
   levels : 'C'
 
-filter_variable_metadata :
+filter_sample_metadata_two :
+  mode : 'exclude'
+  factor_name : 'period'
+  levels : 'inter'
+
+filter_variable_metadata_one :
   mode : 'include'
   factor_name : 'NPC.pathway_canopus'
   levels : 'Fatty acids' 
 
 # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+
+filter_variable_metadata_two :
+  mode : 'include'
+  factor_name : 'NPC.pathway_canopus'
+  levels : 'Fatty acids' 
+
 
 paths:
   docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs'

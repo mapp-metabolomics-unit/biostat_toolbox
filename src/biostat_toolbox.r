@@ -86,7 +86,7 @@ library(MAPPstructToolbox)
 
 ############################################################################################
 ############################################################################################
-################################    LOAD & FORMAT  DATA    #################################
+################################ LOAD & FORMAT  DATA  ######################################
 ############################################################################################
 ############################################################################################
 
@@ -116,19 +116,35 @@ if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "raw" }
 
-if (params$actions$filter_variable_metadata == "TRUE") {
-filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
-params$filter_variable_metadata$factor_name,
-params$filter_variable_metadata$levels,
+if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
+params$filter_sample_metadata_one$factor_name,
+params$filter_sample_metadata_one$levels,
+params$filter_sample_metadata_two$mode,
+params$filter_sample_metadata_two$factor_name,
+params$filter_sample_metadata_two$levels,
 sep = "_")
-} else { filter_variable_metadata_status = "no_vm_filter" }
+} else if (params$actions$filter_sample_metadata_one == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
+params$filter_sample_metadata_one$factor_name,
+params$filter_sample_metadata_one$levels,
+sep = "_") else { filter_sample_metadata_status = "no_sm_filter" }
 
-if (params$actions$filter_sample_metadata == "TRUE") {
-filter_sample_metadata_status = paste(params$filter_sample_metadata$mode,
-params$filter_sample_metadata$factor_name,
-params$filter_sample_metadata$levels,
+
+if (params$actions$filter_variable_metadata_one == "TRUE" & params$actions$filter_variable_metadata_two == "TRUE") {
+filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
+params$filter_variable_metadata_one$factor_name,
+params$filter_variable_metadata_one$levels,
+params$filter_variable_metadata_two$mode,
+params$filter_variable_metadata_two$factor_name,
+params$filter_variable_metadata_two$levels,
 sep = "_")
-} else { filter_sample_metadata_status = "no_sm_filter" }
+} else if (params$actions$filter_variable_metadata_one == "TRUE") {
+filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
+params$filter_variable_metadata_one$factor_name,
+params$filter_variable_metadata_one$levels,
+sep = "_") else { filter_variable_metadata_status = "no_vm_filter" }
+
 
 
 output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = '_'), sep = "")
@@ -364,7 +380,6 @@ file_prefix = paste(params$mapp_batch,
                     sep = "_")
 
 
-
 filename_PCA                   <- paste(file_prefix, "_PCA.html", sep = "")
 filename_PCA3D                 <- paste(file_prefix, "_PCA3D.html", sep = "")
 filename_PCoA                  <- paste(file_prefix, "_PCoA.pdf", sep = "")
@@ -386,7 +401,6 @@ filename_DE_model              <- paste(file_prefix, "_DE_description.txt", sep 
 filename_formatted_peak_table       <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
 filename_formatted_annotation_table <- paste(file_prefix, "_formatted_annotation_table.txt", sep = "")
 filename_formatted_metadata_table   <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
-
 
 
 ## We save the used params.yaml
@@ -433,11 +447,11 @@ DE_original = DE_original_filtered@filtered
 
 }
 
-if (params$actions$filter_sample_metadata == "TRUE") {
+if (params$actions$filter_sample_metadata_one == "TRUE") {
 
-MS_filter <- filter_smeta(mode = params$filter_sample_metadata$mode,
-                          factor_name = params$filter_sample_metadata$factor_name,
-                          levels = params$filter_sample_metadata$levels)
+MS_filter <- filter_smeta(mode = params$filter_sample_metadata_one$mode,
+                          factor_name = params$filter_sample_metadata_one$factor_name,
+                          levels = params$filter_sample_metadata_one$levels)
 
 # apply model sequence
 DE_original_filtered = model_apply(MS_filter, DE_original)
@@ -446,11 +460,11 @@ DE_original = DE_original_filtered@filtered
 
 }
 
-if (params$actions$filter_variable_metadata == "TRUE") {
+if (params$actions$filter_variable_metadata_one == "TRUE") {
 
-MS_filter <- filter_vmeta(mode = params$filter_variable_metadata$mode,
-                          factor_name = params$filter_variable_metadata$factor_name,
-                          levels = params$filter_variable_metadata$levels)
+MS_filter <- filter_vmeta(mode = params$filter_variable_metadata_one$mode,
+                          factor_name = params$filter_variable_metadata_one$factor_name,
+                          levels = params$filter_variable_metadata_one$levels)
 
 # apply model sequence
 DE_original_filtered = model_apply(MS_filter, DE_original)
