@@ -13,7 +13,6 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 # install structToolbox and dependencies
 # BiocManager::install("structToolbox")
 
-
 ## install additional bioc packages for vignette if needed
 # BiocManager::install(c("pmp", "ropls", "BiocFileCache"))
 
@@ -69,7 +68,7 @@ usePackage("readr")
 usePackage("rfPermute")
 usePackage("rgl")
 usePackage("ropls")
-usePackage("structToolbox")
+# usePackage("structToolbox")
 usePackage("this.path")
 usePackage("tidyverse")
 usePackage("vegan")
@@ -77,7 +76,11 @@ usePackage("viridis")
 usePackage("wesanderson")
 usePackage("yaml")
 
+# We use the MAPPstructToolbox package 
 
+# library(devtools)
+# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
+library(MAPPstructToolbox)
 
 
 ############################################################################################
@@ -125,16 +128,27 @@ working_directory = file.path(params$path$docs, params$mapp_project, params$mapp
 
 if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
-} else { scaling_status = "not_scaled" }
+} else { scaling_status = "" }
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-npc_filter_level = params$filters$molecular_pathway_target
-} else { npc_filter_level = "allNPC" }
+# if (params$actions$filter_by_NPC_type == "TRUE") {
+# npc_filter_level = params$filters$molecular_pathway_target
+# } else { npc_filter_level = "allNPC" }
 
+if (params$actions$filter_variable_metadata == "TRUE") {
+filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
+params$filter_variable_metadata$factor_name,
+params$filter_variable_metadata$levels,
+sep = "_")
+} else { filter_variable_metadata_status = "no_vm_filter" }
 
-output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, npc_filter_level, scaling_status, sep = '_'), sep = "")
+if (params$actions$filter_sample_metadata == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata$mode,
+params$filter_sample_metadata$factor_name,
+params$filter_sample_metadata$levels,
+sep = "_")
+} else { filter_sample_metadata_status = "no_sm_filter" }
 
-
+output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = '_'), sep = "")
 
 
 dir.create(output_directory)
@@ -345,20 +359,35 @@ if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "not_scaled" }
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-npc_filter_level = params$filters$molecular_pathway_target
-} else { npc_filter_level = "allNPC" }
+# if (params$actions$filter_by_NPC_type == "TRUE") {
+# npc_filter_level = params$filters$molecular_pathway_target
+# } else { npc_filter_level = "allNPC" }
+
+if (params$actions$filter_variable_metadata == "TRUE") {
+filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
+params$filter_variable_metadata$factor_name,
+params$filter_variable_metadata$levels,
+sep = "_")
+} else { filter_variable_metadata_status = "no_vm_filter" }
+
+if (params$actions$filter_sample_metadata == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata$mode,
+params$filter_sample_metadata$factor_name,
+params$filter_sample_metadata$levels,
+sep = "_")
+} else { filter_sample_metadata_status = "no_sm_filter" }
 
 
-title_PCA = paste("PCA", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", npc_filter_level, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
-title_treemap = paste("Treemap", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
-title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
-title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
-title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", npc_filter_level, "level.", sep = " ")
+
+title_PCA = paste("PCA", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PCA3D = paste("PCA3D", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_PCoA = paste("PCoA", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PCoA3D = paste("PCoA3D", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_volcano = paste("Volcano plot", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_treemap = paste("Treemap", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_random_forest = paste("Random Forest results", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset filtered at the NPC ", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 
 
 
@@ -394,12 +423,32 @@ if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "not_scaled" }
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-npc_filter_level = params$filters$molecular_pathway_target
-} else { npc_filter_level = "allNPC" }
+# if (params$actions$filter_by_NPC_type == "TRUE") {
+# npc_filter_level = params$filters$molecular_pathway_target
+# } else { npc_filter_level = "allNPC" }
+
+if (params$actions$filter_variable_metadata == "TRUE") {
+filter_variable_metadata_status = paste(params$filter_variable_metadata$mode,
+params$filter_variable_metadata$factor_name,
+params$filter_variable_metadata$levels,
+sep = "_")
+} else { filter_variable_metadata_status = "no_vm_filter" }
+
+if (params$actions$filter_sample_metadata == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata$mode,
+params$filter_sample_metadata$factor_name,
+params$filter_sample_metadata$levels,
+sep = "_")
+} else { filter_sample_metadata_status = "no_sm_filter" }
 
 
-file_prefix = paste(params$mapp_batch, params$filters$metadata_variable, npc_filter_level, params$polarity, scaling_status, sep = "_")
+file_prefix = paste(params$mapp_batch, 
+                    params$filters$metadata_variable, 
+                    filter_variable_metadata_status, 
+                    filter_sample_metadata_status, 
+                    params$polarity, 
+                    scaling_status, 
+                    sep = "_")
 
 
 
@@ -411,7 +460,7 @@ filename_volcano               <- paste(file_prefix, "_Volcano.pdf", sep = "")
 filename_volcano_interactive   <- paste(file_prefix, "_Volcano_interactive.html", sep = "")
 filename_treemap               <- paste(file_prefix, "_Treemap_interactive.html", sep = "")
 filename_random_forest         <- paste(file_prefix, "_RF_importance.html", sep = "")
-filename_random_forest_model   <- paste(file_prefix, "_RF_model..txt", sep = "")
+filename_random_forest_model   <- paste(file_prefix, "_RF_model.txt", sep = "")
 filename_box_plots             <- paste(file_prefix, "_Boxplots.pdf", sep = "")
 filename_box_plots_interactive <- paste(file_prefix, "_Boxplots_interactive.html", sep = "")
 filename_heatmap               <- paste(file_prefix, "_Heatmap.html", sep = "")
@@ -446,14 +495,36 @@ DE_original = DatasetExperiment(
   description = params$dataset_experiment$description
 )
 
-### Filtering steps
-# MS_filter <- filter_smeta(mode = "include", levels = "old", factor_name = "age")
 
 
-# # apply model sequence
-# DE_original_filtered = model_apply(MS_filter, DE_original)
+## Filtering steps
 
-# DE_original = DE_original_filtered@filtered
+if (params$actions$filter_sample_metadata == "TRUE") {
+
+MS_filter <- filter_smeta(mode = params$filter_sample_metadata$mode,
+                          factor_name = params$filter_sample_metadata$factor_name,
+                          levels = params$filter_sample_metadata$levels)
+
+# apply model sequence
+DE_original_filtered = model_apply(MS_filter, DE_original)
+
+DE_original = DE_original_filtered@filtered
+
+}
+
+if (params$actions$filter_variable_metadata == "TRUE") {
+
+MS_filter <- filter_vmeta(mode = params$filter_variable_metadata$mode,
+                          factor_name = params$filter_variable_metadata$factor_name,
+                          levels = params$filter_variable_metadata$levels)
+
+# apply model sequence
+DE_original_filtered = model_apply(MS_filter, DE_original)
+
+DE_original = DE_original_filtered@filtered
+
+}
+
 
 if (params$actions$scale_data == "FALSE") {
 
@@ -486,8 +557,6 @@ sink()
 } else {
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
-
-
 
 # filter <- filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type")
 
@@ -522,17 +591,17 @@ sink()
 
 # Here we check first wether the dataset should be filtered according to CANOPUS NPClassifier classifications or not. 
 
-if (params$actions$filter_by_NPC_type == "TRUE") {
-  message(sprintf("The dataset will be filtered according to the CANOPUS NPClassifier classifications at the %s pathway level.", params$filters$molecular_pathway_target))
+# if (params$actions$filter_by_NPC_type == "TRUE") {
+#   message(sprintf("The dataset will be filtered according to the CANOPUS NPClassifier classifications at the %s pathway level.", params$filters$molecular_pathway_target))
 
-  names_var = na.omit(DE$variable_meta$row_ID[DE$variable_meta$NPC.pathway_canopus == params$filters$molecular_pathway_target])
-} else if (params$actions$filter_by_NPC_type == "FALSE") {
-  message("The dataset will not be filtered according to the CANOPUS NPClassifier classifications.")
+#   names_var = na.omit(DE$variable_meta$row_ID[DE$variable_meta$NPC.pathway_canopus == params$filters$molecular_pathway_target])
+# } else if (params$actions$filter_by_NPC_type == "FALSE") {
+#   message("The dataset will not be filtered according to the CANOPUS NPClassifier classifications.")
 
-  names_var = na.omit(DE$variable_meta$row_ID)
-} else {
-  stop("Please check the value of the 'filter_by_NPC_type' parameter in the params file.")
-}
+#   names_var = na.omit(DE$variable_meta$row_ID)
+# } else {
+#   stop("Please check the value of the 'filter_by_NPC_type' parameter in the params file.")
+# }
 
 ################################################################################################
 ################################################################################################
@@ -572,12 +641,13 @@ message("Launching PCA calculations ...")
 
 
 
-MS_PCA <- filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
+MS_PCA <- 
+# filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
   filter_na_count(threshold = 1, factor_name = "sample_type") +
   knn_impute(neighbours = 5) +
   vec_norm() +
  #log_transform(base = 10) +
-  filter_by_name(mode = "include", dimension = "variable", names = names_var) +
+  # filter_by_name(mode = "include", dimension = "variable", names = names_var) +
   mean_centre() +
   PCA(number_components = 3)
 
@@ -726,24 +796,24 @@ fig_PCA3D %>%
 
 message("Launching PCoA calculations ...")
 
-# prepare model sequence
+# # prepare model sequence
 
-MS_PCOA = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
- #log_transform(base = 10) +
-  filter_by_name(mode = "include", dimension = "variable", names = names_var)
+# MS_PCOA = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
+#  #log_transform(base = 10) +
+#   filter_by_name(mode = "include", dimension = "variable", names = names_var)
 
-# apply model sequence
-# Note that for the PCoA we need to use the original data, not the scaled one
+# # apply model sequence
+# # Note that for the PCoA we need to use the original data, not the scaled one
 
-DE_MS_PCOA = model_apply(MS_PCOA, DE_original) 
-DE_MS_PCOA = DE_MS_PCOA[length(DE_MS_PCOA)]
+# DE_MS_PCOA = model_apply(MS_PCOA, DE_original) 
+# DE_MS_PCOA = DE_MS_PCOA[length(DE_MS_PCOA)]
 
 ######################################################
 ######################################################
 
 # @Manu explain what is done below filters etc ....
 
-data_RF = DE_MS_PCOA@filtered
+data_RF = DE_original
 sample_name = data_RF$sample_meta$sample_id #### check
 data_subset_norm_rf = data_RF$data
 data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
@@ -851,18 +921,18 @@ message("Launching Volcano Plots calculations ...")
 
 
 
-# prepare model sequence
+# # prepare model sequence
 
-MS_heatmap = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
- #log_transform(base = 10) +
-  filter_by_name(mode = "include", dimension = "variable", names = names_var)
+# MS_heatmap = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
+#  #log_transform(base = 10) +
+#   filter_by_name(mode = "include", dimension = "variable", names = names_var)
 
 
-# apply model sequence
+# # apply model sequence
 
-DE_MS_heat = model_apply(MS_heatmap, DE)
+# DE_MS_heat = model_apply(MS_heatmap, DE)
 
-DE_MS_heat = DE_MS_heat[length(DE_MS_heat)]
+# DE_MS_heat = DE_MS_heat[length(DE_MS_heat)]
 
 ######################################################
 ######################################################
@@ -870,7 +940,7 @@ DE_MS_heat = DE_MS_heat[length(DE_MS_heat)]
 
 ################# heat filter
 
-data_RF = DE_MS_heat@filtered
+data_RF = DE
 sample_name = paste(data_RF$sample_meta$sample_id, data_RF$sample_meta[[params$filters$metadata_variable]], sep = "_")
 
 data_subset_norm_rf = data_RF$data

@@ -1,18 +1,31 @@
-mapp_project : mapp_project_00013
-mapp_batch : mapp_batch_00027
-met_annot_enhancer_folder : mapp_batch_00027
-gnps_job_id : 69b8ca5151584e33ac8fc31cd524a351
+mapp_project : mapp_project_00021
+mapp_batch : mapp_batch_00037
+met_annot_enhancer_folder : mapp_batch_00037
+gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
 
 dataset_experiment : 
-  name: "mapp_batch_00027 LCMS metabolomics dataset" 
+  name: "mapp_batch_00037 LCMS metabolomics dataset"
   description: "Andrea Brenna"
 
 actions:
-  filter_by_NPC_type : FALSE
+  # filter_by_NPC_type : FALSE
   scale_data : TRUE
+  filter_variable_metadata : TRUE
+  filter_sample_metadata : TRUE
+
+filter_variable_metadata :
+  mode : 'include'
+  factor_name : 'NPC.pathway_canopus'
+  levels : 'Terpenoids'
+
+filter_sample_metadata :
+  mode : 'include'
+  factor_name : 'sample_type'
+  levels : 'sample'
+
 
 paths:
-  docs: 'G:/My Drive/taf/git_repository/urs-albrecht-group/docs'
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs'
   # pandoc : "/usr/local/bin/pandoc" # Can be required for the savewidget to work
   # graphml : ''
   # sirius: 
@@ -24,7 +37,7 @@ filenames:
   # mzmine_feature_table: mapp1_12_x_pos_quant.csv
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 6f3896667250486b9c16b20238cbfe6a.graphml
+  gnps_graphml: 7aa7f1801b564637aa5848c99367d1d4.graphml
 
 colnames:
   to_combine: 
@@ -65,3 +78,4 @@ posthoc:
 
 heatmap:
   topN : 150 # N for TopN features to output in the heatmap
+
