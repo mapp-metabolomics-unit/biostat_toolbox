@@ -95,8 +95,9 @@ print(script_path)
 
 # We call the external params
 
+path_to_params = "./params/params.yaml"
 
-params = yaml.load_file("./params/params.yaml")
+params = yaml.load_file(path_to_params)
 
 
 
@@ -1401,13 +1402,6 @@ generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, verti
 write_graph(generated_g, file = filename_graphml, format = "graphml")
 
 
-## We save the used params.yaml
-
-message("Writing params.yaml ...")
-
-params$created_at = as.character(Sys.time())
-write_yaml(params, file = filename_params)
-
 
 message("... the R session info file ...")
 
@@ -1434,6 +1428,15 @@ get_filename <- function() {
 
 script_name <- get_filename()
 
-file.copy(script_name, file.path(output_directory,filename_R_script))
+file.copy(script_name, file.path(output_directory,filename_R_script), overwrite = TRUE)
+
+
+## We save the used params.yaml
+
+message("Writing params.yaml ...")
+
+
+file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
+
 
 message("Done !")

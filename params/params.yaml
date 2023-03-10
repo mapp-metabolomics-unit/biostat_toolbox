@@ -31,6 +31,7 @@ colnames:
      - "age"
      - "genotype"
     #  - "replicate"
+
   to_output:
      - "age"
      - "genotype"
@@ -64,4 +65,3 @@ posthoc:
 
 heatmap:
   topN : 150 # N for TopN features to output in the heatmap
-
