@@ -4,7 +4,7 @@ met_annot_enhancer_folder : mapp_batch_00037
 gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
 
 dataset_experiment : 
-  name: "mapp_batch_00037 LCMS metabolomics dataset"
+  name: "mapp_batch_00037 LCMS metabolomics dataset" 
   description: "Andrea Brenna"
 
 actions:
