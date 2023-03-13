@@ -36,7 +36,6 @@ r["CRAN"] = "http://cran.us.r-project.org"
 options(repos = r)
 rm(r)
 
-
 # To organize alphabetically
 
 usePackage("ape")
@@ -47,6 +46,7 @@ usePackage("data.table")
 usePackage("dbscan")
 usePackage("dplyr")
 usePackage("emmeans")
+usePackage("EnhancedVolcano")
 usePackage("fpc")
 usePackage("ggdendro")
 usePackage("ggplot2")
@@ -58,6 +58,7 @@ usePackage("gridExtra")
 usePackage("here")
 usePackage("heatmaply")
 usePackage("igraph")
+usePackage("manhattanly")
 usePackage("openxlsx")
 usePackage("plotly")
 usePackage("pmp")
@@ -403,6 +404,7 @@ filename_DE_model <- paste(file_prefix, "_DE_description.txt", sep = "")
 filename_formatted_peak_table <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
 filename_formatted_annotation_table <- paste(file_prefix, "_formatted_annotation_table.txt", sep = "")
 filename_formatted_metadata_table <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
+filename_foldchange_pvalues <- paste(file_prefix, "_foldchange_pvalues.csv", sep = "")
 
 
 ## We save the used params.yaml
@@ -893,34 +895,34 @@ message("Launching Volcano Plots calculations ...")
 
 
 
-matt_trait = data_RF$sample_meta[params$filters$metadata_variable]
-vec_trait = matt_trait[, 1]
-data_subset_norm_rf$treatment = as.factor(vec_trait) ### select the variable
-data_subset_norm_rf = data.frame(data_subset_norm_rf)
+# matt_trait = data_RF$sample_meta[params$filters$metadata_variable]
+# vec_trait = matt_trait[, 1]
+# data_subset_norm_rf$treatment = as.factor(vec_trait) ### select the variable
+# data_subset_norm_rf = data.frame(data_subset_norm_rf)
 
-matt_volcano_posthoc = NULL
-matt_volcano_lm_sum = NULL
-for (i in c(1:(ncol(data_subset_norm_rf) - 1))) {
-  peak = data_subset_norm_rf[, i]
-  if (sum(peak, na.rm = T) == 0) {
-    next
-  }
-  treatment = data_subset_norm_rf$treatment
-  dat = data.frame(peak, treatment)
-  model = lm(peak ~ treatment, data = dat)
-  em = emmeans(model, list(pairwise ~ treatment), adjust = "tukey")
+# matt_volcano_posthoc = NULL
+# matt_volcano_lm_sum = NULL
+# for (i in c(1:(ncol(data_subset_norm_rf) - 1))) {
+#   peak = data_subset_norm_rf[, i]
+#   if (sum(peak, na.rm = T) == 0) {
+#     next
+#   }
+#   treatment = data_subset_norm_rf$treatment
+#   dat = data.frame(peak, treatment)
+#   model = lm(peak ~ treatment, data = dat)
+#   em = emmeans(model, list(pairwise ~ treatment), adjust = "tukey")
 
-  # Summary of the analysis posthoc
-  xx = data.frame(em$`pairwise differences of treatment`)
-  xx$mol = rep(colnames(data_subset_norm_rf)[i], nrow(xx))
-  matt_volcano_posthoc = rbind(matt_volcano_posthoc, xx)
-}
+#   # Summary of the analysis posthoc
+#   xx = data.frame(em$`pairwise differences of treatment`)
+#   xx$mol = rep(colnames(data_subset_norm_rf)[i], nrow(xx))
+#   matt_volcano_posthoc = rbind(matt_volcano_posthoc, xx)
+# }
 
-matt_volcano_posthoc$log10P = 1 - (log10(matt_volcano_posthoc$p.value))
+# matt_volcano_posthoc$log10P = 1 - (log10(matt_volcano_posthoc$p.value))
 
-matt_volcano_tot = matt_volcano_posthoc
+# matt_volcano_tot = matt_volcano_posthoc
 
-head(DE$sample_meta)
+# head(DE$sample_meta)
 
 
 # The formula is defined externally
@@ -931,11 +933,41 @@ formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
 )
 )
 
+DE = DE_original
+
+
 HSDEM_model = HSDEM(formula = formula, mtc = 'none')
 
 HSDEM_result = model_apply(HSDEM_model,DE)
 
-HSDEM_result$p_value
+HSDEM_result_p_value = HSDEM_result$p_value
+
+
+glimpse(HSDEM_result_p_value)
+
+# We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
+
+colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_")
+
+# We now add a specific suffix (`_p_value`) to each of the colnames
+
+colnames(HSDEM_result_p_value) = paste0(colnames(HSDEM_result_p_value), "_p_value")
+
+str(HSDEM_result_p_value)
+
+# We set the row names as columns row_id to be able to merge the two dataframes
+
+HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
+
+# # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
+
+# HSDEM_result_p_value = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
+
+# 
+
+str(HSDEM_result_p_value)
+
+
 
 fold_change_model = fold_change(
   factor_name= params$filters$metadata_variable,
@@ -947,20 +979,122 @@ fold_change_model = fold_change(
   conf_level = 0.95
   )
 
-fold_change_result = model_apply(fold_change_model, DE_original)
+fold_change_result = model_apply(fold_change_model, DE)
 
 # We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
 
-fold_change_result_p_value = fold_change_result$
+fold_change_result_fold_change = fold_change_result$fold_change
 
-colnames(df2)<-paste(colnames(df2),"fold_change",sep="_")
+glimpse(fold_change_result_fold_change)
+# We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
+#n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
 
 
-# We now merge the results of the two models according to their rownames
 
-DE_foldchange_pvalues = merge(HSDEM_result$p_value, fold_change_result$fold_change,  by = "row.names")
+colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
 
-DE_foldchange_pvalues 
+
+# We now add a specific suffix (`_p_value`) to each of the colnames
+
+colnames(fold_change_result_fold_change) = paste0(colnames(fold_change_result_fold_change), "_fold_change")
+
+# We set the row names as columns row_id to be able to merge the two dataframes
+
+fold_change_result_fold_change$row_id = rownames(fold_change_result_fold_change)
+
+# # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
+
+# fold_change_result_fold_change = pivot_longer(fold_change_result_fold_change, cols = -row_id, names_to = "pairs", values_to = "fold_change")
+
+
+
+# We merge the two dataframes according to both the row_id and the pairs columns. 
+
+DE_foldchange_pvalues = merge(HSDEM_result_p_value, fold_change_result_fold_change,  by = "row_id")
+
+glimpse(DE_foldchange_pvalues)
+
+summary(DE_foldchange_pvalues)
+
+
+# We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
+
+
+DE_foldchange_pvalues = DE_foldchange_pvalues %>%
+     mutate( across(contains('_fold_change'), 
+                    .fns = list(log2 = ~log2(.)),
+                    .names = "{col}_{fn}" ) )  %>% 
+     mutate( across(contains('_p_value'), 
+                    .fns = list(minus_log10 = ~-log10(.)),
+                    .names = "{col}_{fn}" ) )
+
+
+
+# We now merge the DE_foldchange_pvalues with the variable metadata using the row_ID column and the rownames of the variable metadata
+
+DE_foldchange_pvalues = merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "row_id", by.y = "row.names")
+
+
+# The file is exported
+
+write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ",")
+
+glimpse(DE_foldchange_pvalues)
+
+# Using this datatable we prepare a Volcano plot using the volcano_plot function from the plotly package. We use the p_value_log10 and the fold_change_log2_FC columns as x and y axis respectively. We use the row_ID column as the label of the points.
+
+vp <- EnhancedVolcano(DE_foldchange_pvalues,
+    lab = row_ID,
+    x = 'old_young_fold_change_log2',
+    y = 'old_young_p_value',
+    title = 'Old versus Young',
+    pCutoff = 10e-2,
+    FCcutoff = 0.5,
+    pointSize = 3.0,
+    labSize = 6.0)
+DE_foldchange_pvalues
+
+x <- filter( DE_foldchange_pvalues, !is.na(old_young_p_value))
+p <- ggplot(data=x, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), text=row_ID )) +
+     geom_point(alpha=0.3, size=1.5, color="blue") +
+     xlab("Log2 fold change") + ylab("-Log10 p-value") +xlim(-6,6)
+
+y <- filter(x, old_young_p_value < 1e-5)
+p + geom_text( data=y, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), label=row_ID),
+       hjust="left", nudge_x=.1)
+
+ggplotly(p)
+
+
+
+# keep only the fields needed for the plot
+diff_df <- DE_foldchange_pvalues[c("row_ID", "old_young_fold_change_log2", "old_young_p_value")]
+
+# add a grouping column; default value is "not significant"
+diff_df["group"] <- "NotSignificant"
+
+# for our plot, we want to highlight 
+# p value < 0.05
+# Fold Change > 1
+
+# change the grouping for the entries with significance but not a large enough Fold change
+diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) < 1 ),"group"] <- "Significant"
+
+# change the grouping for the entries a large enough Fold change but not a low enough p value
+diff_df[which(diff_df['old_young_p_value'] > 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "FoldChange"
+
+# change the grouping for the entries with both significance and large enough fold change
+diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "Significant&FoldChange"
+
+# make the Plot.ly plot
+p <- plot_ly(data = diff_df, x = ~old_young_fold_change_log2, y = ~-log10(old_young_p_value), text = row_ID, mode = "markers", color = ~group) %>% 
+  layout(title ="DiffBind Volcano Plot")
+p
+
+
+C = fold_change_plot(number_features = 20, orientation = 'landscape')
+chart_plot(C,fold_change_result)
+
 
 
 cols = c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey")
@@ -989,6 +1123,25 @@ fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.va
   geom_hline(yintercept = -log10(0.05), col = "red") +
   # scale_color_manual(values= wes_palette("Darjeeling1")) +
   ggtitle(title_volcano)
+
+
+
+
+
+
+colnames(DE_foldchange_pvalues)
+
+
+
+fig_volcano = ggplot(data = DE_foldchange_pvalues, aes(x = lo, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
+  geom_point() + # color = matt_volcano_plot$col_points
+  theme_minimal() +
+  geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
+  # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
+  geom_hline(yintercept = -log10(0.05), col = "red") +
+  # scale_color_manual(values= wes_palette("Darjeeling1")) +
+  ggtitle(title_volcano)
+
 
 
 # We need to have the feature id displayed on the Volcano plots !
