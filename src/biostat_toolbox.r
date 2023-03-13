@@ -382,27 +382,27 @@ file_prefix = paste(params$mapp_batch,
                     sep = "_")
 
 
-filename_PCA                   <- paste(file_prefix, "_PCA.html", sep = "")
-filename_PCA3D                 <- paste(file_prefix, "_PCA3D.html", sep = "")
-filename_PCoA                  <- paste(file_prefix, "_PCoA.pdf", sep = "")
-filename_PCoA3D                <- paste(file_prefix, "_PCoA3D.html", sep = "")
-filename_volcano               <- paste(file_prefix, "_Volcano.pdf", sep = "")
-filename_volcano_interactive   <- paste(file_prefix, "_Volcano_interactive.html", sep = "")
-filename_treemap               <- paste(file_prefix, "_Treemap_interactive.html", sep = "")
-filename_random_forest         <- paste(file_prefix, "_RF_importance.html", sep = "")
-filename_random_forest_model   <- paste(file_prefix, "_RF_model.txt", sep = "")
-filename_box_plots             <- paste(file_prefix, "_Boxplots.pdf", sep = "")
+filename_PCA <- paste(file_prefix, "_PCA.html", sep = "")
+filename_PCA3D <- paste(file_prefix, "_PCA3D.html", sep = "")
+filename_PCoA <- paste(file_prefix, "_PCoA.pdf", sep = "")
+filename_PCoA3D <- paste(file_prefix, "_PCoA3D.html", sep = "")
+filename_volcano <- paste(file_prefix, "_Volcano.pdf", sep = "")
+filename_volcano_interactive <- paste(file_prefix, "_Volcano_interactive.html", sep = "")
+filename_treemap <- paste(file_prefix, "_Treemap_interactive.html", sep = "")
+filename_random_forest <- paste(file_prefix, "_RF_importance.html", sep = "")
+filename_random_forest_model <- paste(file_prefix, "_RF_model.txt", sep = "")
+filename_box_plots <- paste(file_prefix, "_Boxplots.pdf", sep = "")
 filename_box_plots_interactive <- paste(file_prefix, "_Boxplots_interactive.html", sep = "")
-filename_heatmap               <- paste(file_prefix, "_Heatmap.html", sep = "")
-filename_summary_stats_table   <- paste(file_prefix, "_summary_stats_table.csv", sep = "")
-filename_graphml               <- paste(file_prefix, "_graphml.graphml", sep = "")
-filename_params                <- paste(file_prefix, "_params.yaml", sep = "")
-filename_session_info          <- paste(file_prefix, "_session_info.txt", sep = "")
-filename_R_script              <- paste(file_prefix, "_R_script_backup.R", sep = "")
-filename_DE_model              <- paste(file_prefix, "_DE_description.txt", sep = "")
-filename_formatted_peak_table       <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
+filename_heatmap <- paste(file_prefix, "_Heatmap.html", sep = "")
+filename_summary_stats_table <- paste(file_prefix, "_summary_stats_table.csv", sep = "")
+filename_graphml <- paste(file_prefix, "_graphml.graphml", sep = "")
+filename_params <- paste(file_prefix, "_params.yaml", sep = "")
+filename_session_info <- paste(file_prefix, "_session_info.txt", sep = "")
+filename_R_script <- paste(file_prefix, "_R_script_backup.R", sep = "")
+filename_DE_model <- paste(file_prefix, "_DE_description.txt", sep = "")
+filename_formatted_peak_table <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
 filename_formatted_annotation_table <- paste(file_prefix, "_formatted_annotation_table.txt", sep = "")
-filename_formatted_metadata_table   <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
+filename_formatted_metadata_table <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
 
 
 ## We save the used params.yaml
@@ -874,20 +874,24 @@ message("Launching Volcano Plots calculations ...")
 ######################################################
 ################# heat filter
 
-data_RF = DE
-sample_name = paste(data_RF$sample_meta$sample_id, data_RF$sample_meta[[params$filters$metadata_variable]], sep = "_")
+# data_RF = DE
+# sample_name = paste(data_RF$sample_meta$sample_id, data_RF$sample_meta[[params$filters$metadata_variable]], sep = "_")
 
-data_subset_norm_rf = data_RF$data
-data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
-data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
-# data_subset_norm_rf = normalize(data_subset_norm_rf)
+# data_subset_norm_rf = data_RF$data
+# data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
 # data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
+# # data_subset_norm_rf = normalize(data_subset_norm_rf)
+# # data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
 
 #############################################################################
 #############################################################################
 ############## Volcano Plot #################################################
 #############################################################################
 #############################################################################
+
+
+
+
 
 matt_trait = data_RF$sample_meta[params$filters$metadata_variable]
 vec_trait = matt_trait[, 1]
@@ -915,6 +919,49 @@ for (i in c(1:(ncol(data_subset_norm_rf) - 1))) {
 matt_volcano_posthoc$log10P = 1 - (log10(matt_volcano_posthoc$p.value))
 
 matt_volcano_tot = matt_volcano_posthoc
+
+head(DE$sample_meta)
+
+
+# The formula is defined externally
+formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
+'Error(sample_id/',
+ params$filters$metadata_variable,
+ ')'
+)
+)
+
+HSDEM_model = HSDEM(formula = formula, mtc = 'none')
+
+HSDEM_result = model_apply(HSDEM_model,DE)
+
+HSDEM_result$p_value
+
+fold_change_model = fold_change(
+  factor_name= params$filters$metadata_variable,
+  paired = FALSE,
+  sample_name = character(0),
+  threshold = 0.5,
+  control_group = character(0),
+  method = "geometric",
+  conf_level = 0.95
+  )
+
+fold_change_result = model_apply(fold_change_model, DE_original)
+
+# We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
+
+fold_change_result_p_value = fold_change_result$
+
+colnames(df2)<-paste(colnames(df2),"fold_change",sep="_")
+
+
+# We now merge the results of the two models according to their rownames
+
+DE_foldchange_pvalues = merge(HSDEM_result$p_value, fold_change_result$fold_change,  by = "row.names")
+
+DE_foldchange_pvalues 
+
 
 cols = c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey")
 sizes = c("up" = 2, "down" = 2, "ns" = 1)

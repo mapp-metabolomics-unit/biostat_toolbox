@@ -436,8 +436,77 @@ M = model_apply(M,DE_original)
 D = iris_DatasetExperiment()
 D$sample_meta$class = D$sample_meta$Species
 
-M = fold_change(factor_name='Species')
+F = fold_change(factor_name='Species')
+F = model_apply(F,D)
+
+
+
+M$threshold
+
+M$
+
+
+F$fold_change
+
+
+T = ttest(factor_name='Species')
+T = model_apply(T,D)
+
+
+
+D = iris_DatasetExperiment()
+A = ANOVA(formula=y~Species)
+A = model_apply(A,D)
+
+
+D = iris_DatasetExperiment()
+D$sample_meta$id=rownames(D) # dummy id column
+M = HSDEM(formula = y~Species+ Error(id/Species))
 M = model_apply(M,D)
+
+M$p_value
+
+head(M$significant)
+
+
+
+M$description
+
+
+DE_original$sample_meta$id=rownames(DE_original) # dummy id column
+
+
+MS_filter <- filter_smeta(mode = 'include',
+                          factor_name = 'sample_type',
+                          levels = 'sample')
+
+# apply model sequence
+DE_original_filtered = model_apply(MS_filter, DE_original)
+
+DE_original = DE_original_filtered@filtered
+
+
+
+
+M = HSDEM(formula = y~genotype + Error(id/genotype))
+
+M = model_apply(M,DE_original)
+
+M$p_value
+
+
+A$p_value
+
+
+
+
+M$significant
+
+
+M$conf_level
+
+M$upper_ci
+
 
 
 M$fold_change
@@ -450,6 +519,10 @@ chart_plot(C,M)
 
 C = pca_scores_plot(factor_name='class') # colour by class
 chart_plot(C,M[2])
+
+
+
+
 
 
 
@@ -492,3 +565,4 @@ chart_plot(C,M)
 
 glimpse(M$fold_change)
 glimpse(M$significant)
+
