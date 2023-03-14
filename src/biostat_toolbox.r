@@ -164,6 +164,8 @@ dir.create(output_directory)
 
 
 title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
+title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
 title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
 title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
 title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
@@ -186,8 +188,10 @@ file_prefix = paste(params$mapp_batch,
                     sep = "_")
 
 
-filename_PCA <- paste(file_prefix, "_PCA.html", sep = "")
+filename_PCA <- paste(file_prefix, "_PCA.pdf", sep = "")
 filename_PCA3D <- paste(file_prefix, "_PCA3D.html", sep = "")
+filename_PLSDA <- paste(file_prefix, "_PLSDA.pdf", sep = "")
+filename_PLSDA_VIP <- paste(file_prefix, "_PLSDA_VIP.pdf", sep = "")
 filename_PCoA <- paste(file_prefix, "_PCoA.pdf", sep = "")
 filename_PCoA3D <- paste(file_prefix, "_PCoA3D.html", sep = "")
 filename_volcano <- paste(file_prefix, "_Volcano.pdf", sep = "")
@@ -205,8 +209,8 @@ filename_session_info <- paste(file_prefix, "_session_info.txt", sep = "")
 filename_R_script <- paste(file_prefix, "_R_script_backup.R", sep = "")
 filename_DE_model <- paste(file_prefix, "_DE_description.txt", sep = "")
 filename_formatted_peak_table <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
-filename_formatted_annotation_table <- paste(file_prefix, "_formatted_annotation_table.txt", sep = "")
-filename_formatted_metadata_table <- paste(file_prefix, "_formatted_metadata_table.txt", sep = "")
+filename_formatted_variable_metadata <- paste(file_prefix, "_formatted_variable_metadata.txt", sep = "")
+filename_formatted_sample_metadata <- paste(file_prefix, "_formatted_sample_metadata.txt", sep = "")
 filename_foldchange_pvalues <- paste(file_prefix, "_foldchange_pvalues.csv", sep = "")
 
 
@@ -455,60 +459,60 @@ filter_smeta_model <- filter_smeta(mode = params$filter_sample_type$mode,
 # apply model sequence
 filter_smeta_result = model_apply(filter_smeta_model, DE_original)
 
-DE_original = DE_original_filtered@filtered
+DE = filter_smeta_result@filtered
 
 }
 
 if (params$actions$filter_sample_metadata_one == "TRUE") {
 
-MS_filter <- filter_smeta(mode = params$filter_sample_metadata_one$mode,
+filter_smeta_model <- filter_smeta(mode = params$filter_sample_metadata_one$mode,
                           factor_name = params$filter_sample_metadata_one$factor_name,
                           levels = params$filter_sample_metadata_one$levels)
 
 # apply model sequence
-DE_original_filtered = model_apply(MS_filter, DE_original)
+filter_smeta_result = model_apply(filter_smeta_model, DE)
 
-DE_original = DE_original_filtered@filtered
+DE = filter_smeta_result@filtered
 
 }
 
 if (params$actions$filter_sample_metadata_two == "TRUE") {
 
-MS_filter <- filter_smeta(mode = params$filter_sample_metadata_two$mode,
+filter_smeta_model <- filter_smeta(mode = params$filter_sample_metadata_two$mode,
                           factor_name = params$filter_sample_metadata_two$factor_name,
                           levels = params$filter_sample_metadata_two$levels)
 
 # apply model sequence
-DE_original_filtered = model_apply(MS_filter, DE_original)
+filter_smeta_result = model_apply(filter_smeta_model, DE)
 
-DE_original = DE_original_filtered@filtered
+DE = filter_smeta_result@filtered
 
 }
 
 
 if (params$actions$filter_variable_metadata_one == "TRUE") {
 
-MS_filter <- filter_vmeta(mode = params$filter_variable_metadata_one$mode,
+filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_one$mode,
                           factor_name = params$filter_variable_metadata_one$factor_name,
                           levels = params$filter_variable_metadata_one$levels)
 
 # apply model sequence
-DE_original_filtered = model_apply(MS_filter, DE_original)
+filter_vmeta_result = model_apply(filter_vmeta_model, DE)
 
-DE_original = DE_original_filtered@filtered
+DE = filter_vmeta_result@filtered
 
 }
 
 if (params$actions$filter_variable_metadata_two == "TRUE") {
 
-MS_filter <- filter_vmeta(mode = params$filter_variable_metadata_two$mode,
+filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_two$mode,
                           factor_name = params$filter_variable_metadata_two$factor_name,
                           levels = params$filter_variable_metadata_two$levels)
 
 # apply model sequence
-DE_original_filtered = model_apply(MS_filter, DE_original)
+filter_vmeta_result = model_apply(filter_vmeta_model, DE)
 
-DE_original = DE_original_filtered@filtered
+DE = filter_vmeta_result@filtered
 
 }
 
@@ -552,7 +556,7 @@ sink()
 
 formatted_peak_table <- DE$data
 
-formatted_annotation_table <- DE$variable_meta ### need to be filter with only usefull output
+formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
 col_filter <- c("feature_id", "row_ID" ,"row_mz_full" ,"row_rt_full","molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
 "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "NPC.pathway_canopus","NPC.pathway.Probability_canopus",
 "NPC.superclass_canopus", "NPC.class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
@@ -566,13 +570,13 @@ col_filter <- c("feature_id", "row_ID" ,"row_mz_full" ,"row_rt_full","molecularF
 "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
 "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
 "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
-formatted_annotation_table_filtered <- formatted_annotation_table[col_filter]
+formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
 
-formatted_metadata_table <- DE$sample_meta
+formatted_sample_metadata <- DE$sample_meta
 
 write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",")
-write.table(formatted_annotation_table_filtered, file = filename_formatted_annotation_table, sep = ",")
-write.table(formatted_annotation_table_filtered, file = filename_formatted_metadata_table, sep = ",")
+write.table(formatted_variable_metadata_filtered, file = filename_formatted_variable_metadata, sep = ",")
+write.table(formatted_sample_metadata, file = filename_formatted_sample_metadata, sep = ",")
 
 
 #################################################################################################
@@ -583,24 +587,22 @@ write.table(formatted_annotation_table_filtered, file = filename_formatted_metad
 message("Launching PCA calculations ...")
 
 
-MS_PCA <- 
-  filter_na_count(threshold = 1, factor_name = "sample_type") +
-  knn_impute(neighbours = 5) +
-  vec_norm() +
- #log_transform(base = 10) +
-  mean_centre() +
-  PCA(number_components = 3)
-
+pca_seq_model <- filter_na_count(threshold = 1, factor_name = "sample_type") +
+              knn_impute(neighbours = 5) +
+              vec_norm() +
+            #log_transform(base = 10) +
+              mean_centre() +
+              PCA(number_components = 3)
 
 # apply model sequence
-DE_PCA = model_apply(MS_PCA, DE)
+pca_seq_result = model_apply(pca_seq_model, DE)
 
 # Fetching the PCA data object
-DATA_PCA = DE_PCA[length(DE_PCA)]
+pca_object = pca_seq_result[length(pca_seq_result)]
 
 # PCA scores plot
 
-C = pca_scores_plot(
+pca_scores_plot = pca_scores_plot(
   factor_name = params$filters$metadata_variable,
   label_factor = "sample_id",
   ellipse_type = "t",
@@ -609,14 +611,14 @@ C = pca_scores_plot(
 )
 
 # plot
-PCA = chart_plot(C, DE_PCA[length(DE_PCA)])
+pca_plot = chart_plot(pca_scores_plot, pca_object)
 
 
-fig_PCA = ggplotly(PCA + theme_classic() + facet_wrap(~ PCA$labels$title) + ggtitle(title_PCA))
+fig_PCA = pca_plot + theme_classic() + facet_wrap(~ pca_plot$labels$title) + ggtitle(title_PCA)
 
 # We merge PCA scores and metadata info in a single df
 
-PCA_meta = merge(x = DATA_PCA$scores$sample_meta, y = DATA_PCA$scores$data, by = 0, all = TRUE)
+PCA_meta = merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
 
 
 fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$filters$metadata_variable])
@@ -633,8 +635,8 @@ title = title_PCA3D
 
 # The files are exported
 
-fig_PCA %>%
-    htmlwidgets::saveWidget(file = filename_PCA, selfcontained = TRUE)
+ggsave(plot = fig_PCA, filename = filename_PCA , width = 10, height = 10)
+
 fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
 
@@ -646,13 +648,31 @@ fig_PCA3D %>%
 # ##### PLSDA filtered data #######################################################################
 
 # # prepare model sequence
-# M = autoscale() + PLSDA(factor_name='genotype')
-# M = model_apply(M,DE)
+plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable)
+plsda_seq_result = model_apply(plsda_seq_model,DE)
+
+# Fetching the PLSDA data object
+plsda_object = plsda_seq_result
+
+C = pls_scores_plot(factor_name = params$filters$metadata_variable)
+
+plsda_plot = chart_plot(C,plsda_object)
 
 
-# C = pls_scores_plot(factor_name = 'genotype')
-# chart_plot(C,M[2])
+fig_PLSDA = plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
 
+# We output the feature importance
+
+C = plsda_feature_importance_plot(n_features=30, metric='vip')
+
+vip_plot <- chart_plot(C,plsda_object)
+
+fig_PLSDA_VIP = vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA_VIP)
+
+# The files are exported
+
+ggsave(plot = fig_PLSDA, filename = filename_PLSDA , width = 10, height = 10)
+ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 10, height = 10)
 
 
 #################################################################################################
@@ -900,9 +920,6 @@ message("Launching Volcano Plots calculations ...")
 #############################################################################
 
 
-
-
-
 # matt_trait = data_RF$sample_meta[params$filters$metadata_variable]
 # vec_trait = matt_trait[, 1]
 # data_subset_norm_rf$treatment = as.factor(vec_trait) ### select the variable
@@ -941,17 +958,14 @@ formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
 )
 )
 
-DE = DE_original
 
-
-HSDEM_model = HSDEM(formula = formula, mtc = 'none')
+HSDEM_model = HSDEM(alpha = params$posthoc$p_value,
+formula = formula, mtc = 'none')
 
 HSDEM_result = model_apply(HSDEM_model,DE)
 
 HSDEM_result_p_value = HSDEM_result$p_value
 
-
-glimpse(HSDEM_result_p_value)
 
 # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
 
@@ -961,7 +975,8 @@ colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSD
 
 colnames(HSDEM_result_p_value) = paste0(colnames(HSDEM_result_p_value), "_p_value")
 
-str(HSDEM_result_p_value)
+p_value_column = colnames(HSDEM_result_p_value)
+
 
 # We set the row names as columns row_id to be able to merge the two dataframes
 
@@ -971,14 +986,11 @@ HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
 
 # HSDEM_result_p_value_long = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
 
-# 
-
-str(HSDEM_result_p_value_long)
 
 
 
 fold_change_model = fold_change(
-  factor_name= params$filters$metadata_variable,
+  factor_name = params$filters$metadata_variable,
   paired = FALSE,
   sample_name = character(0),
   threshold = 0.5,
@@ -993,7 +1005,6 @@ fold_change_result = model_apply(fold_change_model, DE)
 
 fold_change_result_fold_change = fold_change_result$fold_change
 
-glimpse(fold_change_result_fold_change)
 # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
 #n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
 
@@ -1006,6 +1017,10 @@ colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(co
 
 colnames(fold_change_result_fold_change) = paste0(colnames(fold_change_result_fold_change), "_fold_change")
 
+
+fc_column = colnames(fold_change_result_fold_change)
+
+
 # We set the row names as columns row_id to be able to merge the two dataframes
 
 fold_change_result_fold_change$row_id = rownames(fold_change_result_fold_change)
@@ -1015,14 +1030,9 @@ fold_change_result_fold_change$row_id = rownames(fold_change_result_fold_change)
 # fold_change_result_fold_change = pivot_longer(fold_change_result_fold_change, cols = -row_id, names_to = "pairs", values_to = "fold_change")
 
 
-
 # We merge the two dataframes according to both the row_id and the pairs columns. 
 
 DE_foldchange_pvalues = merge(HSDEM_result_p_value, fold_change_result_fold_change,  by = "row_id")
-
-glimpse(DE_foldchange_pvalues)
-
-summary(DE_foldchange_pvalues)
 
 
 # We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
@@ -1185,6 +1195,15 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 message("Preparing Tree Map ...")
 
+glimpse(DE_foldchange_pvalues)
+
+# Here we select the features that are significant 
+# for this we filter for values above the p_value threshold in the column selected using the `p_value_column` variable
+# We use the dplyr and pipes syntax to do this
+
+DE_foldchange_pvalues = DE_foldchange_pvalues %>%
+  filter(!!p_value_column < params$posthoc$p_value)
+
 
 matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
 matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
@@ -1192,8 +1211,6 @@ matt_donust2$counter = 1
 
 
 DE_foldchange_pvalues
-
-
 
 
 dt_for_treemap = function(datatable, parent_value, value, count) {
