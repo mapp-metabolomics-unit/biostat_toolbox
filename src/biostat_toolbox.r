@@ -424,7 +424,7 @@ SM = SM[order(row.names(SM)), ]
 SM = SM[, order(colnames(SM))]
 
 
-glimpse(SM)
+# glimpse(SM)
 # Optional ponderation step.
 #To clean
 
@@ -484,7 +484,7 @@ filter_smeta_model <- filter_smeta(mode = params$filter_sample_type$mode,
 # apply model sequence
 filter_smeta_result = model_apply(filter_smeta_model, DE_original)
 
-DE = filter_smeta_result@filtered
+DE_filtered = filter_smeta_result@filtered
 
 }
 
@@ -495,9 +495,9 @@ filter_smeta_model <- filter_smeta(mode = params$filter_sample_metadata_one$mode
                           levels = params$filter_sample_metadata_one$levels)
 
 # apply model sequence
-filter_smeta_result = model_apply(filter_smeta_model, DE)
+filter_smeta_result = model_apply(filter_smeta_model, DE_filtered)
 
-DE = filter_smeta_result@filtered
+DE_filtered = filter_smeta_result@filtered
 
 }
 
@@ -508,9 +508,9 @@ filter_smeta_model <- filter_smeta(mode = params$filter_sample_metadata_two$mode
                           levels = params$filter_sample_metadata_two$levels)
 
 # apply model sequence
-filter_smeta_result = model_apply(filter_smeta_model, DE)
+filter_smeta_result = model_apply(filter_smeta_model, DE_filtered)
 
-DE = filter_smeta_result@filtered
+DE_filtered = filter_smeta_result@filtered
 
 }
 
@@ -522,9 +522,9 @@ filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_one$mo
                           levels = params$filter_variable_metadata_one$levels)
 
 # apply model sequence
-filter_vmeta_result = model_apply(filter_vmeta_model, DE)
+filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
 
-DE = filter_vmeta_result@filtered
+DE_filtered = filter_vmeta_result@filtered
 
 }
 
@@ -535,16 +535,16 @@ filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_two$mo
                           levels = params$filter_variable_metadata_two$levels)
 
 # apply model sequence
-filter_vmeta_result = model_apply(filter_vmeta_model, DE)
+filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
 
-DE = filter_vmeta_result@filtered
+DE_filtered = filter_vmeta_result@filtered
 
 }
 
 
 if (params$actions$scale_data == "FALSE") {
 
-DE = DE
+DE = DE_filtered
 
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
@@ -558,8 +558,8 @@ sink() } else if (params$actions$scale_data == "TRUE") {
 # Overall Pareto scaling (test)
 
 M = pareto_scale()
-M = model_train(M,DE)
-M = model_predict(M,DE)
+M = model_train(M,DE_filtered)
+M = model_predict(M,DE_filtered)
 DE = M$scaled
 
 # We display the properties of the DatasetExperiment object to the user.
@@ -682,16 +682,18 @@ if (params$actions$run_PLSDA == "TRUE") {
 message("Launching PLSDA calculations ...")
 
 # First we make sure that the sample metadata variable of interest is a factor
+# For now we use DE_original here ... check if this is correct
 
-DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,params$filters$metadata_variable])
+DE_filtered$sample_meta[,params$filters$metadata_variable] = as.factor(DE_filtered$sample_meta[,params$filters$metadata_variable])
 
+# glimpse(DE_filtered$sample_meta)
 
 # # prepare model sequence
-plsda_seq_model = autoscale() + PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
-plsda_seq_result = model_apply(plsda_seq_model,DE)
+plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
+plsda_seq_result = model_apply(plsda_seq_model,DE_filtered)
 
 # Fetching the PLSDA data object
-plsda_object = plsda_seq_result[2]
+plsda_object = plsda_seq_result
 
 C = pls_scores_plot(factor_name = params$filters$metadata_variable)
 
@@ -1075,6 +1077,7 @@ DE_foldchange_pvalues = merge(HSDEM_result_p_value, fold_change_result_fold_chan
 
 # We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
 
+message("Calculating logs ...")
 
 DE_foldchange_pvalues = DE_foldchange_pvalues %>%
      mutate( across(contains('_fold_change'), 

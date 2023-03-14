@@ -11,10 +11,10 @@ actions:
   scale_data : TRUE
   filter_sample_type : TRUE
   filter_sample_metadata_one : TRUE
-  filter_sample_metadata_two : FALSE
+  filter_sample_metadata_two : TRUE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  run_PLSDA : FALSE
+  run_PLSDA : TRUE
 
 filter_sample_type :
   mode : 'include'
@@ -24,7 +24,7 @@ filter_sample_type :
 filter_sample_metadata_one :
   mode : 'include'
   factor_name : 'brainregion'
-  levels : 'C'
+  levels : 'H'
 
 filter_sample_metadata_two :
   mode : 'exclude'
@@ -66,13 +66,13 @@ colnames:
      - "period"
      
 filters:
-  metadata_variable: "genotype" # This variable will be used throughout the whole script
+  metadata_variable: "period" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.02 # p-Value for filtering th RF inputs
+  p_value: 0.05 # p-Value for filtering th RF inputs
 
 heatmap:
   topN : 100 # N for TopN features to output in the heatmap
