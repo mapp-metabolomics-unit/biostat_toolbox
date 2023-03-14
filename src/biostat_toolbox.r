@@ -112,7 +112,6 @@ working_directory = file.path(params$path$docs, params$mapp_project, params$mapp
 
 # We set the output directory
 
-
 if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "raw" }
@@ -149,201 +148,10 @@ sep = "_")
 } else { filter_variable_metadata_status = "no_vm_filter" }
 
 
-
 output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = '_'), sep = "")
 
 
 dir.create(output_directory)
-
-
-################################### load peak table ########################################
-############################################################################################
-
-data = read_delim(file.path(working_directory,  "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
-  delim = ",", escape_double = FALSE,
-  trim_ws = TRUE
-)
-
-# We will clean the m/z and RT column and concatenate with the feature id
-data$"row m/z" = round(data$"row m/z", digits = 2)
-data$"row retention time" = round(data$"row retention time", digits = 1)
-
-feature_id = data$"row ID"
-row_mz_full = data$"row m/z"
-row_rt_full = data$"row retention time"
-
-data$"row ID" = paste(data$"row ID",
-  data$"row m/z",
-  data$"row retention time",
-  "peak",
-  sep = "_"
-)
-
-row_ID = data$"row ID"
-
-data = data %>%
-  select(-"row m/z", -"row retention time")
-
-# We drop the last empty column
-data = data[1:(length(data) - 1)]
-
-# We also clean the columns name
-names(data) = gsub(" Peak area", "", names(data))
-
-data_prep = data %>%
-  remove_rownames() %>%
-  column_to_rownames(var = "row ID")
-
-
-# Finally we transpose the dataset
-# transpose
-data_t = as.data.frame(t(data_prep))
-
-### matt annot merge
-feature_list = data.frame(feature_id, row_ID, row_mz_full, row_rt_full)
-
-############################### load annotation tables #####################################
-############################################################################################
-
-
-data_sirius = read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
-  delim = "\t", escape_double = FALSE,
-  trim_ws = TRUE
-)
-
-# This code is assigning new column names to the data frame "data_sirius". The new column names are created by taking the existing column names and adding "_sirius" to the end of each name, separated by an underscore.
-
-colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
-
-data_canopus = read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
-  delim = "\t", escape_double = FALSE,
-  trim_ws = TRUE
-)
-
-colnames(data_canopus) = paste(colnames(data_canopus), "canopus", sep = "_")
-
-
-## TODo : read without rownames
-data_metannot = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
-  delim = "\t", escape_double = FALSE,
-  trim_ws = TRUE
-)
-
-
-colnames(data_metannot) = paste(colnames(data_metannot), "metannot", sep = "_")
-
-colnames(data_metannot)[colnames(data_metannot) == "feature_id_metannot"] = "feature_id"
-
-
-######################  MERGE Sirius-Canopus-met_annot_enhancer  ###########################
-############################################################################################
-
-
-VM_sir_can = merge(x = data_sirius, y = data_canopus, by.x = "id_sirius", by.y = "id_canopus", all = TRUE)
-
-VM_sir_can$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", VM_sir_can$id_sirius)
-
-VM_sir_can_metannot = merge(x = VM_sir_can, y = data_metannot, by = "feature_id", all = TRUE)
-
-VM_sir_can_metannot_full = merge(x = feature_list, y = VM_sir_can_metannot, by = "feature_id", all = TRUE)
-
-VM = VM_sir_can_metannot_full
-
-# variable meta data
-row.names(VM) = VM$row_ID
-
-# raw data
-X = data_t[, 1:ncol(data_t)]
-# convert 0 to NA, Should we ?
-# X[X == 0] = NA
-# force to numeric; any non-numerics will become NA
-# X=data.frame(lapply(X,as.numeric),check.names = FALSE)
-
-
-################################ load sample  metadata #####################################
-############################################################################################
-
-# Later on ... implement a test stage where we check for the presence of a "species" and "sample_type" column in the metadata file.
-
-metadata = read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch,  "metadata.txt", sep = "_")),
-  delim = "\t",
-  escape_double = FALSE,
-  trim_ws = TRUE
-)
-
-SM = data.frame(metadata)
-
-
-# First the input dataframe is filtered to include only rows to be combined. We filter using the "sample_type" column. The "sample_type" column is used to filter the dataframe to include only rows that have a value of "sample" in the "sample_type" column. The resulting dataframe is stored in the "df" object.
-
-df = SM %>% 
-  filter(sample_type == "sample")
-
-# Here we call the list of columns to be combined from the params file
-
-cols = c(params$colnames$to_combine)
-
-
-for (n in 1:length(cols)) {
-  combos = combn(cols, n, simplify = FALSE)
-  for (combo in combos) {
-    new_col_name = paste(combo, collapse = "_")
-    df[new_col_name] = apply(df[combo], 1, paste, collapse = "_")
-  }
-}
-
-# Now we merge back the combined df with the original df. We dont specify the by argument, so the merge will be done on all columns that are common to both dataframes.
-
-SM = merge(x = SM, y = df,  all.x = TRUE)
-
-# We then replace all <NA> values with "ND".
-
-SM[is.na(SM)] = "ND"
-
-
-# Here we might want to normalize the intensities according to the samples weights
-
-# We first join the X and SM
-
-SMDF = as.data.frame(SM)
-
-SMDF = SMDF %>%
-  remove_rownames() %>%
-  column_to_rownames(var = "filename")
-
-XSM = merge(x = X, y = SMDF, by = "row.names", all = TRUE)
-
-
-# XSM$vol_ul = as.numeric(XSM$vol_ul)
-# XSM$vol_ul[is.na(XSM$vol_ul)] = 1
-
-X_pond = XSM %>%
-  # mutate(across(grep("peak",colnames(XSM)), ~ ./XSM$weight_in_g)) %>%
-  select(Row.names, grep("peak", colnames(XSM))) %>%
-  column_to_rownames(var = "Row.names")
-
-X_pond = X_pond[order(row.names(X_pond)), ]
-X_pond = X_pond[, order(colnames(X_pond))]
-SMDF = SMDF[order(row.names(SMDF)), ]
-VM = VM[order(row.names(VM)), ]
-
-# Why the == and not = ???
-# row.names(SMDF) == row.names(X_pond)
-# colnames(X_pond) == row.names(VM)
-
-# We define a small test. If there is a FALSE returned in the colnames(X_pond) == row.names(VM) test, then we know that the order of the columns in X_pond is not the same as the order of the rows in VM. We then break the script execution and raise an error message to the user.
-
-if (any(colnames(X_pond) != row.names(VM))) {
-  stop("The order of the columns in X_pond is not the same as the order of the rows in VM. Please check the order of the columns in X_pond and the order of the rows in VM.")
-}
-
-# We repeat for row.names(SMDF) == row.names(X_pond)
-
-if (any(row.names(SMDF) != row.names(X_pond))) {
-  stop("The order of the rows in SMDF is not the same as the order of the rows in X_pond. Please check the order of the rows in SMDF and the order of the rows in X_pond.")
-}
-
-
 
 
 #################################################################################################
@@ -352,9 +160,7 @@ if (any(row.names(SMDF) != row.names(X_pond))) {
 #################################################################################################
 
 
-
-# The Figures Title is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
-
+# The Figures titles are conditionally defined according to the user's choices and option in the parameters file
 
 
 title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
@@ -368,10 +174,7 @@ title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", f
 title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 
 
-
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
-
-# We make and if statement to check if the user has chosen to filter the dataset according to CANOPUS NPClassifier classifications and if the scaleing option as been checked or not.
 
 
 file_prefix = paste(params$mapp_batch, 
@@ -421,6 +224,211 @@ setwd(output_directory)
 
 
 
+################################### load peak table ########################################
+############################################################################################
+
+
+
+feature_table = read_delim(file.path(working_directory,  "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
+  delim = ",", escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+# The column names are modified using the rename function from the dplyr package
+
+feature_table = feature_table %>%
+  rename("feature_id" = "row ID",
+    "feature_mz" = "row m/z",
+    "feature_rt" = "row retention time"
+  )
+
+# The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full`
+feature_table$"feature_id_full" = paste(feature_table$feature_id,
+  round(feature_table$feature_mz, digits = 2),
+  round(feature_table$feature_rt, digits = 1),
+  sep = "_"
+)
+
+# The dataframe is subsetted to keep only columns containing the pattern ` Peak area` and the `feature_id_full` column
+# We use dplyr's `select` function and the pipe operator `%>%` to chain the operations.
+# We then remove the ` Peak area` pattern from the column names using the rename_with function from the dplyr package
+# We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
+
+feature_table_intensities = feature_table %>%
+  select(feature_id_full, contains(" Peak area")) %>%
+  rename_with(~gsub(" Peak area", "", .x)) %>%
+  column_to_rownames(var = "feature_id_full") %>%
+  as.data.frame() %>%
+  t()
+
+# We keep the feature_table_intensities dataframe in a separate variable
+
+X = feature_table_intensities
+
+# We keep the feature metadata in a separate dataframe
+
+feature_metadata = feature_table %>%
+  select(feature_id_full, feature_id, feature_mz, feature_rt)
+
+############################### load annotation tables #####################################
+############################################################################################
+
+
+# The Sirius data is loaded
+
+data_sirius = read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
+  delim = "\t", escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+# The column names are modified to include the source of the data
+
+colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
+
+# We now build a unique feature_id for each feature in the Sirius data
+
+data_sirius$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$id_sirius)
+data_sirius$feature_id = as.numeric(data_sirius$feature_id)
+
+# The CANOPUS data is loaded
+
+data_canopus = read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
+  delim = "\t", escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+# The column names are modified to include the source of the data
+
+colnames(data_canopus) = paste(colnames(data_canopus), "canopus", sep = "_")
+
+# We now build a unique feature_id for each feature in the Sirius data
+
+data_canopus$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$id_canopus)
+data_canopus$feature_id = as.numeric(data_canopus$feature_id)
+
+
+# The MetAnnot data is loaded
+
+data_metannot = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
+  delim = "\t", escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+# The column names are modified to include the source of the data
+
+colnames(data_metannot) = paste(colnames(data_metannot), "metannot", sep = "_")
+
+
+# We now build a unique feature_id for each feature in the Metannot data
+
+data_metannot$feature_id = data_metannot$feature_id_metannot
+data_metannot$feature_id = as.numeric(data_metannot$feature_id)
+
+
+
+# The GNPS data is loaded. Note that we use the `Sys.glob` function to get the path to the file and expand the wildcard
+
+data_gnps = read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+  delim = "\t", escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+# The column names are modified to include the source of the data
+
+colnames(data_gnps) = paste(colnames(data_gnps), "gnps", sep = "_")
+
+# We now build a unique feature_id for each feature in the GNPS data
+
+data_gnps$feature_id = data_gnps$`cluster index_gnps`
+data_gnps$feature_id = as.numeric(data_gnps$feature_id)
+
+
+# The four previous dataframe are merged into one using the common `feature_id` column as key and the tidyverse `reduce` function
+
+list_df = list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
+VM = list_df %>% reduce(full_join, by='feature_id')
+
+# We now convert the VM tibble into a dataframe and set the `feature_id_full` column as the rownames
+
+VM = as.data.frame(VM)
+row.names(VM) = VM$feature_id_full
+
+
+################################ load sample  metadata #####################################
+############################################################################################
+
+# Later on ... implement a test stage where we check for the presence of a "species" and "sample_type" column in the metadata file.
+
+
+# We here load the sample metadata
+
+
+sample_metadata = read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch,  "metadata.txt", sep = "_")),
+  delim = "\t",
+  escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+# Here we establish a small test which will check if the sample metadata file contains the required columns (filename, sample_id, sample_type and species)
+
+if (!all(c("filename", "sample_id", "sample_type", "species") %in% colnames(sample_metadata))) {
+  stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type and species). Please check your metadata file and try again.")
+}
+
+SM = data.frame(sample_metadata)
+
+# The function below is used to create metadata combinations
+
+df = SM %>% 
+  filter(sample_type == "sample")
+
+# This line allows us to make sure that the columns will be combined in alphabetical order
+cols = sort(c(params$colnames$to_combine), decreasing = FALSE)
+
+for (n in 1:length(cols)) {
+  combos = combn(cols, n, simplify = FALSE)
+  for (combo in combos) {
+    new_col_name = paste(combo, collapse = "_")
+    df[new_col_name] = apply(df[combo], 1, paste, collapse = "_")
+  }
+}
+
+# We merge back the resulting df to the original SM dataframe and fill the NA values with "ND"
+SM = merge(x = SM, y = df,  all.x = TRUE)
+SM[is.na(SM)] = "ND"
+
+
+SM = SM %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "filename")
+
+
+# Optional ponderation step.
+#To clean
+
+# XSM = merge(x = X, y = SMDF, by = "row.names", all = TRUE)
+
+# X_pond = XSM %>%
+#   select(Row.names, grep("peak", colnames(XSM))) %>%
+#   column_to_rownames(var = "Row.names")
+
+# X_pond = X_pond[order(row.names(X_pond)), ]
+# X_pond = X_pond[, order(colnames(X_pond))]
+# SMDF = SMDF[order(row.names(SMDF)), ]
+# VM = VM[order(row.names(VM)), ]
+
+
+if (any(colnames(X) != row.names(VM))) {
+  stop("Some columns in X are not present in the rownames of VM. Please check the column names in X and the rownames of VM.")
+}
+
+# We repeat for row.names(SMDF) == row.names(X_pond)
+
+if (any(row.names(X) != row.names(SM))) {
+  stop("Some rownames in X are not present in the rownames of SMDF. Please check the rownames in X and the rownames of SMDF.")
+}
+
+
 #################################################################################################
 #################################################################################################
 #################################################################################################
@@ -428,8 +436,8 @@ setwd(output_directory)
 # The DatasetExperiment object is created using the X_pond, SMDF and VM objects.
 
 DE_original = DatasetExperiment(
-  data = X_pond,
-  sample_meta = SMDF,
+  data = X,
+  sample_meta = SM,
   variable_meta = VM,
   name = params$dataset_experiment$name,
   description = params$dataset_experiment$description
@@ -440,12 +448,12 @@ DE_original = DatasetExperiment(
 
 if (params$actions$filter_sample_type == "TRUE") {
 
-MS_filter <- filter_smeta(mode = params$filter_sample_type$mode,
+filter_smeta_model <- filter_smeta(mode = params$filter_sample_type$mode,
                           factor_name = params$filter_sample_type$factor_name,
                           levels = params$filter_sample_type$levels)
 
 # apply model sequence
-DE_original_filtered = model_apply(MS_filter, DE_original)
+filter_smeta_result = model_apply(filter_smeta_model, DE_original)
 
 DE_original = DE_original_filtered@filtered
 
@@ -961,11 +969,11 @@ HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
 
 # # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
 
-# HSDEM_result_p_value = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
+# HSDEM_result_p_value_long = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
 
 # 
 
-str(HSDEM_result_p_value)
+str(HSDEM_result_p_value_long)
 
 
 
@@ -1039,133 +1047,133 @@ DE_foldchange_pvalues = merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "r
 
 write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ",")
 
-glimpse(DE_foldchange_pvalues)
+# glimpse(DE_foldchange_pvalues)
 
-# Using this datatable we prepare a Volcano plot using the volcano_plot function from the plotly package. We use the p_value_log10 and the fold_change_log2_FC columns as x and y axis respectively. We use the row_ID column as the label of the points.
+# # Using this datatable we prepare a Volcano plot using the volcano_plot function from the plotly package. We use the p_value_log10 and the fold_change_log2_FC columns as x and y axis respectively. We use the row_ID column as the label of the points.
 
-vp <- EnhancedVolcano(DE_foldchange_pvalues,
-    lab = row_ID,
-    x = 'old_young_fold_change_log2',
-    y = 'old_young_p_value',
-    title = 'Old versus Young',
-    pCutoff = 10e-2,
-    FCcutoff = 0.5,
-    pointSize = 3.0,
-    labSize = 6.0)
-DE_foldchange_pvalues
+# vp <- EnhancedVolcano(DE_foldchange_pvalues,
+#     lab = row_ID,
+#     x = 'old_young_fold_change_log2',
+#     y = 'old_young_p_value',
+#     title = 'Old versus Young',
+#     pCutoff = 10e-2,
+#     FCcutoff = 0.5,
+#     pointSize = 3.0,
+#     labSize = 6.0)
+# DE_foldchange_pvalues
 
-x <- filter( DE_foldchange_pvalues, !is.na(old_young_p_value))
-p <- ggplot(data=x, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), text=row_ID )) +
-     geom_point(alpha=0.3, size=1.5, color="blue") +
-     xlab("Log2 fold change") + ylab("-Log10 p-value") +xlim(-6,6)
+# x <- filter( DE_foldchange_pvalues, !is.na(old_young_p_value))
+# p <- ggplot(data=x, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), text=row_ID )) +
+#      geom_point(alpha=0.3, size=1.5, color="blue") +
+#      xlab("Log2 fold change") + ylab("-Log10 p-value") +xlim(-6,6)
 
-y <- filter(x, old_young_p_value < 1e-5)
-p + geom_text( data=y, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), label=row_ID),
-       hjust="left", nudge_x=.1)
+# y <- filter(x, old_young_p_value < 1e-5)
+# p + geom_text( data=y, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), label=row_ID),
+#        hjust="left", nudge_x=.1)
 
-ggplotly(p)
-
-
-
-# keep only the fields needed for the plot
-diff_df <- DE_foldchange_pvalues[c("row_ID", "old_young_fold_change_log2", "old_young_p_value")]
-
-# add a grouping column; default value is "not significant"
-diff_df["group"] <- "NotSignificant"
-
-# for our plot, we want to highlight 
-# p value < 0.05
-# Fold Change > 1
-
-# change the grouping for the entries with significance but not a large enough Fold change
-diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) < 1 ),"group"] <- "Significant"
-
-# change the grouping for the entries a large enough Fold change but not a low enough p value
-diff_df[which(diff_df['old_young_p_value'] > 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "FoldChange"
-
-# change the grouping for the entries with both significance and large enough fold change
-diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "Significant&FoldChange"
-
-# make the Plot.ly plot
-p <- plot_ly(data = diff_df, x = ~old_young_fold_change_log2, y = ~-log10(old_young_p_value), text = row_ID, mode = "markers", color = ~group) %>% 
-  layout(title ="DiffBind Volcano Plot")
-p
-
-
-C = fold_change_plot(number_features = 20, orientation = 'landscape')
-chart_plot(C,fold_change_result)
+# ggplotly(p)
 
 
 
-cols = c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey")
-sizes = c("up" = 2, "down" = 2, "ns" = 1)
-alphas = c("up" = 1, "down" = 1, "ns" = 0.5)
+# # keep only the fields needed for the plot
+# diff_df <- DE_foldchange_pvalues[c("row_ID", "old_young_fold_change_log2", "old_young_p_value")]
 
-volc_annot = data_RF$variable_meta[c("row_ID", "NPC.superclass_canopus", "NPC.pathway_canopus")]
+# # add a grouping column; default value is "not significant"
+# diff_df["group"] <- "NotSignificant"
 
+# # for our plot, we want to highlight 
+# # p value < 0.05
+# # Fold Change > 1
 
-matt_volcano_tot$mol = gsub("X", "", matt_volcano_tot$mol)
-matt_volcano_plot = merge(matt_volcano_tot, volc_annot, by.x = "mol", by.y = "row_ID")
+# # change the grouping for the entries with significance but not a large enough Fold change
+# diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) < 1 ),"group"] <- "Significant"
 
+# # change the grouping for the entries a large enough Fold change but not a low enough p value
+# diff_df[which(diff_df['old_young_p_value'] > 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "FoldChange"
 
-matt_volcano_plot$lab_plotly = matt_volcano_plot$NPC.superclass_canopus
-matt_volcano_plot$lab_plotly[matt_volcano_plot$p.value > 0.05] = NA
-matt_volcano_plot$col_points = rep("darkred", nrow(matt_volcano_plot))
-matt_volcano_plot$col_points[matt_volcano_plot$p.value < 0.05] = "darkgreen"
+# # change the grouping for the entries with both significance and large enough fold change
+# diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "Significant&FoldChange"
 
-
-
-fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
-  geom_point() + # color = matt_volcano_plot$col_points
-  theme_minimal() +
-  geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
-  # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
-  geom_hline(yintercept = -log10(0.05), col = "red") +
-  # scale_color_manual(values= wes_palette("Darjeeling1")) +
-  ggtitle(title_volcano)
+# # make the Plot.ly plot
+# p <- plot_ly(data = diff_df, x = ~old_young_fold_change_log2, y = ~-log10(old_young_p_value), text = row_ID, mode = "markers", color = ~group) %>% 
+#   layout(title ="DiffBind Volcano Plot")
+# p
 
 
+# C = fold_change_plot(number_features = 20, orientation = 'landscape')
+# chart_plot(C,fold_change_result)
+
+
+
+# cols = c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey")
+# sizes = c("up" = 2, "down" = 2, "ns" = 1)
+# alphas = c("up" = 1, "down" = 1, "ns" = 0.5)
+
+# volc_annot = data_RF$variable_meta[c("row_ID", "NPC.superclass_canopus", "NPC.pathway_canopus")]
+
+
+# matt_volcano_tot$mol = gsub("X", "", matt_volcano_tot$mol)
+# matt_volcano_plot = merge(matt_volcano_tot, volc_annot, by.x = "mol", by.y = "row_ID")
+
+
+# matt_volcano_plot$lab_plotly = matt_volcano_plot$NPC.superclass_canopus
+# matt_volcano_plot$lab_plotly[matt_volcano_plot$p.value > 0.05] = NA
+# matt_volcano_plot$col_points = rep("darkred", nrow(matt_volcano_plot))
+# matt_volcano_plot$col_points[matt_volcano_plot$p.value < 0.05] = "darkgreen"
+
+
+
+# fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
+#   geom_point() + # color = matt_volcano_plot$col_points
+#   theme_minimal() +
+#   geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
+#   # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
+#   geom_hline(yintercept = -log10(0.05), col = "red") +
+#   # scale_color_manual(values= wes_palette("Darjeeling1")) +
+#   ggtitle(title_volcano)
 
 
 
 
-colnames(DE_foldchange_pvalues)
+
+
+# colnames(DE_foldchange_pvalues)
 
 
 
-fig_volcano = ggplot(data = DE_foldchange_pvalues, aes(x = lo, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
-  geom_point() + # color = matt_volcano_plot$col_points
-  theme_minimal() +
-  geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
-  # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
-  geom_hline(yintercept = -log10(0.05), col = "red") +
-  # scale_color_manual(values= wes_palette("Darjeeling1")) +
-  ggtitle(title_volcano)
+# fig_volcano = ggplot(data = DE_foldchange_pvalues, aes(x = lo, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
+#   geom_point() + # color = matt_volcano_plot$col_points
+#   theme_minimal() +
+#   geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
+#   # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
+#   geom_hline(yintercept = -log10(0.05), col = "red") +
+#   # scale_color_manual(values= wes_palette("Darjeeling1")) +
+#   ggtitle(title_volcano)
 
 
 
-# We need to have the feature id displayed on the Volcano plots !
-# The label = paste(lab_plotly, mol, sep ="_")) works but is not ideal
+# # We need to have the feature id displayed on the Volcano plots !
+# # The label = paste(lab_plotly, mol, sep ="_")) works but is not ideal
 
-fig_volcano_interactive = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = paste(lab_plotly, mol, sep ="_"))) +
-  geom_point(alpha = 0.2) + # color = matt_volcano_plot$col_points
-  theme_minimal() +
-  scale_color_discrete(name = "Compared groups") +
-  # geom_text(position=position_jitter(width=0.2),size=1,col="black") +### control the number of include annoation
-  # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
-  geom_hline(yintercept = -log10(0.05), col = "red") +
-  # scale_color_manual(values= wes_palette("Darjeeling1"))+
-  ggtitle(title_volcano)
+# fig_volcano_interactive = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = paste(lab_plotly, mol, sep ="_"))) +
+#   geom_point(alpha = 0.2) + # color = matt_volcano_plot$col_points
+#   theme_minimal() +
+#   scale_color_discrete(name = "Compared groups") +
+#   # geom_text(position=position_jitter(width=0.2),size=1,col="black") +### control the number of include annoation
+#   # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
+#   geom_hline(yintercept = -log10(0.05), col = "red") +
+#   # scale_color_manual(values= wes_palette("Darjeeling1"))+
+#   ggtitle(title_volcano)
 
-fig_volcano_interactive = ggplotly(fig_volcano_interactive)
+# fig_volcano_interactive = ggplotly(fig_volcano_interactive)
 
 
-# The files are exported
+# # The files are exported
 
-ggsave(plot = fig_volcano, filename = filename_volcano , width = 10, height = 10)
+# ggsave(plot = fig_volcano, filename = filename_volcano , width = 10, height = 10)
 
-fig_volcano_interactive %>%
-    htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
+# fig_volcano_interactive %>%
+#     htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
 
 
 
@@ -1181,6 +1189,11 @@ message("Preparing Tree Map ...")
 matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
 matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
 matt_donust2$counter = 1
+
+
+DE_foldchange_pvalues
+
+
 
 
 dt_for_treemap = function(datatable, parent_value, value, count) {

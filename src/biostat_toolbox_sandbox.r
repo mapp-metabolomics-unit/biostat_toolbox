@@ -80,6 +80,24 @@ usePackage("yaml")
 library(MAPPstructToolbox)
 
 
+
+suppressPackageStartupMessages({
+    # Bioconductor packages
+    library(MAPPstructToolbox)
+    library(pmp)
+    library(ropls)
+    library(BiocFileCache)
+  
+    # CRAN libraries
+    library(ggplot2)
+    library(gridExtra)
+    library(cowplot)
+    library(openxlsx)
+    library(plotly)
+
+})
+
+
 path_to_params = "./params/params.yaml"
 
 params = yaml.load_file(path_to_params)
@@ -90,101 +108,147 @@ working_directory = file.path(params$path$docs, params$mapp_project, params$mapp
 
 
 
-data = read_delim(file.path(working_directory,  "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
+feature_table = read_delim(file.path(working_directory,  "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
   delim = ",", escape_double = FALSE,
   trim_ws = TRUE
 )
 
-data$"row m/z" = round(data$"row m/z", digits = 2)
-data$"row retention time" = round(data$"row retention time", digits = 1)
+# The column names are modified using the rename function from the dplyr package
 
-feature_id = data$"row ID"
-row_mz_full = data$"row m/z"
-row_rt_full = data$"row retention time"
+feature_table = feature_table %>%
+  rename("feature_id" = "row ID",
+    "feature_mz" = "row m/z",
+    "feature_rt" = "row retention time"
+  )
 
-data$"row ID" = paste(data$"row ID",
-  data$"row m/z",
-  data$"row retention time",
-  "peak",
+# The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full`
+feature_table$"feature_id_full" = paste(feature_table$feature_id,
+  round(feature_table$feature_mz, digits = 2),
+  round(feature_table$feature_rt, digits = 1),
   sep = "_"
 )
 
-row_ID = data$"row ID"
+# The dataframe is subsetted to keep only columns containing the pattern ` Peak area` and the `feature_id_full` column
+# We use dplyr's `select` function and the pipe operator `%>%` to chain the operations.
+# We then remove the ` Peak area` pattern from the column names using the rename_with function from the dplyr package
+# We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
-data = data %>%
-  select(-"row m/z", -"row retention time")
+feature_table_intensities = feature_table %>%
+  select(feature_id_full, contains(" Peak area")) %>%
+  rename_with(~gsub(" Peak area", "", .x)) %>%
+  column_to_rownames(var = "feature_id_full") %>%
+  as.data.frame() %>%
+  t()
 
-data = data[1:(length(data) - 1)]
+# We keep the feature_table_intensities dataframe in a separate variable
 
-names(data) = gsub(" Peak area", "", names(data))
+X = feature_table_intensities
 
-data_prep = data %>%
-  remove_rownames() %>%
-  column_to_rownames(var = "row ID")
+# We keep the feature metadata in a separate dataframe
 
-data_t = as.data.frame(t(data_prep))
+feature_metadata = feature_table %>%
+  select(feature_id_full, feature_id, feature_mz, feature_rt)
 
-feature_list = data.frame(feature_id, row_ID, row_mz_full, row_rt_full)
-
-
+# The Sirius data is loaded
 
 data_sirius = read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
 
+# The column names are modified to include the source of the data
 
 colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
+
+# We now build a unique feature_id for each feature in the Sirius data
+
+data_sirius$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$id_sirius)
+data_sirius$feature_id = as.numeric(data_sirius$feature_id)
+
+# The CANOPUS data is loaded
 
 data_canopus = read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
 
+# The column names are modified to include the source of the data
+
 colnames(data_canopus) = paste(colnames(data_canopus), "canopus", sep = "_")
 
+# We now build a unique feature_id for each feature in the Sirius data
+
+data_canopus$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$id_canopus)
+data_canopus$feature_id = as.numeric(data_canopus$feature_id)
+
+
+# The MetAnnot data is loaded
 
 data_metannot = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
 
+# The column names are modified to include the source of the data
 
 colnames(data_metannot) = paste(colnames(data_metannot), "metannot", sep = "_")
 
-colnames(data_metannot)[colnames(data_metannot) == "feature_id_metannot"] = "feature_id"
+
+# We now build a unique feature_id for each feature in the Metannot data
+
+data_metannot$feature_id = data_metannot$feature_id_metannot
+data_metannot$feature_id = as.numeric(data_metannot$feature_id)
 
 
 
-VM_sir_can = merge(x = data_sirius, y = data_canopus, by.x = "id_sirius", by.y = "id_canopus", all = TRUE)
+# The GNPS data is loaded. Note that we use the `Sys.glob` function to get the path to the file and expand the wildcard
 
-VM_sir_can$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", VM_sir_can$id_sirius)
+data_gnps = read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+  delim = "\t", escape_double = FALSE,
+  trim_ws = TRUE
+)
 
-VM_sir_can_metannot = merge(x = VM_sir_can, y = data_metannot, by = "feature_id", all = TRUE)
+# The column names are modified to include the source of the data
 
-VM_sir_can_metannot_full = merge(x = feature_list, y = VM_sir_can_metannot, by = "feature_id", all = TRUE)
+colnames(data_gnps) = paste(colnames(data_gnps), "gnps", sep = "_")
 
-VM = VM_sir_can_metannot_full
+# We now build a unique feature_id for each feature in the GNPS data
 
-row.names(VM) = VM$row_ID
+data_gnps$feature_id = data_gnps$`cluster index_gnps`
+data_gnps$feature_id = as.numeric(data_gnps$feature_id)
 
-X = data_t[, 1:ncol(data_t)]
 
 
-metadata = read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch,  "metadata.txt", sep = "_")),
+# The four previous dataframe are merged into one using the common `feature_id` column as key and the tidyverse `reduce` function
+
+
+list_df = list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
+VM = list_df %>% reduce(full_join, by='feature_id')
+
+
+# We now convert the VM tibble into a dataframe and set the `feature_id_full` column as the rownames
+
+VM = as.data.frame(VM)
+row.names(VM) = VM$feature_id_full
+
+
+# We here load the sample metadata
+
+sample_metadata = read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch,  "metadata.txt", sep = "_")),
   delim = "\t",
   escape_double = FALSE,
   trim_ws = TRUE
 )
 
-SM = data.frame(metadata)
+SM = data.frame(sample_metadata)
+
+# The function below is used to create metadata combinations
 
 df = SM %>% 
   filter(sample_type == "sample")
 
-
-cols = c(params$colnames$to_combine)
-
+# This line allows us to make sure that the columns will be combined in alphabetical order
+cols = sort(c(params$colnames$to_combine), decreasing = FALSE)
 
 for (n in 1:length(cols)) {
   combos = combn(cols, n, simplify = FALSE)
@@ -194,52 +258,47 @@ for (n in 1:length(cols)) {
   }
 }
 
-
+# We merge back the resulting df to the original SM dataframe and fill the NA values with "ND"
 SM = merge(x = SM, y = df,  all.x = TRUE)
-
-
 SM[is.na(SM)] = "ND"
 
 
-
-SMDF = as.data.frame(SM)
-
-SMDF = SMDF %>%
+SM = SM %>%
   remove_rownames() %>%
   column_to_rownames(var = "filename")
 
-XSM = merge(x = X, y = SMDF, by = "row.names", all = TRUE)
+
+# Optional ponderation step.
+#To clean
+
+# XSM = merge(x = X, y = SMDF, by = "row.names", all = TRUE)
+
+# X_pond = XSM %>%
+#   select(Row.names, grep("peak", colnames(XSM))) %>%
+#   column_to_rownames(var = "Row.names")
+
+# X_pond = X_pond[order(row.names(X_pond)), ]
+# X_pond = X_pond[, order(colnames(X_pond))]
+# SMDF = SMDF[order(row.names(SMDF)), ]
+# VM = VM[order(row.names(VM)), ]
 
 
-
-X_pond = XSM %>%
-  select(Row.names, grep("peak", colnames(XSM))) %>%
-  column_to_rownames(var = "Row.names")
-
-X_pond = X_pond[order(row.names(X_pond)), ]
-X_pond = X_pond[, order(colnames(X_pond))]
-SMDF = SMDF[order(row.names(SMDF)), ]
-VM = VM[order(row.names(VM)), ]
-
-
-if (any(colnames(X_pond) != row.names(VM))) {
-  stop("The order of the columns in X_pond is not the same as the order of the rows in VM. Please check the order of the columns in X_pond and the order of the rows in VM.")
+if (any(colnames(X) != row.names(VM))) {
+  stop("Some columns in X are not present in the rownames of VM. Please check the column names in X and the rownames of VM.")
 }
 
 # We repeat for row.names(SMDF) == row.names(X_pond)
 
-if (any(row.names(SMDF) != row.names(X_pond))) {
-  stop("The order of the rows in SMDF is not the same as the order of the rows in X_pond. Please check the order of the rows in SMDF and the order of the rows in X_pond.")
+if (any(row.names(X) != row.names(SM))) {
+  stop("Some rownames in X are not present in the rownames of SMDF. Please check the rownames in X and the rownames of SMDF.")
 }
-
-
 
 
 # The DatasetExperiment object is created using the X_pond, SMDF and VM objects.
 
 DE_original = DatasetExperiment(
-  data = X_pond,
-  sample_meta = SMDF,
+  data = X,
+  sample_meta = SM,
   variable_meta = VM,
   name = params$dataset_experiment$name,
   description = params$dataset_experiment$description
@@ -521,11 +580,6 @@ C = pca_scores_plot(factor_name='class') # colour by class
 chart_plot(C,M[2])
 
 
-
-
-
-
-
 ------
 
 
@@ -565,4 +619,111 @@ chart_plot(C,M)
 
 glimpse(M$fold_change)
 glimpse(M$significant)
+
+
+
+
+####### Testing PCA and PLS-DA
+
+DE = iris_DatasetExperiment()
+
+
+
+M = autoscale() + PCA(number_components = 3)
+# apply model sequence to dataset
+M = model_apply(M,DE)
+
+# pca scores plots
+g=list()
+for (k in colnames(DE$sample_meta)) {
+    C = pca_scores_plot(factor_name = k)
+    g[[k]] = chart_plot(C,M[2])
+}
+# plot using cowplot
+plot_grid(plotlist=g, nrow=1, align='vh', labels=c('A','B','C'))
+
+
+
+# prepare model sequence
+M = autoscale() + PLSDA(factor_name='Species')
+M = model_apply(M,DE)
+
+
+C = pls_scores_plot(factor_name = 'Species')
+chart_plot(C,M[2])
+
+
+
+str(DE_original$sample_meta)
+
+DE_original$sample_meta$age = as.factor(DE_original$sample_meta$age)
+DE_original$sample_meta$genotype = as.factor(DE_original$sample_meta$genotype)
+
+# prepare model sequence
+M = autoscale() + PLSDA(factor_name='age')
+M = model_apply(M,DE_original)
+
+
+C = pls_scores_plot(factor_name = 'age')
+chart_plot(C,M[2])
+
+
+C = pls_vip_plot(ycol='young')
+vip_plot <- chart_plot(C,M[2])
+
+ggplotly(vip_plot)
+
+
+C = plsda_feature_importance_plot(n_features=30,metric='sr')
+sr_plot <- chart_plot(C,M[2])
+
+ggplotly(sr_plot)
+
+C = plsda_roc_plot(factor_name='age')
+chart_plot(C,M[2])
+
+
+D = iris_DatasetExperiment()
+DE_original$sample_meta$run_order=1:nrow(DE_original)
+C = tic_chart(factor_name='age',run_order='run_order')
+chart_plot(C,DE_original)
+
+D = iris_DatasetExperiment()
+M = HCA(factor_name='Species')
+M = model_apply(M,D)
+
+C = hca_dendrogram()
+chart_plot(C,M)
+
+
+D = DE_original
+M = HCA(factor_name='genotype')
+M = model_apply(M,D)
+
+C = hca_dendrogram()
+chart_plot(C,M)
+
+
+D = DE
+C = DatasetExperiment_boxplot(factor_name='age',number=50,per_class=TRUE)
+chart_plot(C,D)
+
+D = DE
+C = DatasetExperiment_dist(factor_name='age')
+chart_plot(C,D)
+
+
+D = iris_DatasetExperiment()
+C = DatasetExperiment_factor_boxplot(factor_names='Species',feature_to_plot='Petal.Width')
+chart_plot(C,D)
+
+D = DE
+C = DatasetExperiment_factor_boxplot(factor_names='age',feature_to_plot='102_537.17_3.8_peak')
+c <- chart_plot(C,D)
+ggplotly(c)
+
+D = DE
+C = DatasetExperiment_heatmap()
+chart_plot(C,D)
+
 
