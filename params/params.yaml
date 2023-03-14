@@ -10,7 +10,7 @@ dataset_experiment :
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_one : FALSE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE

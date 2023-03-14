@@ -406,7 +406,6 @@ SM = SM %>%
   remove_rownames() %>%
   column_to_rownames(var = "filename")
 
-
 # Optional ponderation step.
 #To clean
 
@@ -519,7 +518,7 @@ DE = filter_vmeta_result@filtered
 
 if (params$actions$scale_data == "FALSE") {
 
-DE = DE_original
+DE = DE
 
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
@@ -533,8 +532,8 @@ sink() } else if (params$actions$scale_data == "TRUE") {
 # Overall Pareto scaling (test)
 
 M = pareto_scale()
-M = model_train(M,DE_original)
-M = model_predict(M,DE_original)
+M = model_train(M,DE)
+M = model_predict(M,DE)
 DE = M$scaled
 
 # We display the properties of the DatasetExperiment object to the user.
@@ -554,10 +553,14 @@ sink()
 ################################################################################################
 ######################## structool box formatted data export 
 
+message("Outputting X, VM and SM ...")
+
 formatted_peak_table <- DE$data
 
 formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
-col_filter <- c("feature_id", "row_ID" ,"row_mz_full" ,"row_rt_full","molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
+
+
+col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
 "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "NPC.pathway_canopus","NPC.pathway.Probability_canopus",
 "NPC.superclass_canopus", "NPC.class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
 "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
@@ -570,6 +573,7 @@ col_filter <- c("feature_id", "row_ID" ,"row_mz_full" ,"row_rt_full","molecularF
 "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
 "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
 "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
+
 formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
 
 formatted_sample_metadata <- DE$sample_meta
@@ -641,11 +645,17 @@ fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
 
 
-
 # #################################################################################################
 # #################################################################################################
 # #################################################################################################
 # ##### PLSDA filtered data #######################################################################
+
+message("Launching PLSDA calculations ...")
+
+# First we make sure that the sample metadata variable of interest is a factor
+
+DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,params$filters$metadata_variable])
+
 
 # # prepare model sequence
 plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable)
@@ -987,8 +997,6 @@ HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
 # HSDEM_result_p_value_long = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
 
 
-
-
 fold_change_model = fold_change(
   factor_name = params$filters$metadata_variable,
   paired = FALSE,
@@ -1200,17 +1208,16 @@ glimpse(DE_foldchange_pvalues)
 # Here we select the features that are significant 
 # for this we filter for values above the p_value threshold in the column selected using the `p_value_column` variable
 # We use the dplyr and pipes syntax to do this
+# Note the as.symbol() function to convert the string to a symbol As per https://stackoverflow.com/a/48219802/4908629
 
-DE_foldchange_pvalues = DE_foldchange_pvalues %>%
-  filter(!!p_value_column < params$posthoc$p_value)
+matt_donust = DE_foldchange_pvalues %>%
+  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)
 
 
-matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+# matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
 matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
 matt_donust2$counter = 1
 
-
-DE_foldchange_pvalues
 
 
 dt_for_treemap = function(datatable, parent_value, value, count) {
@@ -1284,17 +1291,47 @@ message("Launching Random Forest calculations ...")
 
 sink(filename_random_forest_model)
 
-imp_filter1 = paste("X", matt_volcano_tot$mol[matt_volcano_tot$p.value < params$posthoc$p_value ], sep = "")
+# Here we traduce to fit Manu's inputs ... to be updated later 
 
-data_subset_norm_rf_filter = data_subset_norm_rf[, colnames(data_subset_norm_rf) %in% c("treatment", imp_filter1)]
+features_of_importance = DE_foldchange_pvalues %>%
+  filter((!!as.symbol(p_value_column)) < 0.001)  %>% 
+  select(feature_id_full) %>%
+  # we output the data as a vector
+  pull()
 
-ozone.rp = rfPermute(treatment ~ ., data = data_subset_norm_rf_filter, na.action = na.omit, ntree = 500, num.rep = 500)
-imp_table_rf = data.frame(ozone.rp$pval)
-imp_table_rf = importance(ozone.rp)
+
+# We select all columns except the params$filters$metadata_variable columns in 
+# data_subset_norm_rf_filter and we prefix the column names with an X.
+# We use the dplyr syntax to do this and the rename function to rename the columns
+# We then subset the data to keep only the columns that are in the imp_filter1 variable
+
+data_subset_for_RF = DE$data %>%
+  select(all_of(features_of_importance)) %>% 
+  rename_all(~ paste0("X", .))  %>% 
+  # here we join the data with the associated sample metadata using the row.names as index
+  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  # We keep the row.names columnn as row.names
+  transform(row.names = Row.names)  %>%
+  # We keep the params$filters$metadata_variable column and the columns that start with X
+  select(params$filters$metadata_variable, starts_with("X"))  %>% 
+  # We set the params$filters$metadata_variable column as a factor
+  mutate(!!as.symbol(params$filters$metadata_variable) := factor(!!as.symbol(params$filters$metadata_variable)))
+
+# We define the formula externally to inject the external variable # params$filters$metadata_variable
+
+formula = as.formula(paste0(params$filters$metadata_variable," ~ ."))
+
+# We launch the rfPermute function
+
+data.rp = rfPermute(formula, data = data_subset_for_RF, na.action = na.omit, ntree = 500, num.rep = 500)
+
+imp_table_rf = data.frame(data.rp$pval)
+imp_table_rf = importance(data.rp)
 imp_table_rf = data.frame(imp_table_rf)
-summary(ozone.rp)
 
-f = plotImportance(ozone.rp, plot.type = "bar", plot = FALSE)
+summary(data.rp)
+
+f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
 
 sink()
 
@@ -1322,24 +1359,34 @@ fig_rf %>%
 message("Preparing Box plots ...")
 
 
-imp.scaled = rfPermute::importance(ozone.rp, scale = TRUE)
+imp.scaled = rfPermute::importance(data.rp, scale = TRUE)
 imp.scaled = data.frame(imp.scaled)
 imp.scaled = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ]
 boxplot_top_N = row.names(imp.scaled)[1:params$boxplot$topN]
-data_subset_norm_boxplot = data_subset_norm_rf[, colnames(data_subset_norm_rf) %in% boxplot_top_N]
-data_subset_norm_boxplot$treatment = as.factor(vec_trait)
-data_subset_norm_boxplot = reshape2::melt(data_subset_norm_boxplot, id = c("treatment"))
 
-p = ggplot(data = data_subset_norm_boxplot, aes(x = variable, y = value)) +
-  geom_boxplot(aes(fill = treatment)) +
-  theme_bw() +
+
+data_subset_boxplot = data_subset_for_RF %>%
+  select(all_of(boxplot_top_N), params$filters$metadata_variable)
+
+# We now establish a side by side box plot for each columns of the data_subset_norm_boxplot
+# We use the melt function to reshape the data to a long format
+# We then use the ggplot2 syntax to plot the data and the facet_wrap function to plot the data side by side
+
+# Gather value columns into key-value pairs
+df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$filters$metadata_variable)
+
+# Create boxplots faceted by variable and colored by age
+p = ggplot(df_long, aes(x = age, y = value, fill = age)) +
+  geom_boxplot() +
+  facet_wrap(~ variable, ncol = 4) +
+  theme_minimal()+
   ggtitle(title_box_plots)
+
 
 fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
   legend.position = "top",
   legend.title = element_blank()
 )
-
 
 fig_boxplotly = data_subset_norm_boxplot %>%
   split(data_subset_norm_boxplot$variable) %>%
@@ -1371,27 +1418,30 @@ message("Preparing Random Forest filtered Heatmap ...")
 
 imp_table_rf_order = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ] # imp_table_rf[order(imp_table_rf$MeanDecreaseGini,decreasing=TRUE),]
 
-
 imp_filter2X = row.names(imp_table_rf_order)[1:params$heatmap$topN]
 imp_filter2 = gsub("X", "", imp_filter2X)
 
-data_subset_norm_rf_filtered = data_subset_norm_rf[, colnames(data_subset_norm_rf) %in% imp_filter2X]
-my_sample_col = sample_name
-annot_col = data.frame(paste(data_RF$variable_meta$NPC.pathway_canopus, data_RF$variable_meta$NPC.superclass_canopus, sep = "_"), data_RF$variable_meta$NPC.pathway_canopus)
+data_subset_for_RF = data_subset_for_RF[, colnames(data_subset_for_RF) %in% imp_filter2X]
+# my_sample_col = DE$sample_meta$sample_id
+
+my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$filters$metadata_variable]], sep = "_")
+
+annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
+
 colnames(annot_col) = c("Superclass", "Pathway")
 
-rownames(annot_col) = data_RF$variable_meta$row_ID
+rownames(annot_col) = DE$variable_meta$feature_id_full
 annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
 
 
 ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
-data_subset_norm_rf_filtered = apply(data_subset_norm_rf_filtered, 2, as.numeric)
+data_subset_for_RF = apply(data_subset_for_RF, 2, as.numeric)
 # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
 heatmap_filtered = heatmaply(
-  percentize(data_subset_norm_rf_filtered),
+  percentize(data_subset_for_RF),
   seriate = "mean", # none , GW , mean, OLO
   col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
   col_side_palette = ByPal,
@@ -1431,32 +1481,34 @@ message("Outputing Summary Table ...")
 # Output is not clean. Feature id are repeated x times. 
 # To tidy ---
 
-feature_id = data_RF$variable_meta$feature_id
-sample_raw_id = paste("X", data_RF$variable_meta$row_ID, sep = "")
-name_sirius = data_RF$variable_meta$name_sirius
-smiles_sirius = data_RF$variable_meta$smiles_sirius
-InChI_sirius = data_RF$variable_meta$InChI_sirius
-NPC.pathway_canopus = data_RF$variable_meta$NPC.pathway_canopus
-NPC.superclass_canopus = data_RF$variable_meta$NPC.superclass_canopus
-Annotation_merge = data.frame(feature_id, sample_raw_id, name_sirius, smiles_sirius, InChI_sirius, NPC.pathway_canopus, NPC.superclass_canopus)
+# feature_id = DE$variable_meta$feature_id_full
+# sample_raw_id = paste("X", DE$variable_meta$feature_id_full, sep = "")
+# name_sirius = DE$variable_meta$name_sirius
+# smiles_sirius = DE$variable_meta$smiles_sirius
+# InChI_sirius = DE$variable_meta$InChI_sirius
+# NPC.pathway_canopus = DE$variable_meta$NPC.pathway_canopus
+# NPC.superclass_canopus = DE$variable_meta$NPC.superclass_canopus
+# Annotation_merge = data.frame(feature_id, sample_raw_id, name_sirius, smiles_sirius, InChI_sirius, NPC.pathway_canopus, NPC.superclass_canopus)
 
 
-RF_importance = imp_table_rf$MeanDecreaseGini
-sample_raw_id = row.names(imp_table_rf)
-RF_importance_merge = data.frame(sample_raw_id, RF_importance)
+# RF_importance = imp_table_rf$MeanDecreaseGini
+# sample_raw_id = row.names(imp_table_rf)
+# RF_importance_merge = data.frame(sample_raw_id, RF_importance)
 
-summary_matt1 = merge(Annotation_merge, RF_importance_merge, by = "sample_raw_id", all = TRUE)
+# summary_matt1 = merge(Annotation_merge, RF_importance_merge, by = "sample_raw_id", all = TRUE)
 
-sample_raw_id = paste("X", matt_volcano_tot$mol, sep = "")
-group = matt_volcano_tot$X1
-posthoc_Pvalue = matt_volcano_tot$p.value
-log10P = matt_volcano_tot$log10P
-posthoc_result_merge = data.frame(sample_raw_id, group, posthoc_Pvalue, log10P)
-split_group = split(posthoc_result_merge, group)
-matt_split = do.call("cbind", split_group)
-matt_split$sample_raw_id = matt_split[, 1]
+# sample_raw_id = paste("X", matt_volcano_tot$mol, sep = "")
+# group = matt_volcano_tot$X1
+# posthoc_Pvalue = matt_volcano_tot$p.value
+# log10P = matt_volcano_tot$log10P
+# posthoc_result_merge = data.frame(sample_raw_id, group, posthoc_Pvalue, log10P)
+# split_group = split(posthoc_result_merge, group)
+# matt_split = do.call("cbind", split_group)
+# matt_split$sample_raw_id = matt_split[, 1]
 
-summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all = TRUE)
+# summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all = TRUE)
+
+summary_stat_output = DE_foldchange_pvalues
 
 
 # The file is exported
@@ -1484,6 +1536,7 @@ g = read.graph(file = graphml_file, format = "graphml")
 df_from_graph_edges_original = igraph::as_data_frame(g, what = c("edges"))
 df_from_graph_vertices_original = igraph::as_data_frame(g, what = c("vertices"))
 
+
 # We define drop the from and to columns from the edges dataframe
 # And then rename the node 1 and node 2 columns to from and to, respectively
 # These columns are placed at the beginning of the dataframe
@@ -1501,12 +1554,18 @@ df_from_graph_vertices = df_from_graph_vertices_original %>%
   mutate_at(vars(id), as.numeric)
 
 
-# glimpse(df_from_graph_vertices)
 
 # We then add the attributes to the vertices dataframe
 # For this we merge the vertices dataframe with the VM output using the id column and the feature_id column, respectively
 
-df_from_graph_vertices_plus = merge(df_from_graph_vertices, VM, by.x = "id", by.y = "feature_id", all.x = T)
+# vm_minus_gnps = DE_original$variable_meta  %>% 
+# select(-contains("_gnps"))
+
+
+# df_from_graph_vertices_plus = merge(df_from_graph_vertices, vm_minus_gnps, by.x = "id", by.y = "feature_id", all.x = T)
+
+# glimpse(df_from_graph_vertices_plus)
+
 
 # Now we will add the results of the statistical outputs to the vertices dataframe
 # For this we merge the vertices dataframe with the summary_stat_output using the id column and the feature_id column, respectively
@@ -1514,13 +1573,17 @@ df_from_graph_vertices_plus = merge(df_from_graph_vertices, VM, by.x = "id", by.
 # First we clean the summary_stat_output dataframe
 # For this we remove columns that are not needed. The one containing the sirius and canopus pattern in the column names. Indeed they arr already present in the VM dataframe
 
-summary_stat_output = summary_stat_output %>%
-  select(-contains("sirius")) %>%
-  select(-contains("canopus")) %>% 
-  select(-contains("_raw_id"))
+summary_stat_output_red = summary_stat_output %>%
+  select(-contains("_sirius")) %>%
+  select(-contains("_canopus")) %>%
+  select(-contains("_metannot")) %>%
+  select(-contains("_gnps"))  %>% 
+  select(-ends_with("_id"))  %>% 
+  select(-ends_with("_mz"))  %>%
+  select(-ends_with("_rt"))
 
 
-df_from_graph_vertices_plus = merge(df_from_graph_vertices_plus, summary_stat_output, by.x = "id", by.y = "feature_id", all.x = T)
+df_from_graph_vertices_plus = merge(DE_original$variable_meta, summary_stat_output_red, by.x = "feature_id_full", by.y = "feature_id_full", all.x = T)
 
 
 # We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
@@ -1539,10 +1602,10 @@ dfList <- list()
 for (i in params$colnames$to_output) {
   dfList[[i]] <- merged_D_SM %>%
     group_by(!!as.symbol(i)) %>%
-    summarise(across(contains("_peak"), mean),
+    summarise(across(contains("."), mean),
       .groups = "drop"
     ) %>%
-    select(!!all_of(i), contains("_peak")) %>%
+    select(!!all_of(i), contains(".")) %>%
     pivot_longer(-!!i) %>%
     pivot_wider(names_from = all_of(i), values_from = value)  %>% 
     # We prefix all columns with the factor name
@@ -1559,12 +1622,14 @@ full_flat_dfList = merge(flat_dfList, t(DE_original$data), by.x = 'name', by.y =
 
 # We add the raw feature list
 
-df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "row_ID", by.y = "name", all.x = T)
+df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id_full", by.y = "name", all.x = T)
+
+df_from_graph_vertices_plus_plus$feature_id
 
 # We set back the id column as the first column of the dataframe
 
 df_from_graph_vertices_plus_plus = df_from_graph_vertices_plus_plus %>%
-  select(id, everything())
+  select(feature_id, everything())
 
 
 # We then add the attributes to the edges dataframe and generate the igraph object
@@ -1581,7 +1646,6 @@ generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, verti
 
 
 write_graph(generated_g, file = filename_graphml, format = "graphml")
-
 
 
 message("... the R session info file ...")
