@@ -269,6 +269,12 @@ feature_table_intensities = feature_table %>%
 
 X = feature_table_intensities
 
+
+# We order the X by rownames and by column names
+
+X = X[order(row.names(X)), ]
+X = X[, order(colnames(X))]
+
 # We keep the feature metadata in a separate dataframe
 
 feature_metadata = feature_table %>%
@@ -358,6 +364,12 @@ VM = as.data.frame(VM)
 row.names(VM) = VM$feature_id_full
 
 
+# We order the VM by rownames and by column names
+
+VM = VM[order(row.names(VM)), ]
+VM = VM[, order(colnames(VM))]
+
+
 ################################ load sample  metadata #####################################
 ############################################################################################
 
@@ -406,6 +418,13 @@ SM = SM %>%
   remove_rownames() %>%
   column_to_rownames(var = "filename")
 
+# We order the SM by rownames and by column names.
+
+SM = SM[order(row.names(SM)), ]
+SM = SM[, order(colnames(SM))]
+
+
+glimpse(SM)
 # Optional ponderation step.
 #To clean
 
@@ -428,8 +447,15 @@ if (any(colnames(X) != row.names(VM))) {
 # We repeat for row.names(SMDF) == row.names(X_pond)
 
 if (any(row.names(X) != row.names(SM))) {
-  stop("Some rownames in X are not present in the rownames of SMDF. Please check the rownames in X and the rownames of SMDF.")
+  stop("Some rownames in X are not present in the rownames of SM. Please check the rownames in X and the rownames of SM.")
 }
+
+# length(unique(row.names(X)))
+# length(unique(row.names(SM)))
+
+# # We troubleshoot and find which rownames are not present in both X and SM
+
+# rownames_not_present = setdiff(row.names(X), row.names(SM))
 
 
 #################################################################################################
@@ -661,11 +687,11 @@ DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,pa
 
 
 # # prepare model sequence
-plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
+plsda_seq_model = autoscale() + PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
 plsda_seq_result = model_apply(plsda_seq_model,DE)
 
 # Fetching the PLSDA data object
-plsda_object = plsda_seq_result
+plsda_object = plsda_seq_result[2]
 
 C = pls_scores_plot(factor_name = params$filters$metadata_variable)
 
