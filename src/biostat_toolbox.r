@@ -650,6 +650,9 @@ fig_PCA3D %>%
 # #################################################################################################
 # ##### PLSDA filtered data #######################################################################
 
+
+if (params$actions$run_PLSDA == "TRUE") {
+
 message("Launching PLSDA calculations ...")
 
 # First we make sure that the sample metadata variable of interest is a factor
@@ -658,7 +661,7 @@ DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,pa
 
 
 # # prepare model sequence
-plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable)
+plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
 plsda_seq_result = model_apply(plsda_seq_model,DE)
 
 # Fetching the PLSDA data object
@@ -684,6 +687,7 @@ fig_PLSDA_VIP = vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$titl
 ggsave(plot = fig_PLSDA, filename = filename_PLSDA , width = 10, height = 10)
 ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 10, height = 10)
 
+}
 
 #################################################################################################
 #################################################################################################
@@ -1203,7 +1207,7 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 message("Preparing Tree Map ...")
 
-glimpse(DE_foldchange_pvalues)
+# glimpse(DE_foldchange_pvalues)
 
 # Here we select the features that are significant 
 # for this we filter for values above the p_value threshold in the column selected using the `p_value_column` variable
@@ -1294,7 +1298,7 @@ sink(filename_random_forest_model)
 # Here we traduce to fit Manu's inputs ... to be updated later 
 
 features_of_importance = DE_foldchange_pvalues %>%
-  filter((!!as.symbol(p_value_column)) < 0.001)  %>% 
+  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
   select(feature_id_full) %>%
   # we output the data as a vector
   pull()
@@ -1362,8 +1366,9 @@ message("Preparing Box plots ...")
 imp.scaled = rfPermute::importance(data.rp, scale = TRUE)
 imp.scaled = data.frame(imp.scaled)
 imp.scaled = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ]
-boxplot_top_N = row.names(imp.scaled)[1:params$boxplot$topN]
-
+# boxplot_top_N = row.names(imp.scaled)[1:params$boxplot$topN]
+# This below using head is safer in case the number of features is smaller than the number of features to plot
+boxplot_top_N = row.names(head(imp.scaled, n = params$boxplot$topN))
 
 data_subset_boxplot = data_subset_for_RF %>%
   select(all_of(boxplot_top_N), params$filters$metadata_variable)
@@ -1375,8 +1380,11 @@ data_subset_boxplot = data_subset_for_RF %>%
 # Gather value columns into key-value pairs
 df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$filters$metadata_variable)
 
+
 # Create boxplots faceted by variable and colored by age
-p = ggplot(df_long, aes(x = age, y = value, fill = age)) +
+# Note how we use the get function to access the variable name
+# See here for details  https://stackoverflow.com/a/22309328/4908629
+p = ggplot(df_long, aes(x = get(params$filters$metadata_variable), y = value, fill = get(params$filters$metadata_variable))) +
   geom_boxplot() +
   facet_wrap(~ variable, ncol = 4) +
   theme_minimal()+
@@ -1388,24 +1396,24 @@ fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
   legend.title = element_blank()
 )
 
-fig_boxplotly = data_subset_norm_boxplot %>%
-  split(data_subset_norm_boxplot$variable) %>%
-  map(~ {
-    plot_ly(data = .x, x = .x$treatment, y = .x$value, color = .x$treatment, type = "box") %>%
-      layout(showlegend = F, xaxis = list(title = .x$variable[1])) %>%
-      layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
-      layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
-  }) %>%
-  subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>% 
-  layout(title = title_box_plots,
-  legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
+# fig_boxplotly = data_subset_boxplot %>%
+#   split(data_subset_boxplot$variable) %>%
+#   map(~ {
+#     plot_ly(data = .x, x = .x$treatment, y = .x$value, color = .x$treatment, type = "box") %>%
+#       layout(showlegend = F, xaxis = list(title = .x$variable[1])) %>%
+#       layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
+#       layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
+#   }) %>%
+#   subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>% 
+#   layout(title = title_box_plots,
+#   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
 
 
 # The files are exported
 
 ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
-fig_boxplotly %>%
-    htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
+# fig_boxplotly %>%
+#     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
 
 
 #############################################################################
@@ -1554,7 +1562,6 @@ df_from_graph_vertices = df_from_graph_vertices_original %>%
   mutate_at(vars(id), as.numeric)
 
 
-
 # We then add the attributes to the vertices dataframe
 # For this we merge the vertices dataframe with the VM output using the id column and the feature_id column, respectively
 
@@ -1624,7 +1631,6 @@ full_flat_dfList = merge(flat_dfList, t(DE_original$data), by.x = 'name', by.y =
 
 df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id_full", by.y = "name", all.x = T)
 
-df_from_graph_vertices_plus_plus$feature_id
 
 # We set back the id column as the first column of the dataframe
 
