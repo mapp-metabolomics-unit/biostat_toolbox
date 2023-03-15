@@ -202,7 +202,8 @@ filename_random_forest_model <- paste(file_prefix, "_RF_model.txt", sep = "")
 filename_box_plots <- paste(file_prefix, "_Boxplots.pdf", sep = "")
 filename_box_plots_interactive <- paste(file_prefix, "_Boxplots_interactive.html", sep = "")
 filename_heatmap <- paste(file_prefix, "_Heatmap.html", sep = "")
-filename_summary_stats_table <- paste(file_prefix, "_summary_stats_table.csv", sep = "")
+filename_summary_stats_table_full <- paste(file_prefix, "_summary_stats_table_full.csv", sep = "")
+filename_summary_stats_table_selected <- paste(file_prefix, "_summary_stats_table_selected.csv", sep = "")
 filename_graphml <- paste(file_prefix, "_graphml.graphml", sep = "")
 filename_params <- paste(file_prefix, "_params.yaml", sep = "")
 filename_session_info <- paste(file_prefix, "_session_info.txt", sep = "")
@@ -274,6 +275,9 @@ X = feature_table_intensities
 
 X = X[order(row.names(X)), ]
 X = X[, order(colnames(X))]
+
+X = as.data.frame(X)
+
 
 # We keep the feature metadata in a separate dataframe
 
@@ -455,7 +459,7 @@ if (any(row.names(X) != row.names(SM))) {
 
 # # We troubleshoot and find which rownames are not present in both X and SM
 
-# rownames_not_present = setdiff(row.names(X), row.names(SM))
+# rownames_not_present = setdiff(row.names(SM), row.names(X))
 
 
 #################################################################################################
@@ -586,19 +590,22 @@ formatted_peak_table <- DE$data
 formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
 
 
-col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
-"name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "NPC.pathway_canopus","NPC.pathway.Probability_canopus",
-"NPC.superclass_canopus", "NPC.class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
-"ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
-"...1_metannot","structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
-"short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
-"structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
-"organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
-"organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
-"matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
-"matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
-"structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
-"freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
+# col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
+# "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "NPC.pathway_canopus","NPC.pathway.Probability_canopus",
+# "NPC.superclass_canopus", "NPC.class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
+# "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
+# "structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
+# "short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
+# "structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
+# "organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
+# "organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
+# "matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
+# "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
+# "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
+# "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
+
+
+col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","freq_structure_taxonomy_npclassifier_03class_metannot")
 
 formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
 
@@ -689,11 +696,15 @@ DE_filtered$sample_meta[,params$filters$metadata_variable] = as.factor(DE_filter
 # glimpse(DE_filtered$sample_meta)
 
 # # prepare model sequence
-plsda_seq_model = PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
+plsda_seq_model = autoscale() +
+                  filter_na_count(threshold=3,factor_name=params$filters$metadata_variable) +
+                  knn_impute() +
+                  PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
+
 plsda_seq_result = model_apply(plsda_seq_model,DE_filtered)
 
 # Fetching the PLSDA data object
-plsda_object = plsda_seq_result
+plsda_object = plsda_seq_result[length(plsda_seq_result)]
 
 C = pls_scores_plot(factor_name = params$filters$metadata_variable)
 
@@ -1545,12 +1556,37 @@ message("Outputing Summary Table ...")
 
 # summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all = TRUE)
 
-summary_stat_output = DE_foldchange_pvalues
+summary_stat_output_full = DE_foldchange_pvalues
+
+# We filter the DE_foldchange_pvalues table to only keep the top N features (any column ending with _p_value string should have a value < 0.05)
+# We use the dplyr synthax to filter the table
+
+
+summary_stat_output_selected = DE_foldchange_pvalues %>% 
+  filter_at(vars(ends_with("_p_value")), all_vars(. < params$posthoc$p_value)) %>%
+  arrange(across(ends_with("_p_value"))) %>%
+  select(
+  feature_id_full,
+  feature_id,
+  feature_mz,
+  feature_rt,
+  contains("p_value"), 
+  contains("fold"), 
+  NPC.pathway_canopus,
+  NPC.superclass_canopus,
+  NPC.class_canopus,
+  name_sirius,
+  LibraryID_gnps, 
+  contains("smiles", ignore.case = TRUE), 
+  contains("inchi_", ignore.case = TRUE),
+  contains("inchikey", ignore.case = TRUE)
+  )
 
 
 # The file is exported
 
-write.table(summary_stat_output, file = filename_summary_stats_table, sep = ",")
+write.table(summary_stat_output_full, file = filename_summary_stats_table_full, sep = ",")
+write.table(summary_stat_output_selected, file = filename_summary_stats_table_selected, sep = ",")
 
 
 #############################################################################
