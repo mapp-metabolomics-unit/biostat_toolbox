@@ -19,7 +19,7 @@ actions:
 filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
-  levels : 'sample'
+  levels : 'sample' 
 
 filter_sample_metadata_one :
   mode : 'include'
