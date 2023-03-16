@@ -80,8 +80,8 @@ usePackage("yaml")
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
 
-# library(devtools)
-# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
+#library(devtools)
+#install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
 library(MAPPstructToolbox)
 
 
@@ -1594,6 +1594,69 @@ glimpse(summary_stat_output_selected)
 write.table(summary_stat_output_full, file = filename_summary_stats_table_full, sep = ",", row.names = FALSE)
 write.table(summary_stat_output_selected, file = filename_summary_stats_table_selected, sep = ",", row.names = FALSE)
 
+
+#############################################################################
+#############################################################################
+######################################## summmary table with structure
+
+library(tidyverse)
+library(rcdk)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(gt)
+library(ggplot2)
+
+
+summary_stat_output_selected_simple = DE_foldchange_pvalues %>% 
+  filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value))  %>% 
+  arrange(across(ends_with("_p_value"))) %>%
+  select(
+  feature_id_full,
+  contains("p_value"), 
+  NPC.pathway_canopus,
+  NPC.superclass_canopus,
+  NPC.class_canopus,
+  name_sirius,
+  smiles_sirius
+  )
+
+
+mol_list_2d <- list()
+
+for (i in c(1:nrow(summary_stat_output_selected_simple))) {
+  psml <- parse.smiles(summary_stat_output_selected_simple$smiles_sirius[i], omit.nulls = TRUE)
+  if (length(psml) == 0) {
+    psml <- parse.smiles("C")
+  }
+img <- view.image.2d(psml[1][[1]])
+test <-  as.matrix(as.raster(img))
+matrice_df <- melt(test)
+# Renommer les colonnes
+colnames(matrice_df) <- c("y", "x", "couleur")
+mol_list_2d[[i]] = ggplot(matrice_df, aes(x = x, y = rev(y), fill = couleur)) +
+                   geom_tile() +
+                   scale_fill_identity() +
+                   labs(x = "Axe X", y = "Axe Y") +
+                  theme(legend.position="none") + theme_void()
+}
+
+
+
+
+summary_stat_output_selected_simple$plots  <- mol_list_2d
+summary_stat_output_selected_simple$ggplot  <- rep(NA,length(mol_list_2d))
+
+tab_1 <- summary_stat_output_selected_simple %>%
+    select(-plots) %>%
+    gt() %>%
+  text_transform(locations = cells_body(c(ggplot)),
+                 fn = function(x) {
+                  map(summary_stat_output_selected_simple$plots, ggplot_image, height = px(100))
+                 }
+                 )
+
+#tab_1 %>% gtsave(filename = "C:/Users/admin/Desktop/tab_1.html", inline_css = TRUE) ### add path to save
 
 #############################################################################
 #############################################################################

@@ -45,7 +45,7 @@ filter_variable_metadata_two :
   levels : 'Fatty acids' 
 
 paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs'
+  docs: 'G:/My Drive/taf/git_repository/urs-albrecht-group/docs'
 
 polarity: "pos"
 ms_files_extension: ".mzML"
