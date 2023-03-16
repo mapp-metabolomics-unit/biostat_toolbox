@@ -5,7 +5,7 @@ gnps_job_id : ae571ceb70644788ac0e14b90546275f
 
 dataset_experiment : 
   name: "mapp_batch_00026 LCMS metabolomics dataset"
-  description: "Katrin - Mice CSF"
+  description: "Katrin - Mice CSF - total per2"
 
 actions:
   scale_data : TRUE
@@ -22,14 +22,15 @@ filter_sample_type :
   levels : 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'include'
-  factor_name : 'sex'
-  levels : 'm'
-
-filter_sample_metadata_two :
   mode : 'exclude'
   factor_name : 'period'
   levels : 'inter'
+
+filter_sample_metadata_two :
+  mode : 'include'
+  factor_name : 'period'
+  levels : 'night'
+
 
 filter_variable_metadata_one :
   mode : 'include'
@@ -64,9 +65,10 @@ colnames:
      - "genotype"
      - "period"
      - "sex"
+     - "genotype_period"
      
 filters:
-  metadata_variable: "genotype_period" # This variable will be used throughout the whole script
+  metadata_variable: "genotype" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 

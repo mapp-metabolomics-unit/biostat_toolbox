@@ -691,17 +691,20 @@ message("Launching PLSDA calculations ...")
 # First we make sure that the sample metadata variable of interest is a factor
 # For now we use DE_original here ... check if this is correct
 
-DE_filtered$sample_meta[,params$filters$metadata_variable] = as.factor(DE_filtered$sample_meta[,params$filters$metadata_variable])
+DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,params$filters$metadata_variable])
 
 # glimpse(DE_filtered$sample_meta)
 
+# check the outcome of a Pareto scaling methods
+
+
 # # prepare model sequence
-plsda_seq_model = autoscale() +
+plsda_seq_model = # autoscale() +
                   filter_na_count(threshold=3,factor_name=params$filters$metadata_variable) +
-                  knn_impute() +
+                  # knn_impute() +
                   PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
 
-plsda_seq_result = model_apply(plsda_seq_model,DE_filtered)
+plsda_seq_result = model_apply(plsda_seq_model,DE)
 
 # Fetching the PLSDA data object
 plsda_object = plsda_seq_result[length(plsda_seq_result)]
@@ -1560,10 +1563,11 @@ summary_stat_output_full = DE_foldchange_pvalues
 
 # We filter the DE_foldchange_pvalues table to only keep the top N features (any column ending with _p_value string should have a value < 0.05)
 # We use the dplyr synthax to filter the table
+# We need to make sure to remove the rwonames() before exporting
 
 
 summary_stat_output_selected = DE_foldchange_pvalues %>% 
-  filter_at(vars(ends_with("_p_value")), all_vars(. < params$posthoc$p_value)) %>%
+  filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value))  %>% 
   arrange(across(ends_with("_p_value"))) %>%
   select(
   feature_id_full,
@@ -1583,10 +1587,12 @@ summary_stat_output_selected = DE_foldchange_pvalues %>%
   )
 
 
+glimpse(summary_stat_output_selected)
+
 # The file is exported
 
-write.table(summary_stat_output_full, file = filename_summary_stats_table_full, sep = ",")
-write.table(summary_stat_output_selected, file = filename_summary_stats_table_selected, sep = ",")
+write.table(summary_stat_output_full, file = filename_summary_stats_table_full, sep = ",", row.names = FALSE)
+write.table(summary_stat_output_selected, file = filename_summary_stats_table_selected, sep = ",", row.names = FALSE)
 
 
 #############################################################################
@@ -1645,7 +1651,7 @@ df_from_graph_vertices = df_from_graph_vertices_original %>%
 # First we clean the summary_stat_output dataframe
 # For this we remove columns that are not needed. The one containing the sirius and canopus pattern in the column names. Indeed they arr already present in the VM dataframe
 
-summary_stat_output_red = summary_stat_output %>%
+summary_stat_output_red = summary_stat_output_full %>%
   select(-contains("_sirius")) %>%
   select(-contains("_canopus")) %>%
   select(-contains("_metannot")) %>%
