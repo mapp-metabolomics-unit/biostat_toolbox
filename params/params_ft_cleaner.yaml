@@ -1,0 +1,69 @@
+mapp_project : mapp_project_00021
+mapp_batch : mapp_batch_00037
+met_annot_enhancer_folder : mapp_batch_00037
+gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
+
+dataset_experiment : 
+  name: "mapp_batch_00037 LCMS metabolomics dataset"
+  description: "Andrea Brenna"
+
+actions:
+  filter_by_NPC_type : FALSE
+  scale_data : TRUE
+
+paths:
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs'
+  file_to_clean: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs/mapp_project_00021/mapp_batch_00037/pos/results/cytoscape/cluster7_selection.csv'
+  cleaned_file: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs/mapp_project_00021/mapp_batch_00037/pos/results/cytoscape/cluster7_selection_cleaned.csv'
+  # pandoc : "/usr/local/bin/pandoc" # Can be required for the savewidget to work
+  # graphml : ''
+  # sirius: 
+
+polarity: "pos"
+ms_files_extension: ".mzML"
+
+filenames:
+  # mzmine_feature_table: mapp1_12_x_pos_quant.csv
+  sirius_annotations: compound_identifications.tsv
+  canopus_annotations: canopus_compound_summary.tsv
+  gnps_graphml: 7aa7f1801b564637aa5848c99367d1d4.graphml
+
+colnames:
+  to_combine: 
+     - "age"
+     - "genotype"
+    #  - "replicate"
+  to_output:
+     - "age"
+     - "genotype"
+     - "age_genotype"
+     
+
+filters:
+  molecular_pathway_target: "Alkaloids" # One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" Check completeness !
+  metadata_variable: "age_genotype" # This variable will be used throughout the whole script
+  to_include: # define the sample_types to be included
+     # - "QC"
+     #- "BK"
+     - "sample"
+
+metadata: 
+  sample_type:
+    value_QC: "QC"
+    value_BK: "BK"
+    value_sample: "sample"
+
+# pca:
+#   factor_name: "age_genotype" # (character) The name of a sample-meta column to use.
+#   label_factor: "sample_id" #(character) The column name of sample_meta to use for labelling samples on the plot. "rownames" will use the row names from sample_meta. The default is "rownames".
+
+
+boxplot:
+  topN : 16 # N for TopN boxplots to output 
+
+posthoc:
+  p_value: 0.8 # p-Value for filtering th RF inputs
+
+heatmap:
+  topN : 150 # N for TopN features to output in the heatmap
+

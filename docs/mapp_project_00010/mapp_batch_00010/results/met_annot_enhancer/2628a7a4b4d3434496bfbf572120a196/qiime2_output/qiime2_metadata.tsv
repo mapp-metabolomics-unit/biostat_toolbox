@@ -1,0 +1,13 @@
+sample_name	filename	colony_status	species	MAPP_ID	Sample number	Label	Raw TF volume	EtOH volume
+211126_PMA_MAPP_1_12_01.mzXML	211126_PMA_MAPP_1_12_01.mzXML	Young	Camponotus floridanus	MAPP_1_12_01	1	Y20.26	30 ul	5 ul
+211126_PMA_MAPP_1_12_02.mzXML	211126_PMA_MAPP_1_12_02.mzXML	Young	Camponotus floridanus	MAPP_1_12_02	2	Y20.28	9.5 ul	5 ul
+211126_PMA_MAPP_1_12_03.mzXML	211126_PMA_MAPP_1_12_03.mzXML	Young	Camponotus floridanus	MAPP_1_12_03	3	Y20.30	4 ul	5 ul
+211126_PMA_MAPP_1_12_04.mzXML	211126_PMA_MAPP_1_12_04.mzXML	Young	Camponotus floridanus	MAPP_1_12_04	4	Y20.22	30 ul	5 ul
+211126_PMA_MAPP_1_12_05.mzXML	211126_PMA_MAPP_1_12_05.mzXML	Mature	Camponotus floridanus	MAPP_1_12_05	5	X	32 ul	5 ul
+211126_PMA_MAPP_1_12_06.mzXML	211126_PMA_MAPP_1_12_06.mzXML	Mature	Camponotus floridanus	MAPP_1_12_06	6	L (brood)	100 ul	5 ul
+211126_PMA_MAPP_1_12_07.mzXML	211126_PMA_MAPP_1_12_07.mzXML	Mature	Camponotus floridanus	MAPP_1_12_07	7	T	32 ul	5 ul
+211126_PMA_MAPP_1_12_08.mzXML	211126_PMA_MAPP_1_12_08.mzXML	Mature	Camponotus floridanus	MAPP_1_12_08	8	I	27 ul	5 ul
+211126_PMA_MAPP_1_12_09.mzXML	211126_PMA_MAPP_1_12_09.mzXML	BK	nd	MAPP_1_12_09	nd	nd	nd	nd
+211126_PMA_MAPP_1_12_QC_03.mzXML	211126_PMA_MAPP_1_12_QC_03.mzXML	QC	nd	MAPP_1_12_QC_03	nd	nd	nd	nd
+211126_PMA_MAPP_1_12_QC_04.mzXML	211126_PMA_MAPP_1_12_QC_04.mzXML	QC	nd	MAPP_1_12_QC_04	nd	nd	nd	nd
+211126_PMA_MAPP_1_12_QC_05.mzXML	211126_PMA_MAPP_1_12_QC_05.mzXML	QC	nd	MAPP_1_12_QC_05	nd	nd	nd	nd

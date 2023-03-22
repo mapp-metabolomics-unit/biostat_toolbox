@@ -1,0 +1,8 @@
+A "DatasetExperiment" object
+----------------------------
+name:          mapp_batch_00027 LCMS metabolomics dataset
+The data has been pareto scaled
+description:   Katrin - Mice Brain Regions
+data:          33 rows x 3312 columns
+sample_meta:   33 rows x 24 columns
+variable_meta: 3312 rows x 140 columns

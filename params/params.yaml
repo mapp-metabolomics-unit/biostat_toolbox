@@ -1,0 +1,80 @@
+mapp_project : mapp_project_00013
+mapp_batch : mapp_batch_00026
+met_annot_enhancer_folder : mapp_batch_00026
+gnps_job_id : ae571ceb70644788ac0e14b90546275f
+
+dataset_experiment : 
+  name: "mapp_batch_00026 LCMS metabolomics dataset"
+  description: "Katrin - Mice CSF - total per2"
+
+actions:
+  scale_data : TRUE
+  filter_sample_type : TRUE
+  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_two : TRUE
+  filter_variable_metadata_one : FALSE
+  filter_variable_metadata_two : FALSE
+  run_PLSDA : TRUE
+
+filter_sample_type :
+  mode : 'include'
+  factor_name : 'sample_type'
+  levels : 'sample' 
+
+filter_sample_metadata_one :
+  mode : 'exclude'
+  factor_name : 'period'
+  levels : 'inter'
+
+filter_sample_metadata_two :
+  mode : 'include'
+  factor_name : 'period'
+  levels : 'night'
+
+
+filter_variable_metadata_one :
+  mode : 'include'
+  factor_name : 'NPC.pathway_canopus'
+  levels : 'Fatty acids' 
+
+# E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides","Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+
+filter_variable_metadata_two :
+  mode : 'include'
+  factor_name : 'NPC.pathway_canopus'
+  levels : 'Fatty acids' 
+
+paths:
+  docs: 'G:/My Drive/taf/git_repository/urs-albrecht-group/docs'
+
+polarity: "pos"
+ms_files_extension: ".mzML"
+
+filenames:
+  sirius_annotations: compound_identifications.tsv
+  canopus_annotations: canopus_compound_summary.tsv
+  gnps_graphml: 60b99eff119447a8b426f598c054f31c.graphml
+
+colnames:
+  to_combine: 
+     - "genotype"
+     - "period"
+     - "sex"
+
+  to_output:
+     - "genotype"
+     - "period"
+     - "sex"
+     - "genotype_period"
+     
+filters:
+  metadata_variable: "genotype" # This variable will be used throughout the whole script
+
+boxplot:
+  topN : 16 # N for TopN boxplots to output 
+
+posthoc:
+  p_value: 0.05 # p-Value for filtering th RF inputs
+
+heatmap:
+  topN : 100 # N for TopN features to output in the heatmap
