@@ -1439,7 +1439,7 @@ p = ggplot(df_long, aes(x = get(params$filters$metadata_variable), y = value, fi
   geom_boxplot() +
   facet_wrap(~ variable, ncol = 4) +
   theme_minimal()+
-  ggtitle(title_box_plots)
+  ggtitle(title_box_plots) 
 
 
 fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
