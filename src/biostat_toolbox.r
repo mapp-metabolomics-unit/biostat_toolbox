@@ -117,7 +117,7 @@ params = yaml.load_file(path_to_params)
 
 working_directory = file.path(params$path$docs, params$mapp_project, params$mapp_batch, params$polarity)
 
-# We set the output directory
+# We set the output directory 
 
 if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
