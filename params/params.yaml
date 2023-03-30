@@ -1,36 +1,36 @@
-mapp_project : mapp_project_00013
-mapp_batch : mapp_batch_00026
-met_annot_enhancer_folder : mapp_batch_00026
-gnps_job_id : ae571ceb70644788ac0e14b90546275f
+mapp_project : mapp_project_00021
+mapp_batch : mapp_batch_00037
+met_annot_enhancer_folder : mapp_batch_00037
+gnps_job_id : 6c2d9529be2c4784a85b80cab7576935
 
 dataset_experiment : 
-  name: "mapp_batch_00026 LCMS metabolomics dataset"
-  description: "Katrin - Mice CSF - total per2"
+  name: "mapp_batch_00037 LCMS metabolomics dataset"
+  description: "Andrea Brenna"
 
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
   filter_sample_metadata_one : TRUE
-  filter_sample_metadata_two : TRUE
+  filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
+  filter_features : FALSE
   run_PLSDA : TRUE
 
 filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
-  levels : 'sample' 
+  levels : 'sample'
 
 filter_sample_metadata_one :
+  mode : 'include'
+  factor_name : 'genotype'
+  levels : 'Wt'
+
+filter_sample_metadata_two :
   mode : 'exclude'
   factor_name : 'period'
   levels : 'inter'
-
-filter_sample_metadata_two :
-  mode : 'include'
-  factor_name : 'genotype'
-  levels : 'KO'
-
 
 filter_variable_metadata_one :
   mode : 'include'
@@ -44,8 +44,9 @@ filter_variable_metadata_two :
   factor_name : 'NPC.pathway_canopus'
   levels : 'Fatty acids' 
 
+
 paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs'
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs'
 
 polarity: "pos"
 ms_files_extension: ".mzML"
@@ -53,27 +54,32 @@ ms_files_extension: ".mzML"
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 60b99eff119447a8b426f598c054f31c.graphml
+  gnps_graphml: 7aa7f1801b564637aa5848c99367d1d4.graphml
 
 colnames:
   to_combine: 
+     - "age"
      - "genotype"
-     - "period"
-     - "sex"
 
   to_output:
+     - "age"
      - "genotype"
-     - "period"
-     - "sex"
+     - "age_genotype"
      
 filters:
-  metadata_variable: "period" # This variable will be used throughout the whole script
+  metadata_variable: "age" # This variable will be used throughout the whole script
+
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
 
 posthoc:
-  p_value: 0.05 # p-Value for filtering th RF inputs
+  p_value: 0.1 # p-Value for filtering th RF inputs
 
 heatmap:
   topN : 100 # N for TopN features to output in the heatmap
+
+feature_to_filter :
+    - '3298_214.19_6.5'
+    - '3311_252.18_4'
+    

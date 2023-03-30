@@ -216,9 +216,10 @@ filename_params <- paste(file_prefix, "_params.yaml", sep = "")
 filename_session_info <- paste(file_prefix, "_session_info.txt", sep = "")
 filename_R_script <- paste(file_prefix, "_R_script_backup.R", sep = "")
 filename_DE_model <- paste(file_prefix, "_DE_description.txt", sep = "")
-filename_formatted_peak_table <- paste(file_prefix, "_formatted_peak_table.txt", sep = "")
-filename_formatted_variable_metadata <- paste(file_prefix, "_formatted_variable_metadata.txt", sep = "")
-filename_formatted_sample_metadata <- paste(file_prefix, "_formatted_sample_metadata.txt", sep = "")
+filename_formatted_peak_table <- paste(file_prefix, "_formatted_peak_table.csv", sep = "")
+filename_formatted_variable_metadata <- paste(file_prefix, "_formatted_variable_metadata.csv", sep = "")
+filename_formatted_sample_metadata <- paste(file_prefix, "_formatted_sample_metadata.csv", sep = "")
+filename_formatted_sample_data_table <- paste(file_prefix, "_formatted_sample_data_table.csv", sep = "")
 filename_foldchange_pvalues <- paste(file_prefix, "_foldchange_pvalues.csv", sep = "")
 filename_interactive_table <- paste(file_prefix, "_interactive_table.html", sep = "")
 
@@ -485,14 +486,21 @@ DE_original = DatasetExperiment(
 )
 
 
-to_filter = c('3298_214.19_6.5','3311_252.18_4','1630_229.19_7.6','1638_214.19_6.5','3299_227.18_2','3306_245.18_4.1','3058_183.15_0.5','1598_157.16_8.2','1941_233.21_4.8','4046_229.19_7.7','4047_229.19_7.7','1580_200.18_4.3','2705_214.19_6.5','1627_233.21_4.5','1617_215.18_3.7','1600_158.17_8.2','1606_157.18_8.2','3980_157.17_8.3','3302_252.18_4.1','253_157.17_8.2','3090_229.15_6','1585_140.14_8.2','1601_215.18_7.7','1688_226.2_4.9','3241_268.2_5.1','2203_157.17_8.3','3803_157.17_10.7','4506_157.18_8.2','3305_281.2_4.2','1620_275.2_5','2818_140.14_8.6','1619_229.15_5.7','1634_238.17_4.4','2829_253.19_1.3','2270_157.17_8.4','1649_205.18_5.7','4625_140.14_8.3','2815_227.18_2','3077_146.12_1.8','3303_545.41_3.6','1610_213.2_2.7','1612_198.17_6.1','1771_227.18_6.7','1578_257.19_3.9','1590_272.2_3.4','2278_157.17_8.4','1770_271.2_3.7','1700_282.21_4.9','1775_243.17_5.3','2006_414.21_0.5','1957_243.21_7.2','3211_239.18_3','1808_245.18_4.1','4473_271.2_3.6','1587_259.19_3.8','1583_271.2_3.6','1631_398.24_0.5','1915_246.2_4.5','2768_84.08_8.2','2868_158.17_8.3','1806_84.08_3.9','3924_257.19_4.1','3195_272.2_3.8','3828_299.23_2.9','1642_233.21_4.7','3901_205.15_1.9','2802_271.2_6.3','1922_224.17_4.7','2692_265.19_3.8','1698_191.16_5.2','1621_327.26_4.4','1633_170.16_6','3125_158.17_8.3','1607_299.23_3','1759_257.19_4.2','2679_259.19_3.7','4015_273.21_3.9','1608_282.21_4.8','2010_273.21_3.8','1689_281.2_4.7','1618_184.16_5','1658_272.2_3.6','1680_271.2_3.7','1880_269.19_3.8','1998_273.21_3.7','2846_376.33_8.2','1648_206.14_3.4','4022_269.19_3.8','1652_231.17_4.6','1640_313.25_2.7','3078_285.22_3','1917_575.2_2.4','1953_241.19_3.3','2673_273.21_3.6','1644_424.25_3.9','1637_265.19_3.8','1683_282.21_5','1639_285.22_3.2','1645_313.28_5','4029_281.2_4.8','1852_285.22_3.2','1659_255.17_3.8','1722_327.23_3.4','2693_449.35_0.5','1611_282.21_4.8','900_466.18_2.6','1667_247.17_5.8','2756_282.21_5','1609_305.19_3.9','1884_173.17_3.9','1673_265.19_4','691_185.16_3.4','2764_200.15_1','3091_573.18_2.4','1591_266.2_3.8','1632_266.2_3.9','1604_349.31_8.2','2011_200.15_1.2','1624_239.18_1.7','1841_198.17_6.1','2808_266.2_4','3420_200.15_1.1','2843_253.19_1.2','3084_285.22_2.6','1702_140.14_8.4','1772_205.15_1.9','1665_283.2_3.4','2854_285.22_3.2','2483_165.08_1.3','3098_221.15_2.1','4227_239.18_1.6','3580_344.21_1','3099_253.19_2.6','1605_200.15_0.8','1615_239.18_1.6','1760_590.21_2.4','3095_168.14_3.4','3059_374.24_0.6','1766_228.17_3.1','4019_178.15_5','1671_185.16_3.6','3130_421.32_0.8','1646_239.18_2.5','2763_239.18_1.8','2037_421.32_0.7','2812_170.16_6','1662_123.12_3.4','3097_84.08_3.2','4196_420.3_0.5','1748_199.15_0.8','3440_376.26_0.9','1695_206.14_3.6','1577_393.29_0.5','3332_157.18_8.3','1684_273.21_3.9','1657_297.18_2.9','1581_376.26_0.5','1616_239.18_1.6','2798_299.2_4.1','2276_135.08_1','2862_157.16_8.3','4620_376.26_1.3','1588_421.32_0.5','2035_376.26_1','2000_392.25_0.5','3071_409.28_0.5','1813_229.19_3.3','1676_259.19_4.1','1740_207.16_0.5','2742_208.15_2','2678_266.2_3.8','1593_213.2_5.1','3138_171.19_7.7','896_208.15_2.2','1682_376.26_0.9','1622_171.19_7.5','379_267.18_0.6','122_208.15_1.8','3072_243.21_6.7','1675_198.17_6.3','2247_165.08_1','2837_185.2_6.9','3237_382.34_2.3','3074_146.12_1.8','1709_112.08_3.4','1408_140.08_3.1','3899_97.04_0.9','2083_398.24_0.8','1635_299.23_3','1654_289.16_0.6','837_208.15_1.1','2156_310.22_3.4','228_208.15_0.9','3045_407.3_0.5','3295_511.22_0.6','2790_319.22_8.9','139_437.19_0.6','2074_208.15_1.8','164_453.17_0.6','710_191.05_1.8','2806_319.22_9','2850_319.22_8.8','3036_203.01_0.8','152_459.25_0.6','3043_225.06_0.8','3354_198.05_1','2161_256.18_1.1','1134_201.05_6.4','220_181.03_0.8','2949_414.23_0.8','1292_473.15_2.6','2835_199.22_6.2','1586_198.05_0.8','4210_181.03_1.2','2515_468.19_2.6','963_265.11_4.6','2025_199.15_1','2026_199.15_1','4017_216.16_0.7')
+## Filtering steps
 
+if (params$actions$filter_features == "TRUE") {
 
+filter_by_name_model = filter_by_name(mode='exclude',dimension='variable',names=params$feature_to_filter)
 
-M = filter_by_name(mode='exclude',dimension='variable',names=to_filter)
-DE_original = model_apply(M,DE_original)
-DE_original = DE_original@filtered
+# apply model sequence
+filter_by_name_result = model_apply(filter_by_name_model,DE_original)
+DE_filtered_name = filter_by_name_result@filtered
 
+} else {
+
+DE_filtered_name = DE_original
+
+}
 
 ## Filtering steps
 
@@ -503,7 +511,7 @@ filter_smeta_model <- filter_smeta(mode = params$filter_sample_type$mode,
                           levels = params$filter_sample_type$levels)
 
 # apply model sequence
-filter_smeta_result = model_apply(filter_smeta_model, DE_original)
+filter_smeta_result = model_apply(filter_smeta_model, DE_filtered_name)
 
 DE_filtered = filter_smeta_result@filtered
 
@@ -602,9 +610,9 @@ sink()
 
 message("Outputting X, VM and SM ...")
 
-formatted_peak_table <- DE$data
+formatted_peak_table <- DE_filtered$data
 
-formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
+formatted_variable_metadata <- DE_filtered$variable_meta ### need to be filter with only usefull output
 
 
 # col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
@@ -624,14 +632,17 @@ formatted_variable_metadata <- DE$variable_meta ### need to be filter with only 
 
 col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","freq_structure_taxonomy_npclassifier_03class_metannot")
 
-formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
+formatted_variable_metadata_filtered = formatted_variable_metadata[col_filter]
 
-formatted_sample_metadata <- DE$sample_meta
+formatted_sample_metadata = DE_filtered$sample_meta
 
-write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",")
-write.table(formatted_variable_metadata_filtered, file = filename_formatted_variable_metadata, sep = ",")
-write.table(formatted_sample_metadata, file = filename_formatted_sample_metadata, sep = ",")
+formatted_sample_data_table = merge(DE_filtered$sample_meta, DE_filtered$data, by="row.names")
 
+
+write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",", row.names = FALSE)
+write.table(formatted_variable_metadata_filtered, file = filename_formatted_variable_metadata, sep = ",", row.names = FALSE)
+write.table(formatted_sample_metadata, file = filename_formatted_sample_metadata, sep = ",", row.names = FALSE)
+write.table(formatted_sample_data_table, file = filename_formatted_sample_data_table, sep = ",", row.names = FALSE)
 
 #################################################################################################
 #################################################################################################
@@ -856,7 +867,7 @@ message("Launching PCoA calculations ...")
 
 # @Manu explain what is done below filters etc ....
 
-data_RF = DE_original
+data_RF = DE_filtered
 sample_name = data_RF$sample_meta$sample_id #### check
 data_subset_norm_rf = data_RF$data
 data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
@@ -1475,7 +1486,6 @@ ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 1
 # fig_boxplotly %>%
 #     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
 
-
 #############################################################################
 #############################################################################
 ############## Random Forest filtered Heat Map  #############################
@@ -1784,6 +1794,11 @@ df_from_graph_vertices_plus_plus = df_from_graph_vertices_plus_plus %>%
 
 
 # We then add the attributes to the edges dataframe and generate the igraph object
+
+# In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging. 
+
+
+
 
 generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
 
