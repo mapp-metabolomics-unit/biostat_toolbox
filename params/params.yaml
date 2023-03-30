@@ -7,6 +7,9 @@ dataset_experiment :
   name: "mapp_batch_00037 LCMS metabolomics dataset"
   description: "Andrea Brenna"
 
+paths:
+  docs: 'G:/My Drive/taf/git_repository/andrea-brenna-group/docs'
+
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
@@ -44,9 +47,6 @@ filter_variable_metadata_two :
   factor_name : 'NPC.pathway_canopus'
   levels : 'Fatty acids' 
 
-
-paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/andrea-brenna-group/docs'
 
 polarity: "pos"
 ms_files_extension: ".mzML"

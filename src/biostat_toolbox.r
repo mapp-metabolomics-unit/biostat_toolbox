@@ -76,7 +76,7 @@ usePackage("vegan")
 usePackage("viridis")
 usePackage("wesanderson")
 usePackage("yaml")
-
+usePackage("funModeling")
 usePackage("rcdk")
 usePackage("gt")
 usePackage("purrr")
@@ -591,6 +591,10 @@ M = model_train(M,DE_filtered)
 M = model_predict(M,DE_filtered)
 DE = M$scaled
 
+##### we range  all feature to o to 1
+
+DE$data <- apply(DE$data,2,funModeling::range01)
+
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
 
@@ -867,7 +871,9 @@ message("Launching PCoA calculations ...")
 
 # @Manu explain what is done below filters etc ....
 
-data_RF = DE_filtered
+
+
+data_RF = DE# DE_filtered
 sample_name = data_RF$sample_meta$sample_id #### check
 data_subset_norm_rf = data_RF$data
 data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
@@ -1071,17 +1077,23 @@ HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
 # HSDEM_result_p_value_long = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
 
 
+
 fold_change_model = fold_change(
   factor_name = params$filters$metadata_variable,
   paired = FALSE,
   sample_name = character(0),
   threshold = 0.5,
   control_group = character(0),
-  method = "geometric",
+  method = "mean",
   conf_level = 0.95
   )
 
+
+
 fold_change_result = model_apply(fold_change_model, DE)
+
+#view(DE$data)
+#DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
 
 # We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
 
