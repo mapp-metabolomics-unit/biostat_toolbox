@@ -1423,9 +1423,10 @@ f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
 sink()
 
 ########### plot importance
+# plot.new()
 
 fig_rf = ggplotly(f[[(length(f) - 1)]] + theme_classic() + facet_wrap(~ f[[(length(f) - 1)]]$labels$title))
-fig_rf = subplot(fig_rf) %>%
+fig_rf = fig_rf %>%
   layout(title = title_random_forest)
 
 
