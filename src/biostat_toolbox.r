@@ -304,14 +304,30 @@ data_sirius = read_delim(file.path(working_directory, "results", "sirius", param
   trim_ws = TRUE
 )
 
-# The column names are modified to include the source of the data
-
-colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
 
 # We now build a unique feature_id for each feature in the Sirius data
 
 data_sirius$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$id_sirius)
 data_sirius$feature_id = as.numeric(data_sirius$feature_id)
+
+# Here we add this step to "standardize" the sirius names to more classical names
+# We first remove duplicates form the Sirius smiles columns
+
+for_chembiid_smiles = unique(data_sirius$smiles_sirius)
+
+# We then use the get_chebiid function from the chembiid package to get the ChEBI IDs
+
+print("Getting ChEBI IDs from smiles ...")
+
+chebi_ids = get_chebiid(for_chembiid_smiles, from = 'smiles', to = 'chebiid', match = "best")
+
+# And we merge the data_sirius dataframe with the chebi_ids dataframe
+data_sirius = merge(data_sirius_chebi, chebi_ids, by.x = "smiles", by.y = "query")
+
+# The column names are modified to include the source of the data
+
+colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
+
 
 # The CANOPUS data is loaded
 
@@ -319,6 +335,8 @@ data_canopus = read_delim(file.path(working_directory, "results", "sirius", para
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
+
+
 
 # The column names are modified to include the source of the data
 
