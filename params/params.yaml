@@ -11,7 +11,7 @@ actions:
   scale_data : TRUE
   filter_sample_type : TRUE
   filter_sample_metadata_one : TRUE
-  filter_sample_metadata_two : TRUE
+  filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_features : TRUE
@@ -66,7 +66,7 @@ colnames:
      - "sex"
      
 filters:
-  metadata_variable: "genotype" # This variable will be used throughout the whole script
+  metadata_variable: "period" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
