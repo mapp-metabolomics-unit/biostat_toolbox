@@ -188,6 +188,8 @@ chebiids = head(chebi_ids_from_ik$chebiid, 10)
 
 chebiids_infos = chebi_comp_entity(chebiids)
 
+chebi_comp_entity
+
 glimpse(chebiids_infos)
 
 # We merge the chebi ids with the sirius data according to two columns

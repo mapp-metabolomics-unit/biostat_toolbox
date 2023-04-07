@@ -81,6 +81,7 @@ usePackage("rcdk")
 usePackage("gt")
 usePackage("purrr")
 usePackage("tidyr")
+usePackage("webchem")
 
 
 
@@ -154,9 +155,13 @@ params$filter_variable_metadata_one$levels,
 sep = "_") 
 } else { filter_variable_metadata_status = "no_vm_filter" }
 
+# Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
-output_directory = file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = '_'), sep = "")
-
+if (params$paths$output != "") {
+  output_directory <- file.path(params$paths$output, paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+} else {
+  output_directory <- file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+}
 
 dir.create(output_directory)
 
@@ -223,7 +228,6 @@ filename_formatted_sample_data_table <- paste(file_prefix, "_formatted_sample_da
 filename_foldchange_pvalues <- paste(file_prefix, "_foldchange_pvalues.csv", sep = "")
 filename_interactive_table <- paste(file_prefix, "_interactive_table.html", sep = "")
 
-
 ## We save the used params.yaml
 
 message("Writing params.yaml ...")
@@ -287,6 +291,8 @@ X = X[, order(colnames(X))]
 
 X = as.data.frame(X)
 
+X <- X[,1:100]
+
 
 # We keep the feature metadata in a separate dataframe
 
@@ -296,38 +302,48 @@ feature_metadata = feature_table %>%
 ############################### load annotation tables #####################################
 ############################################################################################
 
-
 # The Sirius data is loaded
+# First we check if a chebied version exists, if not we create it
 
-data_sirius = read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
-  delim = "\t", escape_double = FALSE,
-  trim_ws = TRUE
-)
+if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied", params$filenames$sirius_annotations, sep = "_")))) {
+  data_sirius <- read_delim(file.path(working_directory, "results", "sirius", paste("chebied", params$filenames$sirius_annotations, sep = "_")),
+    delim = "\t", escape_double = FALSE,
+    trim_ws = TRUE
+  )
+} else {
+  data_sirius <- read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
+    delim = "\t", escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+  # Here we add this step to "standardize" the sirius names to more classical names
+  # We first remove duplicates form the Sirius smiles columns
+
+  for_chembiid_smiles <- unique(data_sirius$smiles)
+
+  # We then use the get_chebiid function from the chembiid package to get the ChEBI IDs
+
+  print("Getting ChEBI IDs from smiles ...")
+
+  chebi_ids <- get_chebiid(for_chembiid_smiles, from = "smiles", to = "chebiid", match = "best")
+
+  # And we merge the data_sirius dataframe with the chebi_ids dataframe
+  data_sirius <- merge(data_sirius, chebi_ids, by.x = "smiles", by.y = "query")
+
+  # The column names are modified to include the source of the data
+
+  colnames(data_sirius) <- paste(colnames(data_sirius), "sirius", sep = "_")
 
 
-# We now build a unique feature_id for each feature in the Sirius data
+  # We now build a unique feature_id for each feature in the Sirius data
 
-data_sirius$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$id_sirius)
-data_sirius$feature_id = as.numeric(data_sirius$feature_id)
+  data_sirius$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$id_sirius)
+  data_sirius$feature_id <- as.numeric(data_sirius$feature_id)
 
-# Here we add this step to "standardize" the sirius names to more classical names
-# We first remove duplicates form the Sirius smiles columns
+  # Since this step takes time we save the output locally
 
-for_chembiid_smiles = unique(data_sirius$smiles_sirius)
-
-# We then use the get_chebiid function from the chembiid package to get the ChEBI IDs
-
-print("Getting ChEBI IDs from smiles ...")
-
-chebi_ids = get_chebiid(for_chembiid_smiles, from = 'smiles', to = 'chebiid', match = "best")
-
-# And we merge the data_sirius dataframe with the chebi_ids dataframe
-data_sirius = merge(data_sirius_chebi, chebi_ids, by.x = "smiles", by.y = "query")
-
-# The column names are modified to include the source of the data
-
-colnames(data_sirius) = paste(colnames(data_sirius), "sirius", sep = "_")
-
+  write.table(data_sirius, file = file.path(working_directory, "results", "sirius", paste("chebied", params$filenames$sirius_annotations, sep = "_")), sep = "\t", row.names = FALSE)
+}
 
 # The CANOPUS data is loaded
 
@@ -335,7 +351,6 @@ data_canopus = read_delim(file.path(working_directory, "results", "sirius", para
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
-
 
 
 # The column names are modified to include the source of the data
@@ -399,6 +414,8 @@ row.names(VM) = VM$feature_id_full
 
 VM = VM[order(row.names(VM)), ]
 VM = VM[, order(colnames(VM))]
+
+VM = head(VM, 100)
 
 
 ################################ load sample  metadata #####################################
@@ -1058,6 +1075,140 @@ message("Launching Volcano Plots calculations ...")
 # head(DE$sample_meta)
 
 
+
+### Here we wil work on outputting pvalues and fc for time series.
+
+# We build a for loop to iterate over the different time points
+# This loop generate a set of DE results for each time point
+
+# params = yaml.load_file('/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/params/params.yaml')
+
+
+if (params$actions$calculate_time_series_fc == 'TRUE') {
+
+
+l <- list()
+
+for (i in params$time_series$time_points) {
+
+  print(i)
+  filter_smeta_model <- filter_smeta(mode = 'include',
+                            factor_name = params$time_series$colname,
+                            levels = i)
+
+  # apply model sequence
+  filter_smeta_result = model_apply(filter_smeta_model, DE)
+
+  DE_tp = filter_smeta_result@filtered
+  # assign(paste("DE_filtered", i, sep = "_"), filter_smeta_result@filtered)
+
+  # The formula is defined externally
+  formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
+  'Error(sample_id/',
+  params$filters$metadata_variable,
+  ')'
+  )
+  )
+
+  # DE$sample_meta
+
+  HSDEM_model = HSDEM(alpha = params$posthoc$p_value,
+  formula = formula, mtc = 'none')
+
+  HSDEM_result = model_apply(HSDEM_model,DE_tp)
+
+  HSDEM_result_p_value = HSDEM_result$p_value
+
+  # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
+
+  colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_")
+
+  # We now add a specific suffix (`_p_value`) to each of the colnames
+
+  colnames(HSDEM_result_p_value) = paste0("tp_", i, "_", colnames(HSDEM_result_p_value), "_p_value")
+
+  p_value_column = colnames(HSDEM_result_p_value)
+
+  # We set the row names as columns row_id to be able to merge the two dataframes
+
+  HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
+
+
+  # We build a fold change model
+
+  fold_change_model = fold_change(
+    factor_name = params$filters$metadata_variable,
+    paired = FALSE,
+    sample_name = character(0),
+    threshold = 0.5,
+    control_group = character(0),
+    method = "mean",
+    conf_level = 0.95
+    )
+
+
+  fold_change_result = model_apply(fold_change_model, DE_tp)
+
+  #view(DE$data)
+  #DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
+
+  # We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
+
+  fold_change_result_fold_change = fold_change_result$fold_change
+
+  # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
+  #n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
+
+
+  colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
+
+
+  # We now add a specific suffix (`_p_value`) to each of the colnames
+
+  colnames(fold_change_result_fold_change) = paste0("tp_", i, "_", colnames(fold_change_result_fold_change), "_fold_change")
+
+
+  fc_column = colnames(fold_change_result_fold_change)
+
+
+  # We set the row names as columns row_id to be able to merge the two dataframes
+
+  fold_change_result_fold_change$row_id = rownames(fold_change_result_fold_change)
+
+  # # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
+
+  # fold_change_result_fold_change = pivot_longer(fold_change_result_fold_change, cols = -row_id, names_to = "pairs", values_to = "fold_change")
+
+
+  # We merge the two dataframes according to both the row_id and the pairs columns. 
+
+  DE_foldchange_pvalues = merge(HSDEM_result_p_value, fold_change_result_fold_change,  by = "row_id")
+
+
+  # We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
+
+  message("Calculating logs ...")
+
+  DE_foldchange_pvalues = DE_foldchange_pvalues %>%
+      mutate( across(contains('_fold_change'), 
+                      .fns = list(log2 = ~log2(.)),
+                      .names = "{col}_{fn}" ) )  %>% 
+      mutate( across(contains('_p_value'), 
+                      .fns = list(minus_log10 = ~-log10(.)),
+                      .names = "{col}_{fn}" ) )
+
+
+  l[[i]] <- DE_foldchange_pvalues
+
+}
+
+# We now merge the different dataframes in the list l
+
+DE_foldchange_pvalues = Reduce(function(x, y) merge(x, y, by = "row_id"), l)
+
+} else {
+
+
 # The formula is defined externally
 formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
 'Error(sample_id/',
@@ -1066,6 +1217,8 @@ formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
 )
 )
 
+
+# DE$sample_meta
 
 HSDEM_model = HSDEM(alpha = params$posthoc$p_value,
 formula = formula, mtc = 'none')
@@ -1121,7 +1274,6 @@ fold_change_result_fold_change = fold_change_result$fold_change
 #n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
 
 
-
 colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
 
 
@@ -1166,9 +1318,12 @@ DE_foldchange_pvalues = DE_foldchange_pvalues %>%
 DE_foldchange_pvalues = merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "row_id", by.y = "row.names")
 
 
+}
+
 # The file is exported
 
 write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ",")
+
 
 # glimpse(DE_foldchange_pvalues)
 
@@ -1316,8 +1471,7 @@ message("Preparing Tree Map ...")
 # Note the as.symbol() function to convert the string to a symbol As per https://stackoverflow.com/a/48219802/4908629
 
 matt_donust = DE_foldchange_pvalues %>%
-  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)
-
+  filter(if_any(ends_with('_p_value'), ~ .x < params$posthoc$p_value))
 
 # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
 matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
@@ -1645,7 +1799,7 @@ summary_stat_output_selected = DE_foldchange_pvalues %>%
   )
 
 
-glimpse(summary_stat_output_selected)
+# glimpse(summary_stat_output_selected)
 
 # The file is exported
 

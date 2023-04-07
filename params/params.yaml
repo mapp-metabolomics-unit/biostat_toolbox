@@ -7,6 +7,10 @@ dataset_experiment :
   name: "mapp_batch_00026 LCMS metabolomics dataset"
   description: "Katrin - Mice CSF - total per2"
 
+paths:
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs'
+  output: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs/mapp_project_00013/mapp_batch_00026/pos/results/tmp' # Not mandatory, default is in the stats subdirectory
+
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
@@ -16,6 +20,7 @@ actions:
   filter_variable_metadata_two : FALSE
   filter_features : TRUE
   run_PLSDA : TRUE
+  calculate_time_series_fc : TRUE
 
 filter_sample_type :
   mode : 'include'
@@ -32,7 +37,6 @@ filter_sample_metadata_two :
   factor_name : 'period'
   levels : 'night'
 
-
 filter_variable_metadata_one :
   mode : 'include'
   factor_name : 'NPC.pathway_canopus'
@@ -43,8 +47,6 @@ filter_variable_metadata_two :
   factor_name : 'NPC.pathway_canopus'
   levels : 'Fatty acids' 
 
-paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs'
 
 polarity: "pos"
 ms_files_extension: ".mzML"
@@ -64,9 +66,20 @@ colnames:
      - "genotype"
      - "period"
      - "sex"
+
+time_series:
+  colname: 'time.point'
+  time_points:
+    #  - '0'
+     - '4'
+     - '8'
+    #  - '12'
+     - '16'
+     - '20'
+
      
 filters:
-  metadata_variable: "period" # This variable will be used throughout the whole script
+  metadata_variable: "genotype" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 

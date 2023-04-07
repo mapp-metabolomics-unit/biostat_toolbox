@@ -1,0 +1,8 @@
+A "DatasetExperiment" object
+----------------------------
+name:          mapp_batch_00026 LCMS metabolomics dataset
+The data has been pareto scaled
+description:   Katrin - Mice CSF - total per2
+data:          32 rows x 1778 columns
+sample_meta:   32 rows x 15 columns
+variable_meta: 1778 rows x 191 columns

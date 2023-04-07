@@ -727,3 +727,61 @@ C = DatasetExperiment_heatmap()
 chart_plot(C,D)
 
 
+
+
+
+
+summary_table = read_delim('/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs/mapp_project_00013/mapp_batch_00026/pos/results/tmp/mapp_batch_00026_period_no_vm_filter_exclude_period_inter_scaled/mapp_batch_00026_period_no_vm_filter_exclude_period_inter_pos_scaled_summary_stats_table_full.csv',
+  delim = ",", escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+colnames(summary_table)
+
+# The summary_table is first ordered by the p-value and then by the fold change
+# We use the dplyr syntax
+
+summary_table = summary_table %>%
+  arrange(day_night_p_value, day_night_fold_change)
+
+# We then keep the keep the first occurence of the chebiasciiname_sirius
+
+summary_table = summary_table %>%
+  distinct(chebiasciiname_sirius, .keep_all = TRUE)
+
+# We now format the table for Metaboverse
+# For this we apply the foillowing steps:
+# 1. We select the columns we want to keep (chebiasciiname_sirius, Co_KO_p_value, Co_KO_fold_change_log2)
+# 2. We rename the columns to the names Metaboverse expects. Using the rename_with and gsub we replace the the _p_value and _fold_change_log2 suffixes to _stat and _fc
+# 3. We reorganize the columns to the order Metaboverse expects (chebiasciiname_sirius, _stat, _fc) 
+# 4. We remove any rows containing NA values in the dataframe
+# 5. We replace the name of the `chebiasciiname_sirius` column by an empty string
+
+
+summary_table_finale = summary_table %>%
+  select(chebiasciiname_sirius, day_night_fold_change_log2, day_night_p_value) %>%
+  # rename_with(~gsub("_p_value", "_stat", .)) %>%
+  # rename_with(~gsub("_fold_change_log2", "_fc", .)) %>%
+  # select(chebiasciiname_sirius, Co_KO_fc, Co_KO_stat) %>%
+  # We remove row containing the `Inf` value  
+  filter(!grepl('Inf', day_night_fold_change_log2))  %>% 
+  na.omit()
+
+colnames(summary_table_finale)[1] <-""
+
+
+# We now write the table to a tsv file
+
+write_tsv(summary_table_finale, '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/urs-albrecht-group/docs/mapp_project_00013/mapp_batch_00026/pos/results/tmp/mapp_batch_00026_period_no_vm_filter_exclude_period_inter_scaled/mapp_batch_00026_period_no_vm_filter_exclude_period_inter_pos_scaled_summary_stats_table_full_mv.tsv')
+
+
+library(dplyr)
+
+# Create a sample dataframe
+df <- data.frame(A = 1:3, B = 4:6)
+
+# Rename the second column to have an empty column name using dplyr
+df <- df %>% rename("" = B)
+
+# Check the updated column names
+names(df)
