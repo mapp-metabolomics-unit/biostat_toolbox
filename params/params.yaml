@@ -14,7 +14,7 @@ paths:
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_one : FALSE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
@@ -66,14 +66,15 @@ colnames:
      - "genotype"
      - "period"
      - "sex"
+     - "genotype_period"
 
 time_series:
   colname: 'time.point'
   time_points:
-    #  - '0'
-     - '4'
-     - '8'
-    #  - '12'
+     - '00'
+     - '04'
+     - '08'
+     - '12'
      - '16'
      - '20'
 

@@ -227,6 +227,7 @@ filename_formatted_sample_metadata <- paste(file_prefix, "_formatted_sample_meta
 filename_formatted_sample_data_table <- paste(file_prefix, "_formatted_sample_data_table.csv", sep = "")
 filename_foldchange_pvalues <- paste(file_prefix, "_foldchange_pvalues.csv", sep = "")
 filename_interactive_table <- paste(file_prefix, "_interactive_table.html", sep = "")
+filename_metaboverse_table <- paste(file_prefix, "_metaboverse_table.tsv", sep = "")
 
 ## We save the used params.yaml
 
@@ -291,7 +292,8 @@ X = X[, order(colnames(X))]
 
 X = as.data.frame(X)
 
-X <- X[,1:100]
+# Uncomment for testing purposes
+# X <- X[,1:100]
 
 
 # We keep the feature metadata in a separate dataframe
@@ -415,7 +417,8 @@ row.names(VM) = VM$feature_id_full
 VM = VM[order(row.names(VM)), ]
 VM = VM[, order(colnames(VM))]
 
-VM = head(VM, 100)
+# Uncomment for testing purposes
+# VM = head(VM, 100)
 
 
 ################################ load sample  metadata #####################################
@@ -1312,13 +1315,12 @@ DE_foldchange_pvalues = DE_foldchange_pvalues %>%
                     .names = "{col}_{fn}" ) )
 
 
+}
 
 # We now merge the DE_foldchange_pvalues with the variable metadata using the row_ID column and the rownames of the variable metadata
 
 DE_foldchange_pvalues = merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "row_id", by.y = "row.names")
 
-
-}
 
 # The file is exported
 
@@ -1801,17 +1803,57 @@ summary_stat_output_selected = DE_foldchange_pvalues %>%
 
 # glimpse(summary_stat_output_selected)
 
+
+# We also prepare Metaboverse outputs from the fc and pvalues tables
+
+
+metaboverse_table = DE_foldchange_pvalues
+
+# We then keep the keep the first occurence of the chebiasciiname_sirius
+
+metaboverse_table = metaboverse_table %>%
+  distinct(chebiasciiname_sirius, .keep_all = TRUE)
+
+# We now format the table for Metaboverse
+# For this we apply the foillowing steps:
+# 1. We select the columns we want to keep (chebiasciiname_sirius, Co_KO_p_value, Co_KO_fold_change_log2)
+# 2. We rename the columns to the names Metaboverse expects. Using the rename_with and gsub we replace the the _p_value and _fold_change_log2 suffixes to _stat and _fc
+# 3. We reorganize the columns to the order Metaboverse expects (chebiasciiname_sirius, _stat, _fc) 
+# 4. We remove any rows containing NA values in the dataframe
+# 5. We replace the name of the `chebiasciiname_sirius` column by an empty string
+
+
+metaboverse_table = metaboverse_table %>%
+  select(chebiasciiname_sirius, ends_with('_fold_change_log2'), ends_with('_p_value')) %>%
+  # rename_with(~gsub("_p_value", "_stat", .)) %>%
+  # rename_with(~gsub("_fold_change_log2", "_fc", .)) %>%
+  # select(chebiasciiname_sirius, Co_KO_fc, Co_KO_stat) %>%
+  # We remove row containing the `Inf` value  
+  # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>% 
+  # We remove any row containing the `Inf` value across all columns of the dataframe
+  filter(if_any(everything(), ~!str_detect(., "Inf")))  %>% 
+  # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>% 
+  na.omit()
+
+colnames(metaboverse_table)[1] <-""
+
+# We now sort columns alphabetically
+
+metaboverse_table = metaboverse_table[,order(colnames(metaboverse_table))]
+
+
+
+
 # The file is exported
 
 write.table(summary_stat_output_full, file = filename_summary_stats_table_full, sep = ",", row.names = FALSE)
 write.table(summary_stat_output_selected, file = filename_summary_stats_table_selected, sep = ",", row.names = FALSE)
+write.table(metaboverse_table, file = filename_metaboverse_table, sep = "\t", row.names = FALSE, quote = FALSE)
 
 
 #############################################################################
 #############################################################################
 ######################################## summmary table with structure
-
-
 
 
 summary_stat_output_selected_simple = DE_foldchange_pvalues %>% 
@@ -1942,17 +1984,18 @@ merged_D_SM = merge(DE_original$sample_meta, DE_original$data, by = 'row.names',
 merged_D_SM[is.na(merged_D_SM)] <- 0
 
 
-# The function below weill allow to group data by multiple factors and return a dataframe with the mean of each group
+# The function below allows to group data by multiple factors and return a dataframe with the mean of each group
+
 
 dfList <- list()
 
 for (i in params$colnames$to_output) {
   dfList[[i]] <- merged_D_SM %>%
     group_by(!!as.symbol(i)) %>%
-    summarise(across(contains("."), mean),
+    summarise(across(colnames(DE_original$data), mean),
       .groups = "drop"
     ) %>%
-    select(!!all_of(i), contains(".")) %>%
+    select(!!all_of(i), colnames(DE_original$data)) %>%
     pivot_longer(-!!i) %>%
     pivot_wider(names_from = all_of(i), values_from = value)  %>% 
     # We prefix all columns with the factor name
