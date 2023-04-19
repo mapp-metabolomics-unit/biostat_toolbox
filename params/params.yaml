@@ -20,7 +20,7 @@ actions:
   filter_variable_metadata_two : FALSE
   filter_features : TRUE
   run_PLSDA : TRUE
-  calculate_time_series_fc : TRUE
+  calculate_multi_series_fc : TRUE
 
 filter_sample_type :
   mode : 'include'
@@ -68,9 +68,9 @@ colnames:
      - "sex"
      - "genotype_period"
 
-time_series:
+multi_series:
   colname: 'time.point'
-  time_points:
+  points:
      - '00'
      - '04'
      - '08'

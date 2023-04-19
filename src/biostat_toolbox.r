@@ -1087,16 +1087,16 @@ message("Launching Volcano Plots calculations ...")
 # params = yaml.load_file('/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/params/params.yaml')
 
 
-if (params$actions$calculate_time_series_fc == 'TRUE') {
+if (params$actions$calculate_multi_series_fc == 'TRUE') {
 
 
 l <- list()
 
-for (i in params$time_series$time_points) {
+for (i in params$multi_series$points) {
 
   print(i)
   filter_smeta_model <- filter_smeta(mode = 'include',
-                            factor_name = params$time_series$colname,
+                            factor_name = params$multi_series$colname,
                             levels = i)
 
   # apply model sequence
