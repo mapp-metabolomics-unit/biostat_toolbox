@@ -191,13 +191,19 @@ title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest fil
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
 
 
+#file_prefix = paste(params$mapp_batch, 
+#                    params$filters$metadata_variable, 
+#                    filter_variable_metadata_status, 
+#                    filter_sample_metadata_status, 
+#                    params$polarity, 
+#                    scaling_status, 
+#                    sep = "_")
+
 file_prefix = paste(params$mapp_batch, 
-                    params$filters$metadata_variable, 
-                    filter_variable_metadata_status, 
-                    filter_sample_metadata_status, 
-                    params$polarity, 
-                    scaling_status, 
+                    params$filters$metadata_variable,
                     sep = "_")
+
+
 
 
 filename_PCA <- paste(file_prefix, "_PCA.pdf", sep = "")
