@@ -16,7 +16,7 @@ actions:
   filter_sample_type : TRUE
   filter_sample_metadata_one : TRUE
   filter_sample_metadata_two : FALSE
-  filter_variable_metadata_one : FALSE
+  filter_variable_metadata_one : TRUE
   filter_variable_metadata_two : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
@@ -32,7 +32,7 @@ filter_sample_metadata_one :
   factor_name : 'condition'
   levels : 
       - 'C'
-      - 'HN'
+      # - 'HN'
       - 'NifH'
 
 filter_sample_metadata_two :

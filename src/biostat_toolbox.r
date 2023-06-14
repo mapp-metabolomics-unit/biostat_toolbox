@@ -130,10 +130,10 @@ scaling_status = "scaled"
 if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
 filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
 params$filter_sample_metadata_one$factor_name,
-params$filter_sample_metadata_one$levels,
+paste(params$filter_sample_metadata_one$levels, collapse = "_"),
 params$filter_sample_metadata_two$mode,
 params$filter_sample_metadata_two$factor_name,
-params$filter_sample_metadata_two$levels,
+paste(params$filter_sample_metadata_two$levels, collapse = "_"),
 sep = "_")
 } else if (params$actions$filter_sample_metadata_one == "TRUE") {
 filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
@@ -146,14 +146,14 @@ sep = "_")
 if (params$actions$filter_variable_metadata_one == "TRUE" & params$actions$filter_variable_metadata_two == "TRUE") {
 filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
 params$filter_variable_metadata_one$factor_name,
-params$filter_variable_metadata_one$levels,
+paste(params$filter_variable_metadata_one$levels, collapse = "_"),
 params$filter_variable_metadata_two$mode,
 params$filter_variable_metadata_two$factor_name,
-params$filter_variable_metadata_two$levels,
+paste(params$filter_variable_metadata_two$levels, collapse = "_"),
 sep = "_")
 } else if (params$actions$filter_variable_metadata_one == "TRUE") {
 filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
-params$filter_variable_metadata_one$factor_name,
+paste(params$filter_variable_metadata_one$levels, collapse = "_"),
 params$filter_variable_metadata_one$levels,
 sep = "_") 
 } else { filter_variable_metadata_status = "no_vm_filter" }
