@@ -82,6 +82,7 @@ usePackage("gt")
 usePackage("purrr")
 usePackage("tidyr")
 usePackage("webchem")
+usePackage("rockchalk")
 
 
 
@@ -454,6 +455,32 @@ if (!all(c("filename", "sample_id", "sample_type", "species") %in% colnames(samp
 
 SM = data.frame(sample_metadata)
 
+
+# We take full power over the matrix (sic. Defossez, 2023)
+# First we work horizontally
+
+for (column in names(params$to_combine_horizontally)) {
+
+  # column = 'column1'
+  col_info <- params$to_combine_horizontally[[column]]
+  col_name <- col_info$name
+
+  # Initialize aggregated groups with original condition variable
+  SM[paste(col_info$name, "simplified", sep = "_")] <- as.factor(SM[[col_info$name]])
+
+  # Iterate over each group in params$tocomb
+  for (group in names(col_info$groups)) {
+    # group = 'group1'
+    group_info <- col_info$groups[[group]]
+    cols <- group_info$cols
+    new_label <- group_info$name
+    
+    # Combine levels for the current group
+    SM[paste(col_info$name, "simplified", sep = "_")] <- combineLevels(SM[[paste(col_info$name, "simplified", sep = "_")]], levs = cols, newLabel = c(new_label))
+}
+}
+
+# Then we work vertically
 # The function below is used to create metadata combinations
 
 df = SM %>% 
@@ -478,6 +505,7 @@ SM[is.na(SM)] = "ND"
 SM = SM %>%
   remove_rownames() %>%
   column_to_rownames(var = "filename")
+
 
 # This allows us to both have the filename as rownames and as a unique column
 SM$filename = rownames(SM)

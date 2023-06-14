@@ -59,10 +59,34 @@ filenames:
 colnames:
   to_combine: 
      - "condition"
+     - "condition_detailed"
 
   to_output:
      - "condition"
 
+
+to_combine_horizontally:
+  column1: 
+    name: "condition"
+    groups:
+      group1: 
+        name: "HN_WT"
+        cols: 
+        - "HN"
+        - "WT"
+      group2: 
+        name: "NifH_Argon"
+        cols: 
+        - "NifH"
+        - "Argon"
+  column2: 
+    name: "sample_type"
+    groups:
+      group1: 
+        name: "sample_QC"
+        cols: 
+        - "sample"
+        - "QC"
 
 multi_series:
   colname: 'time.point'
@@ -74,9 +98,8 @@ multi_series:
      - '16'
      - '20'
 
-     
 filters:
-  metadata_variable: "condition" # This variable will be used throughout the whole script
+  metadata_variable: "condition_simplified" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
