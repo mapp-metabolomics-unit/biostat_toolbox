@@ -1,15 +1,24 @@
-mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00020
-met_annot_enhancer_folder : mapp_batch_00020
-gnps_job_id : dbb61f53ca4e4ab8bac13d4662aadd8e
+mapp_project : mapp_project_00016
+mapp_batch : mapp_batch_00034
+met_annot_enhancer_folder : mapp_batch_00034
+gnps_job_id : 3aa60b6233c84abb9ceda7087b9cca78
 
 dataset_experiment : 
-  name: "mapp_batch_00020 LCMS metabolomics dataset"
-  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos "
+  name: "mapp_batch_00034 LCMS metabolomics dataset"
+  description: "Ola and Alisson bioactive Strepto"
 
 paths:
-  docs: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs'
-  output: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/tmp' # Not mandatory, default is in the stats subdirectory
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/laure-weisskopf-group/docs'
+  output: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/laure-weisskopf-group/docs/mapp_project_00016/mapp_batch_00034/pos/results/stats/nochebi' # Not mandatory, default is in the stats subdirectory
+
+polarity: "pos"
+ms_files_extension: ".mzML"
+
+filenames:
+  sirius_annotations: compound_identifications.tsv
+  canopus_annotations: canopus_compound_summary.tsv
+  gnps_graphml: 6fda6b8106e9400e8a52ac53ee50d642.graphml
+
 
 actions:
   scale_data : TRUE
@@ -19,7 +28,7 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_features : FALSE
-  run_PLSDA : TRUE
+  run_PLSDA : FALSE
   calculate_multi_series_fc : FALSE
 
 filter_sample_type :
@@ -29,13 +38,18 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'exclude'
-  factor_name : 'period'
-  levels : 'inter'
+  factor_name : 'ATTRIBUTE_condition'
+  levels : 
+     - 'C'
+     - 'HN'
+     - 'WT'
 
 filter_sample_metadata_two :
-  mode : 'include'
-  factor_name : 'period'
-  levels : 'night'
+  mode : 'exclude'
+  factor_name : 'filename'
+  levels :
+     - '20221109_PMA_MAPP_01_22_033_neg_post_01.mzML'
+     - '20221109_PMA_MAPP_01_22_033_neg_post_02.mzML'
 
 filter_variable_metadata_one :
   mode : 'include'
@@ -48,20 +62,12 @@ filter_variable_metadata_two :
   levels : 'Fatty acids' 
 
 
-polarity: "pos"
-ms_files_extension: ".mzML"
-
-filenames:
-  sirius_annotations: compound_identifications.tsv
-  canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 27ac08b3bd43408c8d7f6a8e42d51cb9.graphml
-
 colnames:
   to_combine: 
-     - "condition"
+     - "ATTRIBUTE_Activity"
 
   to_output:
-     - "condition"
+     - "ATTRIBUTE_Activity"
 
 
 multi_series:
@@ -76,7 +82,7 @@ multi_series:
 
      
 filters:
-  metadata_variable: "condition" # This variable will be used throughout the whole script
+  metadata_variable: "ATTRIBUTE_Activity" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 
@@ -93,4 +99,3 @@ feature_to_filter :
     - '3311_252.18_4'
     - '1630_229.19_7.6'
     - '1638_214.19_6.5'
-    
