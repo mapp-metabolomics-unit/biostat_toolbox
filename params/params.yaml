@@ -8,17 +8,8 @@ dataset_experiment :
   description: "Didier reinhardt Medicago Nodules HILIC Metabo pos "
 
 paths:
-  docs: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs'
-  output: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/tmp' # Not mandatory, default is in the stats subdirectory
-
-polarity: "pos"
-ms_files_extension: ".mzML"
-
-filenames:
-  sirius_annotations: compound_identifications.tsv
-  canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 6fda6b8106e9400e8a52ac53ee50d642.graphml
-
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs'
+  output: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/stats' # Not mandatory, default is in the stats subdirectory
 
 actions:
   scale_data : TRUE
@@ -28,7 +19,7 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_features : FALSE
-  run_PLSDA : FALSE
+  run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
 
 filter_sample_type :
@@ -38,18 +29,13 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'exclude'
-  factor_name : 'ATTRIBUTE_condition'
-  levels : 
-     - 'C'
-     - 'HN'
-     - 'WT'
+  factor_name : 'period'
+  levels : 'inter'
 
 filter_sample_metadata_two :
-  mode : 'exclude'
-  factor_name : 'filename'
-  levels :
-     - '20221109_PMA_MAPP_01_22_033_neg_post_01.mzML'
-     - '20221109_PMA_MAPP_01_22_033_neg_post_02.mzML'
+  mode : 'include'
+  factor_name : 'period'
+  levels : 'night'
 
 filter_variable_metadata_one :
   mode : 'include'
