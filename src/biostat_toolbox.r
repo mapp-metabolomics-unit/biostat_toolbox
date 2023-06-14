@@ -138,7 +138,7 @@ sep = "_")
 } else if (params$actions$filter_sample_metadata_one == "TRUE") {
 filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
 params$filter_sample_metadata_one$factor_name,
-params$filter_sample_metadata_one$levels,
+paste(params$filter_sample_metadata_one$levels, collapse = "_"),
 sep = "_") 
 } else { filter_sample_metadata_status = "no_sm_filter" }
 
@@ -622,6 +622,7 @@ filter_smeta_result = model_apply(filter_smeta_model, DE_filtered)
 DE_filtered = filter_smeta_result@filtered
 
 }
+
 
 
 if (params$actions$filter_variable_metadata_one == "TRUE") {
