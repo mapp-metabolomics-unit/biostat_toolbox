@@ -1,15 +1,15 @@
-mapp_project : mapp_project_00016
-mapp_batch : mapp_batch_00034
-met_annot_enhancer_folder : mapp_batch_00034
-gnps_job_id : 3aa60b6233c84abb9ceda7087b9cca78
+mapp_project : mapp_project_00007
+mapp_batch : mapp_batch_00020
+met_annot_enhancer_folder : mapp_batch_00020
+gnps_job_id : dbb61f53ca4e4ab8bac13d4662aadd8e
 
 dataset_experiment : 
-  name: "mapp_batch_00034 LCMS metabolomics dataset"
-  description: "Ola and Alisson bioactive Strepto"
+  name: "mapp_batch_00020 LCMS metabolomics dataset"
+  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos "
 
 paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/laure-weisskopf-group/docs'
-  output: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/laure-weisskopf-group/docs/mapp_project_00016/mapp_batch_00034/pos/results/stats/nochebi' # Not mandatory, default is in the stats subdirectory
+  docs: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs'
+  output: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/tmp' # Not mandatory, default is in the stats subdirectory
 
 polarity: "pos"
 ms_files_extension: ".mzML"
@@ -62,12 +62,20 @@ filter_variable_metadata_two :
   levels : 'Fatty acids' 
 
 
+polarity: "pos"
+ms_files_extension: ".mzML"
+
+filenames:
+  sirius_annotations: compound_identifications.tsv
+  canopus_annotations: canopus_compound_summary.tsv
+  gnps_graphml: 27ac08b3bd43408c8d7f6a8e42d51cb9.graphml
+
 colnames:
   to_combine: 
-     - "ATTRIBUTE_Activity"
+     - "condition"
 
   to_output:
-     - "ATTRIBUTE_Activity"
+     - "condition"
 
 
 multi_series:
@@ -82,7 +90,7 @@ multi_series:
 
      
 filters:
-  metadata_variable: "ATTRIBUTE_Activity" # This variable will be used throughout the whole script
+  metadata_variable: "condition" # This variable will be used throughout the whole script
 
 boxplot:
   topN : 16 # N for TopN boxplots to output 

@@ -106,8 +106,10 @@ script_path <- file.path(getwd(), current_script)
 
 print(script_path)
 
-# We call the external params
+if(!exists("params"))   {my_path_params <- script_path} ### conserve the path after multiple run
+if(exists("params"))   {setwd(my_path_params)} ### conserve the path after multiple run
 
+# We call the external params
 path_to_params = "./params/params.yaml"
 
 params = yaml.load_file(path_to_params)
