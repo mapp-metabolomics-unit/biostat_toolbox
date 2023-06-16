@@ -69,7 +69,7 @@ usePackage("readr")
 usePackage("rfPermute")
 usePackage("rgl")
 usePackage("ropls")
-# usePackage("structToolbox")
+usePackage("structToolbox")
 usePackage("this.path")
 usePackage("tidyverse")
 usePackage("vegan")
@@ -82,7 +82,7 @@ usePackage("gt")
 usePackage("purrr")
 usePackage("tidyr")
 usePackage("webchem")
-usePackage("rockchalk")
+
 
 
 
@@ -1496,6 +1496,59 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 # fig_volcano_interactive %>%
 #     htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
+##############################################################################
+##############################################################################
+############ volcano class 
+
+# Create a data frame
+
+DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
+
+mydata1 <- select(DE_foldchange_pvalues,
+"C_WT_fold_change_log2",
+"C_WT_p_value_minus_log10",
+"NPC.pathway_canopus",
+"NPC.superclass_canopus")
+
+mydata1 <- mydata1[!(is.infinite(mydata1$C_WT_fold_change_log2)),]
+mydata1 <- mydata1[!(is.nan(mydata1$C_WT_fold_change_log2)),]
+mydata1 <- mydata1[!(is.na(mydata1$C_WT_fold_change_log2)),]
+
+mydata1_neg <- mydata1[mydata1$C_WT_fold_change_log2 < 0,]
+mydata1_pos <- mydata1[mydata1$C_WT_fold_change_log2 >= 0,]
+
+# Aggregate the data
+
+aggregated_pos <- aggregate(cbind(C_WT_fold_change_log2,
+
+                               C_WT_p_value_minus_log10) ~ NPC.superclass_canopus,
+
+                              mydata1_pos, FUN = function(x) c(mean = mean(x,na.rm=T), count = length(x)))
+
+aggregated_pos <- data.frame(as.matrix(aggregated_pos))
+
+
+aggregated_neg <- aggregate(cbind(C_WT_fold_change_log2,
+
+                               C_WT_p_value_minus_log10) ~ NPC.superclass_canopus,
+
+                              mydata1_neg, FUN = function(x) c(mean = mean(x,na.rm=T), count = length(x)))
+
+aggregated_neg <- data.frame(as.matrix(aggregated_neg))
+
+aggregated_tot <- rbind(aggregated_neg,aggregated_pos)
+aggregated_tot$C_WT_p_value_minus_log10.mean <- round(as.numeric(aggregated_tot$C_WT_p_value_minus_log10.mean))
+
+
+library(ggrepel)
+# plot adding up all layers we have seen so far
+ggplot(data=aggregated_tot, aes(x=C_WT_fold_change_log2.mean, y=C_WT_p_value_minus_log10.mean, col=as.factor( NPC.superclass_canopus), label= NPC.superclass_canopus)) +
+        geom_point(aes(size = as.numeric(C_WT_fold_change_log2.count))) + 
+        theme_classic() +
+        geom_text_repel()+
+        geom_vline(xintercept=c(0,0), col="red") +
+        theme(legend.position = "none")
+
 
 
 

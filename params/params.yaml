@@ -8,15 +8,15 @@ dataset_experiment :
   description: "Didier reinhardt Medicago Nodules HILIC Metabo pos "
 
 paths:
-  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs'
-  output: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/stats' # Not mandatory, default is in the stats subdirectory
+  docs: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs'
+  output: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/stats' # Not mandatory, default is in the stats subdirectory
 
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_one : FALSE
   filter_sample_metadata_two : FALSE
-  filter_variable_metadata_one : TRUE
+  filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
