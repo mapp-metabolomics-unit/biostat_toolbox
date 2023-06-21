@@ -1498,56 +1498,291 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 #     htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
 ##############################################################################
 ##############################################################################
-############ volcano class 
+############ treemap fold 
 
+################################### function 
+################################# npc_classifier_parser
+
+treat_npclassifier_json <- function(taxonomy) {
+  taxonomy_classes <- taxonomy$Class %>%
+    rbind()
+  rownames(taxonomy_classes) <- "id_class"
+  taxonomy_classes <- taxonomy_classes %>%
+    t() %>%
+    data.frame() %>%
+    mutate(
+      class = rownames(.),
+      id_class = as.numeric(id_class)
+    )
+
+  taxonomy_superclasses <- taxonomy$Superclass %>%
+    rbind()
+  rownames(taxonomy_superclasses) <- "id_superclass"
+  taxonomy_superclasses <- taxonomy_superclasses %>%
+    t() %>%
+    data.frame() %>%
+    mutate(
+      superclass = rownames(.),
+      id_superclass = as.numeric(id_superclass)
+    )
+
+  taxonomy_pathways <- taxonomy$Pathway %>%
+    rbind()
+  rownames(taxonomy_pathways) <- "id_pathway"
+  taxonomy_pathways <- taxonomy_pathways %>%
+    t() %>%
+    data.frame() %>%
+    mutate(
+      pathway = rownames(.),
+      id_pathway = as.numeric(id_pathway)
+    )
+
+  taxonomy_hierarchy_class <- taxonomy$Class_hierarchy
+
+  id_pathway <- list()
+  id_superclass <- list()
+  id_class <- list()
+
+  for (i in seq_len(length(taxonomy_hierarchy_class))) {
+    id_pathway[[i]] <- taxonomy_hierarchy_class[[i]]$Pathway
+    id_superclass[[i]] <- taxonomy_hierarchy_class[[i]]$Superclass
+    id_class[[i]] <- names(taxonomy_hierarchy_class[i])
+  }
+  zu <- cbind(id_pathway, id_superclass, id_class) %>%
+    data.frame() %>%
+    mutate(id_class = as.numeric(id_class)) %>%
+    unnest(id_superclass) %>%
+    unnest(id_pathway)
+
+  ## No idea why would this be needed... class already has everything?
+  id_pathway_2 <- list()
+  id_superclass <- list()
+
+  taxonomy_hierarchy_superclass <- taxonomy$Super_hierarchy
+
+  for (i in seq_len(length(taxonomy_hierarchy_superclass))) {
+    id_pathway_2[[i]] <- taxonomy_hierarchy_superclass[[i]]$Pathway
+    id_superclass[[i]] <- names(taxonomy_hierarchy_superclass[i])
+  }
+  zu_2 <- cbind(id_pathway_2, id_superclass) %>%
+    data.frame() %>%
+    mutate(id_superclass = as.numeric(id_superclass)) %>%
+    unnest(id_pathway_2)
+
+  taxonomy_semicleaned <- full_join(zu, taxonomy_classes) %>%
+    full_join(., taxonomy_superclasses) %>%
+    full_join(., taxonomy_pathways) %>%
+    distinct(class, superclass, pathway)
+
+  return(taxonomy_semicleaned)
+}
+
+################################### function 
+################################# treemap shaper
+
+dt_for_treemap = function(datatable, parent_value, value, count) {
+  parent_value = enquo(parent_value)
+  value = enquo(value)
+  count = enquo(count)
+
+  datatable = data.frame(datatable %>%
+    group_by(!!parent_value, !!value, ) %>%
+    summarise(count = sum(as.numeric(!!count),na.rm=T)))
+
+  datatable = datatable %>%
+    select(!!parent_value, !!value, count) %>% # create id labels for each row # Notre the !! to pass aruguments to a dplyr function
+    rename(
+      parent.value = !!parent_value,
+      value = !!value
+    ) %>%
+    mutate(ids = ifelse(parent.value == "", value,
+      paste0(value, "-", parent.value) # Notre that here we are passing argument to a non dplyr function call
+    )) %>%
+    select(ids, everything())
+
+  par_info = datatable %>% dplyr::group_by(parent.value) %>% # group by parent
+    dplyr::summarise(count = sum(as.numeric(count),na.rm=T)) %>% # parent total
+    rename(value = parent.value) %>% # parent labels for the item field
+    mutate(parent.value = "", ids = value) %>% # add missing fields for my_data
+    select(names(datatable)) # put cols in same order as my_data
+
+  data_for_plot = rbind(datatable, par_info)
+
+  return(data_for_plot)
+}
+
+############################ version 2
 # Create a data frame
+library(jsonlite)
+
+# Specify the URL of the JSON file
+url <- "https://raw.githubusercontent.com/mwang87/NP-Classifier/master/Classifier/dict/index_v1.json"
+# Load the JSON file
+json_data <- fromJSON(url)
+
+npclassifier_origin <- treat_npclassifier_json(json_data)
+
+
+# Aggregate rows by concatenating values in superclass and path columns
+npclassifier_newpath <- aggregate(cbind(superclass, pathway) ~ class, data = npclassifier_origin, FUN = function(x) paste(unique(unlist(strsplit(x, " x "))), collapse = " x "))
+colnames(npclassifier_newpath) <-  c("NPC.class_canopus","NPC.superclass_canopus","NPC.pathway_canopus")
+npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)] <- paste(npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)],"x")
+
+
+
+
+index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassifier_newpath$NPC.pathway_canopus)))
 
 DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
 
 mydata1 <- select(DE_foldchange_pvalues,
 "C_WT_fold_change_log2",
-"C_WT_p_value_minus_log10",
-"NPC.pathway_canopus",
-"NPC.superclass_canopus")
+"NPC.class_canopus")
 
-mydata1 <- mydata1[!(is.infinite(mydata1$C_WT_fold_change_log2)),]
-mydata1 <- mydata1[!(is.nan(mydata1$C_WT_fold_change_log2)),]
-mydata1 <- mydata1[!(is.na(mydata1$C_WT_fold_change_log2)),]
+mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
+
+
+
+mydata1 <- mydata1 %>% 
+mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>% 
+mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
+
 
 mydata1_neg <- mydata1[mydata1$C_WT_fold_change_log2 < 0,]
+#mydata1_neg$C_WT_fold_change_log2 <- abs(mydata1_neg$C_WT_fold_change_log2)
 mydata1_pos <- mydata1[mydata1$C_WT_fold_change_log2 >= 0,]
 
 # Aggregate the data
+####
+mydata1 = mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
+mydata1$counter = 1
 
-aggregated_pos <- aggregate(cbind(C_WT_fold_change_log2,
-
-                               C_WT_p_value_minus_log10) ~ NPC.superclass_canopus,
-
-                              mydata1_pos, FUN = function(x) c(mean = mean(x,na.rm=T), count = length(x)))
-
-aggregated_pos <- data.frame(as.matrix(aggregated_pos))
-
-
-aggregated_neg <- aggregate(cbind(C_WT_fold_change_log2,
-
-                               C_WT_p_value_minus_log10) ~ NPC.superclass_canopus,
-
-                              mydata1_neg, FUN = function(x) c(mean = mean(x,na.rm=T), count = length(x)))
-
-aggregated_neg <- data.frame(as.matrix(aggregated_neg))
-
-aggregated_tot <- rbind(aggregated_neg,aggregated_pos)
-aggregated_tot$C_WT_p_value_minus_log10.mean <- round(as.numeric(aggregated_tot$C_WT_p_value_minus_log10.mean))
+# matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+mydata1_neg = mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
+mydata1_neg$counter = 1
+mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
+# matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
+mydata1_pos$counter = 1
+mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
+#####################################################################
+#####################################################################
+dt_se_prop_prep_count_tot = dt_for_treemap(
+  datatable = mydata1,
+  parent_value = NPC.pathway_canopus,
+  value = NPC.superclass_canopus,
+  count = counter
+)
 
 
-library(ggrepel)
-# plot adding up all layers we have seen so far
-ggplot(data=aggregated_tot, aes(x=C_WT_fold_change_log2.mean, y=C_WT_p_value_minus_log10.mean, col=as.factor( NPC.superclass_canopus), label= NPC.superclass_canopus)) +
-        geom_point(aes(size = as.numeric(C_WT_fold_change_log2.count))) + 
-        theme_classic() +
-        geom_text_repel()+
-        geom_vline(xintercept=c(0,0), col="red") +
-        theme(legend.position = "none")
+dt_se_prop_prep_fold_tot = dt_for_treemap(
+  datatable = mydata1,
+  parent_value = NPC.pathway_canopus,
+  value = NPC.superclass_canopus,
+  count = C_WT_fold_change_log2
+)
+
+dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>% 
+select(-c("value","parent.value"))
+matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
+
+
+#####################################################################
+#####################################################################
+
+dt_se_prop_prep_count_pos = dt_for_treemap(
+  datatable = mydata1_pos,
+  parent_value = NPC.superclass_canopus,
+  value = fold_dir,
+  count = counter
+)
+
+dt_se_prop_prep_fold_pos = dt_for_treemap(
+  datatable = mydata1_pos,
+  parent_value = NPC.superclass_canopus,
+  value = fold_dir,
+  count = C_WT_fold_change_log2
+)
+
+dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
+select(-c("value","parent.value"))
+matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
+
+
+matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
+matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
+#####################################################################
+#####################################################################
+
+dt_se_prop_prep_count_neg = dt_for_treemap(
+  datatable = mydata1_neg,
+  parent_value = NPC.superclass_canopus,
+  value = fold_dir,
+  count = counter
+)
+
+dt_se_prop_prep_fold_neg = dt_for_treemap(
+  datatable = mydata1_neg,
+  parent_value = NPC.superclass_canopus,
+  value = fold_dir,
+  count = C_WT_fold_change_log2
+)
+
+dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>% 
+select(-c("value","parent.value"))
+matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
+
+matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
+matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
+#####################################################################
+#####################################################################
+
+matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir)
+matttree$value[grep("pos_",matttree$value)] <- "+"
+matttree$value[grep("neg_",matttree$value)] <- "-"
+#####################################################################
+
+fig_treemap = plot_ly(
+  data = matttree,
+  type = "treemap",
+  labels = ~value,
+  parents = ~parent.value,
+  values = ~count.x,
+  branchvalues = "total",
+  maxdepth=10
+)
+fig_treemap
+
+
+
+fig_treemap <- plot_ly(
+  data = matttree,
+  type = "treemap",
+  labels = ~value,
+  parents = ~parent.value,
+  values = ~count.x,
+  branchvalues = "total",
+  maxdepth = 3,
+  marker = list(
+    colors = ~count.y,
+    colorscale = list(
+      c(-1, 0, 1),  # Set the range from -1 to 1
+      c("blue5", "white", "white", "darkred", "darkred")
+    ),
+    reversescale = FALSE,  # Set to FALSE to maintain the color gradient order
+    colorbar = list(
+      title = "Count",
+      tickprefix = "",
+      ticksuffix = "",
+      len = 0.5,
+      thickness = 20,
+      outlinewidth = 0
+    )
+  )
+)
+fig_treemap
+
+
 
 
 
@@ -1609,8 +1844,8 @@ dt_for_treemap = function(datatable, parent_value, value, count) {
 
 dt_se_prop_prep_tm = dt_for_treemap(
   datatable = matt_donust2,
-  parent_value = NPC.pathway_canopus,
-  value = NPC.superclass_canopus,
+  parent_value = NPC.superclass_canopus,
+  value = NPC.class_canopus,
   count = counter
 )
 
