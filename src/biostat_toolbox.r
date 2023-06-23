@@ -1665,6 +1665,8 @@ mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
 mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
 mydata1_pos$counter = 1
 mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
+
+
 #####################################################################
 #####################################################################
 dt_se_prop_prep_count_tot = dt_for_treemap(
@@ -1738,8 +1740,10 @@ matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
 #####################################################################
 
 matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir)
-matttree$value[grep("pos_",matttree$value)] <- "+"
-matttree$value[grep("neg_",matttree$value)] <- "-"
+matttree$value[grep("pos_",matttree$value)] <- "pos"
+matttree$value[grep("neg_",matttree$value)] <- "neg"
+
+
 #####################################################################
 
 fig_treemap = plot_ly(
