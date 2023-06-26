@@ -1871,6 +1871,8 @@ fig_treemap = plot_ly(
 fig_treemap
 
 
+
+
 fig_treemap <- plot_ly(
   data = matttree,
   type = "treemap",
@@ -1882,7 +1884,9 @@ fig_treemap <- plot_ly(
   maxdepth = 3,
   marker = list(
     colors = matttree$count.y,
-    colorscale = c("green", "white", "dodgerblue4"),
+    colorscale = list(
+      c(0, 0.5, 1),
+      c("#8B4500", "#FFFFFF", "#104E8B")),
     cmin = max(abs(matttree$count.y)) * (-1),
     cmax = max(abs(matttree$count.y)),
     showscale = TRUE,
@@ -1896,11 +1900,12 @@ fig_treemap <- plot_ly(
       outlinewidth = 1,
       tickangle = 270
     ),
-    reversescale = TRUE  # Set to FALSE to maintain the color gradient order
+    reversescale = FALSE  # Set to FALSE to maintain the color gradient order
   )
 )
 
 fig_treemap
+
 #############################################################################
 #############################################################################
 ############## Tree Map #####################################################
