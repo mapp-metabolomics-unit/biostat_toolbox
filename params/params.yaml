@@ -7,9 +7,8 @@ dataset_experiment :
   name: "mapp_batch_00020 LCMS metabolomics dataset"
   description: "Didier reinhardt Medicago Nodules HILIC Metabo pos "
 
-paths:
-  docs: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs'
-  output: 'G:/Mon Drive/taf/git_repository/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/tmp' # Not mandatory, default is in the stats subdirectory
+polarity: "pos"
+ms_files_extension: ".mzML"
 
 actions:
   scale_data : TRUE
@@ -50,9 +49,6 @@ filter_variable_metadata_two :
   factor_name : 'NPC.pathway_canopus'
   levels : 'Fatty acids' 
 
-
-polarity: "pos"
-ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv

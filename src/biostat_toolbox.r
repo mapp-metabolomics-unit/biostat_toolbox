@@ -112,14 +112,20 @@ if(exists("params"))   {setwd(my_path_params)} ### conserve the path after multi
 
 # We call the external params
 path_to_params = "./params/params.yaml"
+path_to_params_user = "./params/params_user.yaml"
 
 params = yaml.load_file(path_to_params)
+params_user = yaml.load_file(path_to_params_user)
 
+# Here we load the user params if they exist
+
+params$paths$docs = params_user$paths$docs
+params$paths$output = params_user$paths$output
 
 
 # We set the working directory
 
-working_directory = file.path(params$path$docs, params$mapp_project, params$mapp_batch, params$polarity)
+working_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, params$polarity)
 
 # We set the output directory 
 
@@ -227,6 +233,7 @@ filename_summary_stats_table_full <- paste(file_prefix, "_summary_stats_table_fu
 filename_summary_stats_table_selected <- paste(file_prefix, "_summary_stats_table_selected.csv", sep = "")
 filename_graphml <- paste(file_prefix, "_graphml.graphml", sep = "")
 filename_params <- paste(file_prefix, "_params.yaml", sep = "")
+filename_params_user <- paste(file_prefix, "_params_user.yaml", sep = "")
 filename_session_info <- paste(file_prefix, "_session_info.txt", sep = "")
 filename_R_script <- paste(file_prefix, "_R_script_backup.R", sep = "")
 filename_DE_model <- paste(file_prefix, "_DE_description.txt", sep = "")
@@ -244,6 +251,7 @@ message("Writing params.yaml ...")
 
 
 file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
+file.copy(path_to_params_user, file.path(output_directory,filename_params_user), overwrite = TRUE)
 
 
 # We move to the output directory

@@ -1,0 +1,4 @@
+#Copy this file and rename as params_user.yaml 
+paths:
+  docs: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs' #example
+  output: '/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00020/pos/results/tmp' # Not mandatory, default is in the stats subdirectory
