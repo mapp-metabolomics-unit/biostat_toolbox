@@ -1734,7 +1734,7 @@ dt_se_prop_prep_count_tot = dt_for_treemap(
 )
 
 
-dt_se_prop_prep_fold_tot = dt_for_treemap(
+dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
   datatable = mydata1,
   parent_value = NPC.pathway_canopus,
   value = NPC.superclass_canopus,
@@ -1756,7 +1756,7 @@ dt_se_prop_prep_count_pos = dt_for_treemap(
 )
 
 
-dt_se_prop_prep_fold_pos = dt_for_treemap(
+dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
   datatable = mydata1_pos,
   parent_value = NPC.superclass_canopus,
   value = fold_dir,
@@ -1784,7 +1784,7 @@ dt_se_prop_prep_count_neg = dt_for_treemap(
 )
 
 
-dt_se_prop_prep_fold_neg = dt_for_treemap(
+dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
   datatable = mydata1_neg,
   parent_value = NPC.superclass_canopus,
   value = fold_dir,
@@ -1834,28 +1834,27 @@ fig_treemap <- plot_ly(
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
-  maxdepth=10,
+  maxdepth = 10,
   marker = list(
-    colors = ~count.y,
-    colorscale = list(
-      c(-10, 0, 10),  # Set the range from -1 to 1
-      c("blue5", "white", "darkred")
-    ),
-    reversescale = FALSE,  # Set to FALSE to maintain the color gradient order
+    colors = matttree$count.y,
+    colorscale = c("red", "white", "blue"),
+    cmin = max(abs(matttree$count.y)) * (-1),
+    cmax = max(abs(matttree$count.y)),
+    showscale = TRUE,
     colorbar = list(
-      title = "Count",
-      tickprefix = "",
-      ticksuffix = "",
+     # title = '<b>effect</b>',
+      tickmode = "array",
+      tickvals = c((max(abs(matttree$count.y))*(-1)), 0, (max(abs(matttree$count.y)))),
+      ticktext = c("increase in wild-type","no change", "increase in Control"),
       len = 0.5,
       thickness = 20,
       outlinewidth = 0
-    )
+    ),
+    reversescale = FALSE  # Set to FALSE to maintain the color gradient order
   )
 )
 
 fig_treemap
-
-
 #############################################################################
 #############################################################################
 ############## Tree Map #####################################################
