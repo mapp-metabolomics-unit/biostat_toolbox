@@ -1695,7 +1695,7 @@ DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_
 
 
 mydata1 <- select(DE_foldchange_pvalues,
-"C_WT_fold_change_log2","name_sirius",
+"C_WT_fold_change_log2","name_sirius", "InChIkey2D_sirius",
 "NPC.class_canopus")  %>% 
 # this line remove rows with NA in the NPC.class_canopus column using the filter function
 filter(!is.na(NPC.class_canopus))  %>% 
@@ -1809,14 +1809,14 @@ matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
 dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
   datatable = mydata1_pos,
   parent_value = fold_dir,
-  value = name_sirius,
+  value = InChIkey2D_sirius,
   count = counter
 )
 
 dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
   datatable = mydata1_pos,
   parent_value = fold_dir,
-  value = name_sirius,
+  value = InChIkey2D_sirius,
   count = C_WT_fold_change_log2
 )
 
@@ -1834,14 +1834,14 @@ matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
 dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
   datatable = mydata1_neg,
   parent_value = fold_dir,
-  value = name_sirius,
+  value = InChIkey2D_sirius,
   count = counter
 )
 
 dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
   datatable = mydata1_neg,
   parent_value = fold_dir,
-  value = name_sirius,
+  value = InChIkey2D_sirius,
   count = C_WT_fold_change_log2
 )
 
@@ -1869,13 +1869,22 @@ matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
 
 # The follow function creates a new hyperlink column based on the labels_adjusted columns
 
-matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
+# matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
 
-<a href='https://example.com/box1' target='_blank'>Box 1</a>
+# # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+# matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
+# matttree$full_hl <- paste0(
+#   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+# )
+
+matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$labels_adjusted, "&sort=annothitcnt")
+
+# <a href='https://example.com/box1' target='_blank'>Box 1</a>
 matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
 matttree$full_hl <- paste0(
   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 )
+
 
 
 
@@ -1894,13 +1903,11 @@ fig_treemap = plot_ly(
 fig_treemap
 
 
-
-
 fig_treemap <- plot_ly(
   data = matttree,
   type = "treemap",
   ids = ~value,
-  labels = ~labels_adjusted,
+  labels = ~matttree$full_hl,
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
@@ -1909,7 +1916,7 @@ fig_treemap <- plot_ly(
     colors = matttree$count.y,
     colorscale = list(
       c(0, 0.5, 1),
-      c("#8B4500", "#FFFFFF", "#104E8B")),
+      c("#A89639", "#FFFFFF", "#337AB7")),
     cmin = max(abs(matttree$count.y)) * (-1),
     cmax = max(abs(matttree$count.y)),
     showscale = TRUE,
@@ -1936,53 +1943,6 @@ fig_treemap
 # We now save the treempa as a html file locally
 
 htmlwidgets::saveWidget(fig_treemap, file = "fig_treemap.html", selfcontained = TRUE)
-
-
-library(plotly)
-
-# Sample data
-labels <- c("Box 1", "Box 2", "Box 3")
-values <- c(10, 20, 30)
-links <- c("https://example.com/box1", "https://example.com/box2", "https://example.com/box3")
-
-# Create treemap trace
-trace <- list(
-  type = "treemap",
-  labels = labels,
-  parents = c("", "", ""),  # Empty parent list indicates root level
-  values = values,
-  text = paste0("<a href='", links, "' target='_blank'>", labels, "</a>")  # Add hyperlinks to text labels
-)
-
-# Create layout
-layout <- list(
-  title = "Clickable Treemap with Hyperlinked Names",
-  autosize = FALSE,
-  width = 600,
-  height = 400
-)
-
-# Create plotly figure
-fig <- plot_ly(
-  type = "treemap",
-  textposition = "middle center",
-  textfont = list(color = "#ffffff"),
-  marker = list(
-    colorscale = list(c(0, 1), c("#a3a7e4", "#3f4b8a")),
-    line = list(color = "#ffffff", width = 0.5)
-  ),
-  hoverinfo = "label+value+text",
-  hovertemplate = "%{label}<br>%{value}<extra>%{text}</extra>"
-)
-
-# Add trace to the figure
-fig <- fig %>% add_trace(trace)
-
-# Set layout for the figure
-fig <- fig %>% layout(layout)
-
-# Display the figure
-fig
 
 
 
