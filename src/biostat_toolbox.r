@@ -301,6 +301,13 @@ X = X[, order(colnames(X))]
 
 X = as.data.frame(X)
 
+# Min value imputation (to be checked !!!)
+
+half_min = min(X[X > 0], na.rm = TRUE) / 2
+
+X[X == 0] = half_min
+
+
 # Uncomment for testing purposes
 # X <- X[,1:100]
 
@@ -675,6 +682,12 @@ DE = M$scaled
 ##### we range  all feature to o to 1
 
 DE$data <- apply(DE$data,2,funModeling::range01)
+
+# Min value imputation also after the scaling stage (to be checked !!!)
+
+half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
+
+DE$data[DE$data == 0] = half_min_sec
 
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
@@ -1669,9 +1682,19 @@ index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassif
 
 DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
 
+
+is.na(DE_foldchange_pvalues$C_WT_p_value)
+
+
+
+
 mydata1 <- select(DE_foldchange_pvalues,
 "C_WT_fold_change_log2",
-"NPC.class_canopus")
+"NPC.class_canopus")  %>% 
+# this line remove rows with NA in the NPC.class_canopus column using the filter function
+filter(!is.na(NPC.class_canopus))  %>% 
+filter(!is.na(C_WT_fold_change_log2))
+
 
 mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
 
@@ -1711,7 +1734,7 @@ dt_se_prop_prep_count_tot = dt_for_treemap(
 )
 
 
-dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
+dt_se_prop_prep_fold_tot = dt_for_treemap(
   datatable = mydata1,
   parent_value = NPC.pathway_canopus,
   value = NPC.superclass_canopus,
@@ -1733,7 +1756,7 @@ dt_se_prop_prep_count_pos = dt_for_treemap(
 )
 
 
-dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
+dt_se_prop_prep_fold_pos = dt_for_treemap(
   datatable = mydata1_pos,
   parent_value = NPC.superclass_canopus,
   value = fold_dir,
@@ -1761,7 +1784,7 @@ dt_se_prop_prep_count_neg = dt_for_treemap(
 )
 
 
-dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
+dt_se_prop_prep_fold_neg = dt_for_treemap(
   datatable = mydata1_neg,
   parent_value = NPC.superclass_canopus,
   value = fold_dir,
