@@ -1902,7 +1902,10 @@ fig_treemap <- plot_ly(
     ),
     reversescale = FALSE  # Set to FALSE to maintain the color gradient order
   )
-)
+)%>% 
+  layout(
+    title = "<b>Metabolomic Variations Across Treatments</b>"
+  )
 
 fig_treemap
 
@@ -1928,7 +1931,7 @@ matt_donust = DE_foldchange_pvalues %>%
 matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
 matt_donust2$counter = 1
 
-
+ 
 
 dt_for_treemap = function(datatable, parent_value, value, count) {
   parent_value = enquo(parent_value)
