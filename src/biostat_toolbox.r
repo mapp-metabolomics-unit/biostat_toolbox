@@ -304,8 +304,10 @@ X = as.data.frame(X)
 # Min value imputation (to be checked !!!)
 
 half_min = min(X[X > 0], na.rm = TRUE) / 2
+min = min(X[X > 0], na.rm = TRUE)
 
-X[X == 0] = half_min
+
+X[X == 0] = min
 
 
 # Uncomment for testing purposes
@@ -687,7 +689,10 @@ DE$data <- apply(DE$data,2,funModeling::range01)
 
 half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
 
-DE$data[DE$data == 0] = half_min_sec
+min_sec = min(DE$data[DE$data > 0], na.rm = TRUE)
+
+
+DE$data[DE$data == 0] = min_sec
 
 # We display the properties of the DatasetExperiment object to the user.
 message("DatasetExperiment object properties: ")
@@ -1368,8 +1373,6 @@ DE_foldchange_pvalues = DE_foldchange_pvalues %>%
      mutate( across(contains('_p_value'), 
                     .fns = list(minus_log10 = ~-log10(.)),
                     .names = "{col}_{fn}" ) )
-
-
 }
 
 # We now merge the DE_foldchange_pvalues with the variable metadata using the row_ID column and the rownames of the variable metadata
@@ -1811,17 +1814,29 @@ matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
 
 #####################################################################
 
+# The follow function creates a new hyperlink column based on the labels_adjusted columns
+
+matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
+
+<a href='https://example.com/box1' target='_blank'>Box 1</a>
+matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
+matttree$full_hl <- paste0(
+  "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+)
+
+
 
 fig_treemap = plot_ly(
   data = matttree,
   type = "treemap",
   ids = ~value,
-  labels = ~labels_adjusted,
+  labels = ~matttree$full_hl,
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
   maxdepth=10
 )
+
 
 fig_treemap
 
@@ -1855,6 +1870,61 @@ fig_treemap <- plot_ly(
 )
 
 fig_treemap
+
+
+# We now save the treempa as a html file locally
+
+htmlwidgets::saveWidget(fig_treemap, file = "fig_treemap.html", selfcontained = TRUE)
+
+
+library(plotly)
+
+# Sample data
+labels <- c("Box 1", "Box 2", "Box 3")
+values <- c(10, 20, 30)
+links <- c("https://example.com/box1", "https://example.com/box2", "https://example.com/box3")
+
+# Create treemap trace
+trace <- list(
+  type = "treemap",
+  labels = labels,
+  parents = c("", "", ""),  # Empty parent list indicates root level
+  values = values,
+  text = paste0("<a href='", links, "' target='_blank'>", labels, "</a>")  # Add hyperlinks to text labels
+)
+
+# Create layout
+layout <- list(
+  title = "Clickable Treemap with Hyperlinked Names",
+  autosize = FALSE,
+  width = 600,
+  height = 400
+)
+
+# Create plotly figure
+fig <- plot_ly(
+  type = "treemap",
+  textposition = "middle center",
+  textfont = list(color = "#ffffff"),
+  marker = list(
+    colorscale = list(c(0, 1), c("#a3a7e4", "#3f4b8a")),
+    line = list(color = "#ffffff", width = 0.5)
+  ),
+  hoverinfo = "label+value+text",
+  hovertemplate = "%{label}<br>%{value}<extra>%{text}</extra>"
+)
+
+# Add trace to the figure
+fig <- fig %>% add_trace(trace)
+
+# Set layout for the figure
+fig <- fig %>% layout(layout)
+
+# Display the figure
+fig
+
+
+
 #############################################################################
 #############################################################################
 ############## Tree Map #####################################################
