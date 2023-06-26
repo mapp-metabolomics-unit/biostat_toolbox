@@ -1686,13 +1686,8 @@ index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassif
 DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
 
 
-is.na(DE_foldchange_pvalues$C_WT_p_value)
-
-
-
-
 mydata1 <- select(DE_foldchange_pvalues,
-"C_WT_fold_change_log2",
+"C_WT_fold_change_log2","name_sirius",
 "NPC.class_canopus")  %>% 
 # this line remove rows with NA in the NPC.class_canopus column using the filter function
 filter(!is.na(NPC.class_canopus))  %>% 
@@ -1750,6 +1745,8 @@ matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,b
 
 #####################################################################
 #####################################################################
+#####################################################################
+#####################################################################
 
 dt_se_prop_prep_count_pos = dt_for_treemap(
   datatable = mydata1_pos,
@@ -1758,7 +1755,6 @@ dt_se_prop_prep_count_pos = dt_for_treemap(
   count = counter
 )
 
-
 dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
   datatable = mydata1_pos,
   parent_value = NPC.superclass_canopus,
@@ -1766,12 +1762,9 @@ dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
   count = C_WT_fold_change_log2
 )
 
-
 dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
 select(-c("value","parent.value"))
 matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
-
-
 
 matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
 matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
@@ -1786,7 +1779,6 @@ dt_se_prop_prep_count_neg = dt_for_treemap(
   count = counter
 )
 
-
 dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
   datatable = mydata1_neg,
   parent_value = NPC.superclass_canopus,
@@ -1798,15 +1790,68 @@ dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>%
 select(-c("value","parent.value"))
 matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
 
-
 matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
 matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
 
 #####################################################################
 #####################################################################
+#####################################################################
+#####################################################################
+
+dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
+  datatable = mydata1_pos,
+  parent_value = fold_dir,
+  value = name_sirius,
+  count = counter
+)
+
+dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
+  datatable = mydata1_pos,
+  parent_value = fold_dir,
+  value = name_sirius,
+  count = C_WT_fold_change_log2
+)
+
+dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>% 
+select(-c("value","parent.value"))
+matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
+
+matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""),]
+matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
 
 
-matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir)
+#####################################################################
+#####################################################################
+
+dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
+  datatable = mydata1_neg,
+  parent_value = fold_dir,
+  value = name_sirius,
+  count = counter
+)
+
+dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
+  datatable = mydata1_neg,
+  parent_value = fold_dir,
+  value = name_sirius,
+  count = C_WT_fold_change_log2
+)
+
+dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>% 
+select(-c("value","parent.value"))
+matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
+
+matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""),]
+matt_class_fig_neg_dir_sirius <- na.omit(matt_class_fig_neg_dir_sirius)
+
+
+
+#####################################################################
+#####################################################################
+#####################################################################
+#####################################################################
+
+matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir,matt_class_fig_pos_dir_sirius,matt_class_fig_neg_dir_sirius)
 matttree$labels_adjusted <- matttree$value
 matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- "+"
 matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- "-"
@@ -1834,11 +1879,13 @@ fig_treemap = plot_ly(
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
-  maxdepth=10
+  maxdepth=3
 )
 
 
 fig_treemap
+
+
 
 
 fig_treemap <- plot_ly(
@@ -1849,25 +1896,31 @@ fig_treemap <- plot_ly(
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
-  maxdepth = 10,
+  maxdepth = 3,
   marker = list(
     colors = matttree$count.y,
-    colorscale = c("red", "white", "blue"),
+    colorscale = list(
+      c(0, 0.5, 1),
+      c("#8B4500", "#FFFFFF", "#104E8B")),
     cmin = max(abs(matttree$count.y)) * (-1),
     cmax = max(abs(matttree$count.y)),
     showscale = TRUE,
     colorbar = list(
-     # title = '<b>effect</b>',
+     title = '<b>Increased in </b>',
       tickmode = "array",
-      tickvals = c((max(abs(matttree$count.y))*(-1)), 0, (max(abs(matttree$count.y)))),
-      ticktext = c("increase in wild-type","no change", "increase in Control"),
+      tickvals = c((quantile(abs(matttree$count.y),probs=0.5)*(-1)), 0, (quantile(abs(matttree$count.y),probs=0.5))),
+      ticktext = c("wild-type","", "Control"),
       len = 0.5,
-      thickness = 20,
-      outlinewidth = 0
+      thickness = 30,
+      outlinewidth = 1,
+      tickangle = 270
     ),
     reversescale = FALSE  # Set to FALSE to maintain the color gradient order
   )
-)
+)%>% 
+  layout(
+    title = "<b>Metabolomic Variations Across Treatments</b>"
+  )
 
 fig_treemap
 
@@ -1925,6 +1978,7 @@ fig
 
 
 
+
 #############################################################################
 #############################################################################
 ############## Tree Map #####################################################
@@ -1947,7 +2001,7 @@ matt_donust = DE_foldchange_pvalues %>%
 matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
 matt_donust2$counter = 1
 
-
+ 
 
 dt_for_treemap = function(datatable, parent_value, value, count) {
   parent_value = enquo(parent_value)
