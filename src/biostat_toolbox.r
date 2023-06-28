@@ -1694,8 +1694,12 @@ index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassif
 DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
 
 
+mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius")  
+
+
+
 mydata1 <- select(DE_foldchange_pvalues,
-"C_WT_fold_change_log2","name_sirius", "InChIkey2D_sirius",
+"C_WT_fold_change_log2","name_sirius", "row_id",
 "NPC.class_canopus")  %>% 
 # this line remove rows with NA in the NPC.class_canopus column using the filter function
 filter(!is.na(NPC.class_canopus))  %>% 
@@ -1809,14 +1813,14 @@ matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
 dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
   datatable = mydata1_pos,
   parent_value = fold_dir,
-  value = InChIkey2D_sirius,
+  value = row_id,
   count = counter
 )
 
 dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
   datatable = mydata1_pos,
   parent_value = fold_dir,
-  value = InChIkey2D_sirius,
+  value = row_id,
   count = C_WT_fold_change_log2
 )
 
@@ -1834,14 +1838,14 @@ matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
 dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
   datatable = mydata1_neg,
   parent_value = fold_dir,
-  value = InChIkey2D_sirius,
+  value = row_id,
   count = counter
 )
 
 dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
   datatable = mydata1_neg,
   parent_value = fold_dir,
-  value = InChIkey2D_sirius,
+  value = row_id,
   count = C_WT_fold_change_log2
 )
 
@@ -1865,6 +1869,10 @@ matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- "+"
 matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- "-"
 matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
 
+matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
+
+matttree$labels_adjusted[!is.na(matttree$name_sirius)] <- matttree$name_sirius[!is.na(matttree$name_sirius)]
+
 #####################################################################
 
 # The follow function creates a new hyperlink column based on the labels_adjusted columns
@@ -1877,16 +1885,33 @@ matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
 #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 # )
 
-matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$labels_adjusted, "&sort=annothitcnt")
+matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
 
 # <a href='https://example.com/box1' target='_blank'>Box 1</a>
-matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
 matttree$full_hl <- paste0(
   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 )
 
+####################### annoation structure 
+#########################################################
+matttree$smiles_sirius
+############# ad mol
+mol_list_2d <- list()
+for (i in c(1:length(matttree$smiles_sirius))) {
+  psml <- parse.smiles(matttree$smiles_sirius[i], omit.nulls = TRUE)
+  if (length(psml) == 0) {
+    psml <- parse.smiles("C")
+  }
+
+  img <- view.image.2d(psml[1][[1]])
+
+  r <- as.raster(img)
+  mol_list_2d[[i]] <- r
+}
 
 
+#########################################################
+#########################################################
 
 fig_treemap = plot_ly(
   data = matttree,
