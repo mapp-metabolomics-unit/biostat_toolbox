@@ -1694,7 +1694,11 @@ index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassif
 DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
 
 
-mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius")  
+mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
+"cluster.index_gnps","feature_rt","feature_mz")  
+mydata_meta$name_comp<- "unknown"
+mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
+
 
 
 
@@ -1871,8 +1875,9 @@ matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
 
 matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
 
-matttree$labels_adjusted[!is.na(matttree$name_sirius)] <- matttree$name_sirius[!is.na(matttree$name_sirius)]
-
+matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
+matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+matttree$value[matttree$labels_adjusted== "unknown"] <- ""
 #####################################################################
 
 # The follow function creates a new hyperlink column based on the labels_adjusted columns
@@ -1892,26 +1897,35 @@ matttree$full_hl <- paste0(
   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 )
 
+
+matttree <- matttree[order(matttree$value),]
 ####################### annoation structure 
 #########################################################
-matttree$smiles_sirius
+
 ############# ad mol
-mol_list_2d <- list()
-for (i in c(1:length(matttree$smiles_sirius))) {
-  psml <- parse.smiles(matttree$smiles_sirius[i], omit.nulls = TRUE)
-  if (length(psml) == 0) {
-    psml <- parse.smiles("C")
-  }
+#mol_list_2d <- list()
+#for (i in c(1:length(matttree$smiles_sirius))) {
+#  psml <- parse.smiles(matttree$smiles_sirius[i], omit.nulls = TRUE)
+#  if (length(psml) == 0) {
+#    psml <- parse.smiles("C")
+#  }
 
-  img <- view.image.2d(psml[1][[1]])
+#  img <- view.image.2d(psml[1][[1]])
 
-  r <- as.raster(img)
-  mol_list_2d[[i]] <- r
-}
-
+#  r <- as.raster(img)
+#  mol_list_2d[[i]] <- r
+#}
 
 #########################################################
 #########################################################
+
+txt <- as.character(paste0
+("feature id:",matttree$cluster.index_gnps,"<br>",
+ "RT:", round(matttree$feature_rt,2),"<br>",
+ "Mz:", round(matttree$feature_mz,4),
+ "<extra></extra>"
+))
+matttree$txt <- txt
 
 fig_treemap = plot_ly(
   data = matttree,
@@ -1921,12 +1935,46 @@ fig_treemap = plot_ly(
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
-  maxdepth=3
+  maxdepth=3,
+  hovertemplate = ~txt
 )
 
 
-fig_treemap
+x <- 1:3 
+y <- 1:3
+logos <- c("d", "e", "f")
+# base64 encoded string of each image
+uris <- purrr::map_chr(
+  logos, ~ base64enc::dataURI(file = sprintf("C:/Users/defossee/Desktop/testimag/%s.png", .x))
+)
 
+plot_ly(hoverinfo = "none") %>%
+  add_heatmap(
+    z = matrix(1:9, nrow = 3), 
+    customdata = matrix(uris, nrow = 3, ncol = 3)
+  ) %>%
+  htmlwidgets::onRender(readLines("G:/Mon Drive/taf/git_repository/biostat_toolbox/tooltip-image.js"))
+
+
+x <- 1:3 
+y <- 1:3
+logos <- c("r-logo", "penguin", "rstudio")
+# base64 encoded string of each image
+uris <- purrr::map_chr(
+  logos, ~ raster2uri(mol_list_2d[[802:804]])
+
+)
+# hoverinfo = "none" will hide the plotly.js tooltip, but the 
+# plotly_hover event will still fire
+xx <- plot_ly() %>%
+  add_text(x = x, y = y, customdata = uris, text = logos) %>%
+  htmlwidgets::onRender(readLines("G:/Mon Drive/taf/git_repository/biostat_toolbox/tooltip-image.js"))
+
+htmlwidgets::saveWidget(xx, file = "xx.html", selfcontained = TRUE)
+
+
+
+raster2uri(mol_list_2d[[802]])
 
 fig_treemap <- plot_ly(
   data = matttree,
@@ -1968,8 +2016,6 @@ fig_treemap
 # We now save the treempa as a html file locally
 
 htmlwidgets::saveWidget(fig_treemap, file = "fig_treemap.html", selfcontained = TRUE)
-
-
 
 
 #############################################################################
