@@ -1897,6 +1897,11 @@ matttree$full_hl <- paste0(
   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 )
 
+# <a href='https://example.com/box1' target='_blank'>Box 1</a>
+matttree$smiles_url <- paste0(
+  "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
+)
+
 
 matttree <- matttree[order(matttree$value),]
 ####################### annoation structure 
@@ -1920,9 +1925,9 @@ matttree <- matttree[order(matttree$value),]
 #########################################################
 
 txt <- as.character(paste0
-("feature id:",matttree$cluster.index_gnps,"<br>",
- "RT:", round(matttree$feature_rt,2),"<br>",
- "Mz:", round(matttree$feature_mz,4),
+("feature id: ",matttree$cluster.index_gnps,"<br>",
+ "RT: ", round(matttree$feature_rt,2),"<br>",
+ "m/z: ", round(matttree$feature_mz,4),
  "<extra></extra>"
 ))
 matttree$txt <- txt
@@ -1939,42 +1944,68 @@ fig_treemap = plot_ly(
   hovertemplate = ~txt
 )
 
+d3 <- htmltools::htmlDependency(
+  "d3", "7.3",
+  src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/"),
+  script = "d3.min.js"
+)
+
+p = plot_ly(
+  data = matttree,
+  type = "treemap",
+  ids = ~value,
+  labels = ~matttree$full_hl,
+  parents = ~parent.value,
+  values = ~count.x,
+  branchvalues = "total",
+  maxdepth=3,
+  hovertemplate = ~txt,
+  customdata = matttree$smiles_url
+) %>%
+# add_text(customdata = matttree$smiles_url, text = matttree$value) %>%
+htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
+
+p$dependencies <- c(p$dependencies, list(d3))
+p
+
+
+library(htmlwidgets)
+library(magrittr)
+library(plotly)
 
 x <- 1:3 
 y <- 1:3
-logos <- c("d", "e", "f")
-# base64 encoded string of each image
-uris <- purrr::map_chr(
-  logos, ~ base64enc::dataURI(file = sprintf("C:/Users/defossee/Desktop/testimag/%s.png", .x))
+
+artists <- c("Bethoven", "Mozart", "Bach")
+
+image_links <- c(
+  "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
+  "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
 )
 
-plot_ly(hoverinfo = "none") %>%
-  add_heatmap(
-    z = matrix(1:9, nrow = 3), 
-    customdata = matrix(uris, nrow = 3, ncol = 3)
-  ) %>%
-  htmlwidgets::onRender(readLines("G:/Mon Drive/taf/git_repository/biostat_toolbox/tooltip-image.js"))
 
 
-x <- 1:3 
-y <- 1:3
-logos <- c("r-logo", "penguin", "rstudio")
-# base64 encoded string of each image
-uris <- purrr::map_chr(
-  logos, ~ raster2uri(mol_list_2d[[802:804]])
-
-)
 # hoverinfo = "none" will hide the plotly.js tooltip, but the 
 # plotly_hover event will still fire
-xx <- plot_ly() %>%
-  add_text(x = x, y = y, customdata = uris, text = logos) %>%
-  htmlwidgets::onRender(readLines("G:/Mon Drive/taf/git_repository/biostat_toolbox/tooltip-image.js"))
+p <- plot_ly(hoverinfo = "none") %>%
+  add_text(x = x, y = y, customdata = image_links, text = artists) %>%
+  htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
 
-htmlwidgets::saveWidget(xx, file = "xx.html", selfcontained = TRUE)
+p$dependencies <- c(p$dependencies, list(d3))
+p
 
 
 
-raster2uri(mol_list_2d[[802]])
+
+g <- ggplot(iris, aes(x = Sepal.Length,
+                      y = Petal.Length,
+                      color = Species,
+                      text = Species)) + geom_point()
+p <- ggplotly(g, tooltip = "text") %>% partial_bundle() 
+
+
+p %>% htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip_adapted.js"))
 
 fig_treemap <- plot_ly(
   data = matttree,
