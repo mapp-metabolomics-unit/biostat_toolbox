@@ -1958,11 +1958,9 @@ p = plot_ly(
   parents = ~parent.value,
   values = ~count.x,
   branchvalues = "total",
-  maxdepth=3,
-  hovertemplate = ~txt,
-  customdata = matttree$smiles_url
+  maxdepth=3
 ) %>%
-# add_text(customdata = matttree$smiles_url, text = matttree$value) %>%
+add_text(x = matttree$value, y = matttree$value, customdata = ~matttree$smiles_url, text = ~matttree$value) %>%
 htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
 
 p$dependencies <- c(p$dependencies, list(d3))
@@ -1985,6 +1983,8 @@ image_links <- c(
 )
 
 
+x <- 1:3
+y <- 1:3
 
 # hoverinfo = "none" will hide the plotly.js tooltip, but the 
 # plotly_hover event will still fire
