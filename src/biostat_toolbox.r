@@ -82,6 +82,7 @@ usePackage("gt")
 usePackage("purrr")
 usePackage("tidyr")
 usePackage("webchem")
+usePackage("reticulate")
 
 
 
@@ -1995,6 +1996,110 @@ p <- plot_ly(hoverinfo = "none") %>%
 p$dependencies <- c(p$dependencies, list(d3))
 p
 
+## ChatGPT adapted prompts for treemap
+######################################
+######################################
+
+usePackage('highcharter')
+
+
+library(highcharter)
+
+# Sample data
+labels <- c("Beethoven", "Mozart", "Chemical Structure")
+sizes <- c(20, 30, 50)
+urls <- c(
+  "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
+  "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
+)
+
+# Create the data frame
+data <- data.frame(
+  name = labels,
+  value = sizes,
+  link = urls,
+  stringsAsFactors = FALSE
+)
+
+# Create the treemap using highchart
+treemap <- highchart() %>%
+  hc_chart(type = "treemap") %>%
+  hc_title(text = "Treemap with Hover Images") %>%
+  hc_tooltip(
+    useHTML = TRUE,
+    pointFormat = "<b>{point.name}</b><br/><img src='{point.link}' width='100' height='100'>"
+  ) %>%
+  hc_plotOptions(
+    series = list(
+      borderWidth = 0,
+      dataLabels = list(enabled = FALSE),
+      cursor = "pointer"
+    )
+  ) %>%
+  hc_series(
+    data = list_parse(data),
+    levels = list(
+      list(level = 1, layoutAlgorithm = "stripes"),
+      list(level = 2)
+    )
+  )
+
+# Display the treemap
+treemap
+
+
+htmlwidgets::saveWidget(widget, file = "fig_treemap.html", selfcontained = TRUE)
+
+
+
+
+
+library(treemap)
+library(gridSVG)
+library(XML
+df <- data.frame(
+    character=c("Homer","Marge", "Bart", "Lisa","Maggie", "Moe", "Blinky","Bumblebee Man","Duffman","Maude Flanders","Ned Flanders","Rod Flanders","Todd","Jimbo","Otto Mann","Snowball")
+    ,score=c(268,267,495, 432, 219, 373, 152, 356, 461, 116,107,165, 305,228, 461, 608)
+
+tm <- treemap( df, index = "character", vSize = "score" 
+svg <- grid.export()$sv
+# see http://stackoverflow.com/questions/10688516/fill-svg-path-with-a-background-image-without-knowing-heightwidth?rq=1
+pattern <- newXMLNode(
+    "defs"
+    ,.children = list(
+        newXMLNode(
+            "pattern"
+            , attrs = c(
+                id = "img_homer"
+                ,patternUnits="userSpaceOnUse"
+                ,patternTransform="translate(0, 0) scale(1, -1) rotate(0)"
+                ,width="106"
+                ,height="98"
+            )
+            , .children = newXMLNode(
+                "image"
+                , attrs = c(
+                    "xlink:href" = "http://i.imgur.com/JP4s21O.jpg"
+                    ,width = 106
+                    ,height = 80
+                )
+            )
+        )
+    )
+
+addChildren( svg, pattern 
+homer <- getNodeSet(
+    getNodeSet( svg, "//*[contains(@id,'data.2')]")[[1]]
+    ,"//*[local-name()='rect']"
+)[[5]
+homer_attrs <- xmlAttrs(homer)
+homer_attrs[["fill"]] <- "url(#img_homer)"
+xmlAttrs(homer) <- homer_attr
+library(htmltools)
+browsable(HTML(saveXML(svg)))
+
+
 
 
 
@@ -2046,7 +2151,7 @@ fig_treemap
 
 # We now save the treempa as a html file locally
 
-htmlwidgets::saveWidget(fig_treemap, file = "fig_treemap.html", selfcontained = TRUE)
+htmlwidgets::saveWidget(p, file = "fig_treemap.html", selfcontained = TRUE)
 
 
 #############################################################################

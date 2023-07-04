@@ -13,7 +13,7 @@ ms_files_extension: ".mzML"
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : FALSE
+  filter_sample_metadata_one : TRUE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
@@ -30,9 +30,11 @@ filter_sample_metadata_one :
   mode : 'exclude'
   factor_name : 'condition'
   levels : 
-      - 'C'
-      # - 'HN'
+      # - 'C'
+      - 'HN'
       - 'NifH'
+      - 'Argon'
+      # - 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'
