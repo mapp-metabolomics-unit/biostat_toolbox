@@ -30,11 +30,11 @@ filter_sample_metadata_one :
   mode : 'exclude'
   factor_name : 'condition'
   levels : 
-      # - 'C'
-      - 'HN'
-      - 'NifH'
-      - 'Argon'
-      # - 'WT'
+      - 'C'
+      #- 'HN'
+      #- 'NifH'
+      #- 'Argon'
+      - 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'

@@ -1331,7 +1331,11 @@ fold_change_model = fold_change(
   conf_level = 0.95
   )
 
+# Check if this can be important to apply.
 
+DE_fc = DE
+
+DE_fc$data = DE_fc$data + 1
 
 fold_change_result = model_apply(fold_change_model, DE)
 
@@ -1605,8 +1609,8 @@ id_class[[i]] <- names(taxonomy_hierarchy_class[i])
 
 
 
-################################### function 
-################################# treemap shaper
+# ################################### function 
+# ################################# treemap shaper
 
 dt_for_treemap = function(datatable, parent_value, value, count) {
   parent_value = enquo(parent_value)
@@ -1638,8 +1642,8 @@ dt_for_treemap = function(datatable, parent_value, value, count) {
 
   return(data_for_plot)
 }
-###################################################################################
-###################################################################################
+# ###################################################################################
+# ###################################################################################
 
 dt_for_treemap_mean = function(datatable, parent_value, value, count) {
   parent_value = enquo(parent_value)
@@ -1692,466 +1696,934 @@ npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.
 
 index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassifier_newpath$NPC.pathway_canopus)))
 
-DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
+
+# DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
 
 
-mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
-"cluster.index_gnps","feature_rt","feature_mz")  
-mydata_meta$name_comp<- "unknown"
-mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
+# Extract prefixes of columns with "_p_value" suffix
+conditions <- sub("_p_value$", "", grep("_p_value$", names(DE_foldchange_pvalues), value = TRUE))
+
+# Print message before iterating over conditions
+cat("Iterating over the following conditions:\n")
+
+# Iterate over the prefixes
+for (condition in conditions) {
+
+  # Perform filtering using the prefix as a condition
+  DE_foldchange_pvalues_signi <- DE_foldchange_pvalues %>%
+    filter(!!sym(paste0(condition, "_p_value")) < 0.05)
+  
+  # Print the filtered data
+  cat("Filtered data for condition", condition, ":\n")
+  print(head(DE_foldchange_pvalues_signi))
+  cat("\n")
+
+  condition_parts <- strsplit(condition, "_")[[1]]
+  first_part <- condition_parts[1]
+  second_part <- condition_parts[2]
+
+
+  mydata_meta <- select(DE_foldchange_pvalues_signi, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
+  "cluster.index_gnps","feature_rt","feature_mz")  
+  mydata_meta$name_comp <- "unknown"
+  mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
 
 
 
+  mydata1 <- select(DE_foldchange_pvalues_signi,
+  !!sym(paste0(condition, "_fold_change_log2")), "name_sirius", "row_id",
+  "NPC.class_canopus")  %>% 
+  # this line remove rows with NA in the NPC.class_canopus column using the filter function
+  filter(!is.na(NPC.class_canopus))
 
-mydata1 <- select(DE_foldchange_pvalues,
-"C_WT_fold_change_log2","name_sirius", "row_id",
-"NPC.class_canopus")  %>% 
-# this line remove rows with NA in the NPC.class_canopus column using the filter function
-filter(!is.na(NPC.class_canopus))  %>% 
-filter(!is.na(C_WT_fold_change_log2))
-
-
-mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
+  mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
 
 
+  # mydata1 <- mydata1 %>% 
+  # mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>% 
+  # mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
 
-mydata1 <- mydata1 %>% 
-mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>% 
-mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
+
+  mydata1_neg <- mydata1 %>%
+    filter(!!sym(paste0(condition, "_fold_change_log2")) < 0)
+
+  mydata1_pos <- mydata1 %>%
+    filter(!!sym(paste0(condition, "_fold_change_log2")) >= 0)
 
 
-mydata1_neg <- mydata1[mydata1$C_WT_fold_change_log2 < 0,]
-#mydata1_neg$C_WT_fold_change_log2 <- abs(mydata1_neg$C_WT_fold_change_log2)
-mydata1_pos <- mydata1[mydata1$C_WT_fold_change_log2 >= 0,]
+  # Aggregate the data
+  ####
+  mydata1 = mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
+  mydata1$counter = 1
 
-# Aggregate the data
-####
-mydata1 = mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
-mydata1$counter = 1
+  # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+  mydata1_neg = mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
+  mydata1_neg$counter = 1
+  mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
+  # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+  mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
+  mydata1_pos$counter = 1
+  mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
 
-# matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-mydata1_neg = mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
-mydata1_neg$counter = 1
-mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
-# matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
-mydata1_pos$counter = 1
-mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
+  #####################################################################
+  #####################################################################
 
-#####################################################################
-#####################################################################
+  dt_se_prop_prep_count_tot = dt_for_treemap(
+    datatable = mydata1,
+    parent_value = NPC.pathway_canopus,
+    value = NPC.superclass_canopus,
+    count = counter
+  )
 
-dt_se_prop_prep_count_tot = dt_for_treemap(
-  datatable = mydata1,
-  parent_value = NPC.pathway_canopus,
-  value = NPC.superclass_canopus,
-  count = counter
+
+  dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
+    datatable = mydata1,
+    parent_value = NPC.pathway_canopus,
+    value = NPC.superclass_canopus,
+    count = !!sym(paste0(condition, "_fold_change_log2"))
+  )
+
+  dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>% 
+  select(-c("value","parent.value"))
+  matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
+
+  #####################################################################
+  #####################################################################
+  #####################################################################
+  #####################################################################
+
+  dt_se_prop_prep_count_pos = dt_for_treemap(
+    datatable = mydata1_pos,
+    parent_value = NPC.superclass_canopus,
+    value = fold_dir,
+    count = counter
+  )
+
+  dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
+    datatable = mydata1_pos,
+    parent_value = NPC.superclass_canopus,
+    value = fold_dir,
+    count = !!sym(paste0(condition, "_fold_change_log2"))
+  )
+
+  dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
+  select(-c("value","parent.value"))
+  matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
+
+
+  matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
+  matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
+
+  #####################################################################
+  #####################################################################
+
+  dt_se_prop_prep_count_neg = dt_for_treemap(
+    datatable = mydata1_neg,
+    parent_value = NPC.superclass_canopus,
+    value = fold_dir,
+    count = counter
+  )
+
+  dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
+    datatable = mydata1_neg,
+    parent_value = NPC.superclass_canopus,
+    value = fold_dir,
+    count = !!sym(paste0(condition, "_fold_change_log2"))
+  )
+
+  dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>% 
+  select(-c("value","parent.value"))
+  matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
+
+  matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
+  matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
+
+  #####################################################################
+  #####################################################################
+  #####################################################################
+  #####################################################################
+
+  dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
+    datatable = mydata1_pos,
+    parent_value = fold_dir,
+    value = row_id,
+    count = counter
+  )
+
+  dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
+    datatable = mydata1_pos,
+    parent_value = fold_dir,
+    value = row_id,
+    count = !!sym(paste0(condition, "_fold_change_log2"))
+  )
+
+  dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>% 
+  select(-c("value","parent.value"))
+  matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
+
+  matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""),]
+  matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
+
+
+  #####################################################################
+  #####################################################################
+
+  dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
+    datatable = mydata1_neg,
+    parent_value = fold_dir,
+    value = row_id,
+    count = counter
+  )
+
+  dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
+    datatable = mydata1_neg,
+    parent_value = fold_dir,
+    value = row_id,
+    count = !!sym(paste0(condition, "_fold_change_log2"))
+  )
+
+  dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>% 
+  select(-c("value","parent.value"))
+  matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
+
+  matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""),]
+  matt_class_fig_neg_dir_sirius <- na.omit(matt_class_fig_neg_dir_sirius)
+
+
+
+  #####################################################################
+  #####################################################################
+  #####################################################################
+  #####################################################################
+
+  matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir,matt_class_fig_pos_dir_sirius,matt_class_fig_neg_dir_sirius)
+  matttree$labels_adjusted <- matttree$value
+  matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- ""
+  matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- ""
+  matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
+
+# We rename the count.x column as count and the count.y column as foldchange_log2
+  matttree <- matttree %>% 
+  rename(count = count.x)  %>% 
+  rename(foldchange_log2 = count.y)
+
+
+
+  matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
+
+  matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
+  matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+  matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+  #####################################################################
+
+  # The follow function creates a new hyperlink column based on the labels_adjusted columns
+
+  # matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
+
+  # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+  # matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
+  # matttree$full_hl <- paste0(
+  #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+  # )
+
+  matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
+
+  # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+  matttree$full_hl <- paste0(
+    "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+  )
+
+  # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+  matttree$smiles_url <- paste0(
+    "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
+  )
+
+  # To check what this is doing
+  matttree <- matttree[order(matttree$value),]
+
+
+  #########################################################
+  #########################################################
+
+  txt <- as.character(paste0
+  ("feature id: ",matttree$cluster.index_gnps,"<br>",
+  "RT: ", round(matttree$feature_rt,2),"<br>",
+  "m/z: ", round(matttree$feature_mz,4),"<br>",
+  "FC (log 2): ", round(matttree$foldchange_log2,2),
+  "<extra></extra>"
+  ))
+  matttree$txt <- txt
+
+  fig_treemap_qual = plot_ly(
+    data = matttree,
+    type = "treemap",
+    ids = ~value,
+    labels = ~matttree$full_hl,
+    parents = ~parent.value,
+    values = ~count,
+    branchvalues = "total",
+    maxdepth=3,
+    hovertemplate = ~txt # Set the desired width of the treemap
+  ) %>% 
+    layout(
+      title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
+    )
+
+  fig_treemap_qual
+
+  fig_treemap_quan <- plot_ly(
+    data = matttree,
+    type = "treemap",
+    ids = ~value,
+    labels = ~matttree$full_hl,
+    parents = ~parent.value,
+    values = ~count,
+    branchvalues = "total",
+    maxdepth = 3,
+    hovertemplate = ~txt,
+    marker = list(
+      colors = matttree$foldchange_log2,
+      colorscale = list(
+        c(0, 0.5, 1),
+        c("#A89639", "#FFFFFF", "#337AB7")),
+      cmin = max(abs(matttree$foldchange_log2)) * (-1),
+      cmax = max(abs(matttree$foldchange_log2)),
+      showscale = TRUE,
+      colorbar = list(
+      # the title html is set to add a line return
+      title = '',
+        tickmode = "array",
+        tickvals = c((quantile(abs(matttree$foldchange_log2),probs=0.75)*(-1)), 0, (quantile(abs(matttree$foldchange_log2),probs=0.75))),
+        ticktext = c(
+          paste0("<b>", first_part, "</b>"),
+          "",
+          paste0("<b>", second_part, "</b>")
+        ),
+        len = 0.5,
+        thickness = 30,
+        outlinewidth = 1,
+        tickangle = 270
+      ),
+      reversescale = FALSE  # Set to FALSE to maintain the color gradient order
+    )
+  )%>% 
+    layout(
+      title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
+    )
+
+  fig_treemap_quan
+
+
+
+  # We now save the treempa as a html file locally
+ 
+  htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE)
+  htmlwidgets::saveWidget(fig_treemap_quan, file = paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html"), selfcontained = TRUE)
+
+
+}
+
+
+library(htmltools)
+
+txt <- as.character(paste0(
+  "feature id: ", matttree$cluster.index_gnps, "<br>",
+  "RT: ", round(matttree$feature_rt, 2), "<br>",
+  "m/z: ", round(matttree$feature_mz, 4), "<br>",
+  "FC (log 2): ", round(matttree$foldchange_log2, 2), "<br>",
+  "SMILES: <a href='", matttree$smiles_url, "' target='_blank'>", matttree$smiles_sirius, "</a>",
+  "<extra></extra>"
+))
+matttree$txt <- txt
+
+custom_tooltip <- htmltools::tags$div(
+  style = "font-family: Arial; font-size: 14px;",
+  htmltools::HTML('<a href="https://plot.ly/">Powered by Plotly</a>'),
+  htmltools::tags$br(),
+  htmltools::tags$br(),
+  htmltools::tags$p("Custom Tooltip:"),
+  htmltools::tags$p(
+    style = "white-space: pre-wrap;",
+    htmltools::tags$span(
+      style = "font-weight: bold;",
+      htmltools::tags$span(style = "color: #000000;", "{{label}}")
+    ),
+    htmltools::tags$br(),
+    htmltools::tags$span(style = "color: #808080;", "{{text}}")
+  )
 )
 
+fig_treemap_qual <- plot_ly(
+  data = matttree,
+  type = "treemap",
+  ids = ~value,
+  labels = ~matttree$full_hl,
+  parents = ~parent.value,
+  values = ~count,
+  branchvalues = "total",
+  maxdepth = 3,
+  hovertemplate = "%{customdata}<extra></extra>",
+  customdata = txt,
+  tooltip = custom_tooltip
+) %>% 
+  layout(
+    title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
+  )
+fig_treemap_qual
 
-dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
-  datatable = mydata1,
-  parent_value = NPC.pathway_canopus,
-  value = NPC.superclass_canopus,
-  count = C_WT_fold_change_log2
+
+
+
+
+library(htmltools)
+
+txt <- as.character(paste0(
+  "feature id: ", matttree$cluster.index_gnps, "<br>",
+  "RT: ", round(matttree$feature_rt, 2), "<br>",
+  "m/z: ", round(matttree$feature_mz, 4), "<br>",
+  "FC (log 2): ", round(matttree$foldchange_log2, 2), "<br>",
+  "SMILES: <a href='", matttree$smiles_url, "' target='_blank'>", matttree$smiles_sirius, "</a>",
+  "<extra></extra>"
+))
+matttree$txt <- txt
+
+custom_tooltip <- htmltools::tags$div(
+  style = "font-family: Arial; font-size: 14px;",
+  htmltools::HTML('<a href="https://plot.ly/">Powered by Plotly</a>'),
+  htmltools::tags$br(),
+  htmltools::tags$br(),
+  htmltools::tags$p("Custom Tooltip:"),
+  htmltools::tags$p(
+    style = "white-space: pre-wrap;",
+    htmltools::tags$span(
+      style = "font-weight: bold;",
+      htmltools::tags$span(style = "color: #000000;", "{{label}}")
+    ),
+    htmltools::tags$br(),
+    htmltools::tags$span(style = "color: #808080;", "{{text}}")
+  )
 )
 
-dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>% 
-select(-c("value","parent.value"))
-matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
+jscode <- "
+function(feature) {
+  var txt = feature.data.customdata[feature.index];
+  return txt;
+}
+"
 
-#####################################################################
-#####################################################################
-#####################################################################
-#####################################################################
+fig_treemap_qual <- plot_ly(
+  data = matttree,
+  type = "treemap",
+  ids = ~value,
+  labels = ~matttree$full_hl,
+  parents = ~parent.value,
+  values = ~count,
+  branchvalues = "total",
+  maxdepth = 3,
+  customdata = txt,
+  hovertemplate = "%{customdata}<extra></extra>",
+  hoveron = "fills",
+  hoverlabel = list(bgcolor = "white"),
+  transforms = list(
+    list(
+      type = "filter",
+      target = ~ids,
+      operation = "=",
+      value = ~ids
+    )
+  ),
+  texttemplate = "",
+  text = ~value,
+  hovertext = ~value
+) %>%
+  layout(
+    title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>"),
+    updatemenus = list(
+      list(
+        buttons = list(
+          list(
+            method = "restyle",
+            args = list("transforms[0].value", NULL),
+            label = "Reset Zoom",
+            execute = TRUE
+          )
+        ),
+        direction = "left",
+        pad = list(t = 10, r = 10),
+        showactive = FALSE,
+        type = "buttons",
+        x = 0.1,
+        y = 1.1
+      )
+    )
+  ) %>%
+  htmlwidgets::onRender(jscode)
 
-dt_se_prop_prep_count_pos = dt_for_treemap(
-  datatable = mydata1_pos,
-  parent_value = NPC.superclass_canopus,
-  value = fold_dir,
-  count = counter
-)
-
-dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
-  datatable = mydata1_pos,
-  parent_value = NPC.superclass_canopus,
-  value = fold_dir,
-  count = C_WT_fold_change_log2
-)
-
-dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
-select(-c("value","parent.value"))
-matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
-
-matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
-matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
-
-#####################################################################
-#####################################################################
-
-dt_se_prop_prep_count_neg = dt_for_treemap(
-  datatable = mydata1_neg,
-  parent_value = NPC.superclass_canopus,
-  value = fold_dir,
-  count = counter
-)
-
-dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
-  datatable = mydata1_neg,
-  parent_value = NPC.superclass_canopus,
-  value = fold_dir,
-  count = C_WT_fold_change_log2
-)
-
-dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>% 
-select(-c("value","parent.value"))
-matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
-
-matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
-matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
-
-#####################################################################
-#####################################################################
-#####################################################################
-#####################################################################
-
-dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
-  datatable = mydata1_pos,
-  parent_value = fold_dir,
-  value = row_id,
-  count = counter
-)
-
-dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
-  datatable = mydata1_pos,
-  parent_value = fold_dir,
-  value = row_id,
-  count = C_WT_fold_change_log2
-)
-
-dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>% 
-select(-c("value","parent.value"))
-matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
-
-matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""),]
-matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
+fig_treemap_qual
 
 
-#####################################################################
-#####################################################################
-
-dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
-  datatable = mydata1_neg,
-  parent_value = fold_dir,
-  value = row_id,
-  count = counter
-)
-
-dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
-  datatable = mydata1_neg,
-  parent_value = fold_dir,
-  value = row_id,
-  count = C_WT_fold_change_log2
-)
-
-dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>% 
-select(-c("value","parent.value"))
-matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
-
-matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""),]
-matt_class_fig_neg_dir_sirius <- na.omit(matt_class_fig_neg_dir_sirius)
+# mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
+# "cluster.index_gnps","feature_rt","feature_mz")  
+# mydata_meta$name_comp<- "unknown"
+# mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
 
 
 
-#####################################################################
-#####################################################################
-#####################################################################
-#####################################################################
 
-matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir,matt_class_fig_pos_dir_sirius,matt_class_fig_neg_dir_sirius)
-matttree$labels_adjusted <- matttree$value
-matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- "+"
-matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- "-"
-matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
+# mydata1 <- select(DE_foldchange_pvalues,
+# "C_WT_fold_change_log2","name_sirius", "row_id",
+# "NPC.class_canopus")  %>% 
+# # this line remove rows with NA in the NPC.class_canopus column using the filter function
+# filter(!is.na(NPC.class_canopus))  %>% 
+# filter(!is.na(C_WT_fold_change_log2))
 
-matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
 
-matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
-matttree$value[matttree$labels_adjusted== "unknown"] <- ""
-matttree$value[matttree$labels_adjusted== "unknown"] <- ""
-#####################################################################
+# mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
 
-# The follow function creates a new hyperlink column based on the labels_adjusted columns
 
-# matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
+
+# mydata1 <- mydata1 %>% 
+# mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>% 
+# mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
+
+
+# mydata1_neg <- mydata1[mydata1$C_WT_fold_change_log2 < 0,]
+# #mydata1_neg$C_WT_fold_change_log2 <- abs(mydata1_neg$C_WT_fold_change_log2)
+# mydata1_pos <- mydata1[mydata1$C_WT_fold_change_log2 >= 0,]
+
+# # Aggregate the data
+# ####
+# mydata1 = mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
+# mydata1$counter = 1
+
+# # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+# mydata1_neg = mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
+# mydata1_neg$counter = 1
+# mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
+# # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
+# mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
+# mydata1_pos$counter = 1
+# mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
+
+# #####################################################################
+# #####################################################################
+
+# dt_se_prop_prep_count_tot = dt_for_treemap(
+#   datatable = mydata1,
+#   parent_value = NPC.pathway_canopus,
+#   value = NPC.superclass_canopus,
+#   count = counter
+# )
+
+
+# dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
+#   datatable = mydata1,
+#   parent_value = NPC.pathway_canopus,
+#   value = NPC.superclass_canopus,
+#   count = C_WT_fold_change_log2
+# )
+
+# dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>% 
+# select(-c("value","parent.value"))
+# matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
+
+# #####################################################################
+# #####################################################################
+# #####################################################################
+# #####################################################################
+
+# dt_se_prop_prep_count_pos = dt_for_treemap(
+#   datatable = mydata1_pos,
+#   parent_value = NPC.superclass_canopus,
+#   value = fold_dir,
+#   count = counter
+# )
+
+# dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
+#   datatable = mydata1_pos,
+#   parent_value = NPC.superclass_canopus,
+#   value = fold_dir,
+#   count = C_WT_fold_change_log2
+# )
+
+# dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
+# select(-c("value","parent.value"))
+# matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
+
+# matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
+# matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
+
+# #####################################################################
+# #####################################################################
+
+# dt_se_prop_prep_count_neg = dt_for_treemap(
+#   datatable = mydata1_neg,
+#   parent_value = NPC.superclass_canopus,
+#   value = fold_dir,
+#   count = counter
+# )
+
+# dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
+#   datatable = mydata1_neg,
+#   parent_value = NPC.superclass_canopus,
+#   value = fold_dir,
+#   count = C_WT_fold_change_log2
+# )
+
+# dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>% 
+# select(-c("value","parent.value"))
+# matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
+
+# matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
+# matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
+
+# #####################################################################
+# #####################################################################
+# #####################################################################
+# #####################################################################
+
+# dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
+#   datatable = mydata1_pos,
+#   parent_value = fold_dir,
+#   value = row_id,
+#   count = counter
+# )
+
+# dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
+#   datatable = mydata1_pos,
+#   parent_value = fold_dir,
+#   value = row_id,
+#   count = C_WT_fold_change_log2
+# )
+
+# dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>% 
+# select(-c("value","parent.value"))
+# matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
+
+# matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""),]
+# matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
+
+
+# #####################################################################
+# #####################################################################
+
+# dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
+#   datatable = mydata1_neg,
+#   parent_value = fold_dir,
+#   value = row_id,
+#   count = counter
+# )
+
+# dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
+#   datatable = mydata1_neg,
+#   parent_value = fold_dir,
+#   value = row_id,
+#   count = C_WT_fold_change_log2
+# )
+
+# dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>% 
+# select(-c("value","parent.value"))
+# matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
+
+# matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""),]
+# matt_class_fig_neg_dir_sirius <- na.omit(matt_class_fig_neg_dir_sirius)
+
+
+
+# #####################################################################
+# #####################################################################
+# #####################################################################
+# #####################################################################
+
+# matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir,matt_class_fig_pos_dir_sirius,matt_class_fig_neg_dir_sirius)
+# matttree$labels_adjusted <- matttree$value
+# matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- "+"
+# matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- "-"
+# matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
+
+# matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
+
+# matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
+# matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+# matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+# #####################################################################
+
+# # The follow function creates a new hyperlink column based on the labels_adjusted columns
+
+# # matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
+
+# # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+# # matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
+# # matttree$full_hl <- paste0(
+# #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+# # )
+
+# matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
 
 # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
-# matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
 # matttree$full_hl <- paste0(
 #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 # )
 
-matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
-
-# <a href='https://example.com/box1' target='_blank'>Box 1</a>
-matttree$full_hl <- paste0(
-  "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
-)
-
-# <a href='https://example.com/box1' target='_blank'>Box 1</a>
-matttree$smiles_url <- paste0(
-  "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
-)
+# # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+# matttree$smiles_url <- paste0(
+#   "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
+# )
 
 
-matttree <- matttree[order(matttree$value),]
-####################### annoation structure 
-#########################################################
+# matttree <- matttree[order(matttree$value),]
+# ####################### annoation structure 
+# #########################################################
 
-############# ad mol
-#mol_list_2d <- list()
-#for (i in c(1:length(matttree$smiles_sirius))) {
-#  psml <- parse.smiles(matttree$smiles_sirius[i], omit.nulls = TRUE)
-#  if (length(psml) == 0) {
-#    psml <- parse.smiles("C")
-#  }
+# ############# ad mol
+# #mol_list_2d <- list()
+# #for (i in c(1:length(matttree$smiles_sirius))) {
+# #  psml <- parse.smiles(matttree$smiles_sirius[i], omit.nulls = TRUE)
+# #  if (length(psml) == 0) {
+# #    psml <- parse.smiles("C")
+# #  }
 
-#  img <- view.image.2d(psml[1][[1]])
+# #  img <- view.image.2d(psml[1][[1]])
 
-#  r <- as.raster(img)
-#  mol_list_2d[[i]] <- r
-#}
+# #  r <- as.raster(img)
+# #  mol_list_2d[[i]] <- r
+# #}
 
-#########################################################
-#########################################################
+# #########################################################
+# #########################################################
 
-txt <- as.character(paste0
-("feature id: ",matttree$cluster.index_gnps,"<br>",
- "RT: ", round(matttree$feature_rt,2),"<br>",
- "m/z: ", round(matttree$feature_mz,4),
- "<extra></extra>"
-))
-matttree$txt <- txt
+# txt <- as.character(paste0
+# ("feature id: ",matttree$cluster.index_gnps,"<br>",
+#  "RT: ", round(matttree$feature_rt,2),"<br>",
+#  "m/z: ", round(matttree$feature_mz,4),
+#  "<extra></extra>"
+# ))
+# matttree$txt <- txt
 
-fig_treemap = plot_ly(
-  data = matttree,
-  type = "treemap",
-  ids = ~value,
-  labels = ~matttree$full_hl,
-  parents = ~parent.value,
-  values = ~count.x,
-  branchvalues = "total",
-  maxdepth=3,
-  hovertemplate = ~txt
-)
-
-d3 <- htmltools::htmlDependency(
-  "d3", "7.3",
-  src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/"),
-  script = "d3.min.js"
-)
-
-p = plot_ly(
-  data = matttree,
-  type = "treemap",
-  ids = ~value,
-  labels = ~matttree$full_hl,
-  parents = ~parent.value,
-  values = ~count.x,
-  branchvalues = "total",
-  maxdepth=3
-) %>%
-add_text(x = matttree$value, y = matttree$value, customdata = ~matttree$smiles_url, text = ~matttree$value) %>%
-htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
-
-p$dependencies <- c(p$dependencies, list(d3))
-p
+# fig_treemap = plot_ly(
+#   data = matttree,
+#   type = "treemap",
+#   ids = ~value,
+#   labels = ~matttree$full_hl,
+#   parents = ~parent.value,
+#   values = ~count.x,
+#   branchvalues = "total",
+#   maxdepth=3,
+#   hovertemplate = ~txt
+# )
 
 
-library(htmlwidgets)
-library(magrittr)
-library(plotly)
 
-x <- 1:3 
-y <- 1:3
+# # d3 <- htmltools::htmlDependency(
+# #   "d3", "7.3",
+# #   src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/"),
+# #   script = "d3.min.js"
+# # )
 
-artists <- c("Bethoven", "Mozart", "Bach")
+# # p = plot_ly(
+# #   data = matttree,
+# #   type = "treemap",
+# #   ids = ~value,
+# #   labels = ~matttree$full_hl,
+# #   parents = ~parent.value,
+# #   values = ~count.x,
+# #   branchvalues = "total",
+# #   maxdepth=3
+# # ) %>%
+# # add_text(x = matttree$value, y = matttree$value, customdata = ~matttree$smiles_url, text = ~matttree$value) %>%
+# # htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
 
-image_links <- c(
-  "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
-  "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
-  "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
-)
-
-
-x <- 1:3
-y <- 1:3
-
-# hoverinfo = "none" will hide the plotly.js tooltip, but the 
-# plotly_hover event will still fire
-p <- plot_ly(hoverinfo = "none") %>%
-  add_text(x = x, y = y, customdata = image_links, text = artists) %>%
-  htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
-
-p$dependencies <- c(p$dependencies, list(d3))
-p
-
-## ChatGPT adapted prompts for treemap
-######################################
-######################################
-
-usePackage('highcharter')
+# # p$dependencies <- c(p$dependencies, list(d3))
+# # p
 
 
-library(highcharter)
+# # library(htmlwidgets)
+# # library(magrittr)
+# # library(plotly)
 
-# Sample data
-labels <- c("Beethoven", "Mozart", "Chemical Structure")
-sizes <- c(20, 30, 50)
-urls <- c(
-  "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
-  "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
-  "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
-)
+# # x <- 1:3 
+# # y <- 1:3
 
-# Create the data frame
-data <- data.frame(
-  name = labels,
-  value = sizes,
-  link = urls,
-  stringsAsFactors = FALSE
-)
+# # artists <- c("Bethoven", "Mozart", "Bach")
 
-# Create the treemap using highchart
-treemap <- highchart() %>%
-  hc_chart(type = "treemap") %>%
-  hc_title(text = "Treemap with Hover Images") %>%
-  hc_tooltip(
-    useHTML = TRUE,
-    pointFormat = "<b>{point.name}</b><br/><img src='{point.link}' width='100' height='100'>"
-  ) %>%
-  hc_plotOptions(
-    series = list(
-      borderWidth = 0,
-      dataLabels = list(enabled = FALSE),
-      cursor = "pointer"
-    )
-  ) %>%
-  hc_series(
-    data = list_parse(data),
-    levels = list(
-      list(level = 1, layoutAlgorithm = "stripes"),
-      list(level = 2)
-    )
-  )
-
-# Display the treemap
-treemap
+# # image_links <- c(
+# #   "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
+# #   "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
+# #   "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
+# # )
 
 
-htmlwidgets::saveWidget(widget, file = "fig_treemap.html", selfcontained = TRUE)
+# # x <- 1:3
+# # y <- 1:3
+
+# # # hoverinfo = "none" will hide the plotly.js tooltip, but the 
+# # # plotly_hover event will still fire
+# # p <- plot_ly(hoverinfo = "none") %>%
+# #   add_text(x = x, y = y, customdata = image_links, text = artists) %>%
+# #   htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
+
+# # p$dependencies <- c(p$dependencies, list(d3))
+# # p
+
+# ## ChatGPT adapted prompts for treemap
+# ######################################
+# ######################################
+
+# # usePackage('highcharter')
+
+
+# # library(highcharter)
+
+# # # Sample data
+# # labels <- c("Beethoven", "Mozart", "Chemical Structure")
+# # sizes <- c(20, 30, 50)
+# # urls <- c(
+# #   "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
+# #   "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
+# #   "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
+# # )
+
+# # # Create the data frame
+# # data <- data.frame(
+# #   name = labels,
+# #   value = sizes,
+# #   link = urls,
+# #   stringsAsFactors = FALSE
+# # )
+
+# # # Create the treemap using highchart
+# # treemap <- highchart() %>%
+# #   hc_chart(type = "treemap") %>%
+# #   hc_title(text = "Treemap with Hover Images") %>%
+# #   hc_tooltip(
+# #     useHTML = TRUE,
+# #     pointFormat = "<b>{point.name}</b><br/><img src='{point.link}' width='100' height='100'>"
+# #   ) %>%
+# #   hc_plotOptions(
+# #     series = list(
+# #       borderWidth = 0,
+# #       dataLabels = list(enabled = FALSE),
+# #       cursor = "pointer"
+# #     )
+# #   ) %>%
+# #   hc_series(
+# #     data = list_parse(data),
+# #     levels = list(
+# #       list(level = 1, layoutAlgorithm = "stripes"),
+# #       list(level = 2)
+# #     )
+# #   )
+
+# # # Display the treemap
+# # treemap
+
+
+# # htmlwidgets::saveWidget(widget, file = "fig_treemap.html", selfcontained = TRUE)
 
 
 
 
 
-library(treemap)
-library(gridSVG)
-library(XML
-df <- data.frame(
-    character=c("Homer","Marge", "Bart", "Lisa","Maggie", "Moe", "Blinky","Bumblebee Man","Duffman","Maude Flanders","Ned Flanders","Rod Flanders","Todd","Jimbo","Otto Mann","Snowball")
-    ,score=c(268,267,495, 432, 219, 373, 152, 356, 461, 116,107,165, 305,228, 461, 608)
+# # library(treemap)
+# # library(gridSVG)
+# # library(XML
+# # df <- data.frame(
+# #     character=c("Homer","Marge", "Bart", "Lisa","Maggie", "Moe", "Blinky","Bumblebee Man","Duffman","Maude Flanders","Ned Flanders","Rod Flanders","Todd","Jimbo","Otto Mann","Snowball")
+# #     ,score=c(268,267,495, 432, 219, 373, 152, 356, 461, 116,107,165, 305,228, 461, 608)
 
-tm <- treemap( df, index = "character", vSize = "score" 
-svg <- grid.export()$sv
-# see http://stackoverflow.com/questions/10688516/fill-svg-path-with-a-background-image-without-knowing-heightwidth?rq=1
-pattern <- newXMLNode(
-    "defs"
-    ,.children = list(
-        newXMLNode(
-            "pattern"
-            , attrs = c(
-                id = "img_homer"
-                ,patternUnits="userSpaceOnUse"
-                ,patternTransform="translate(0, 0) scale(1, -1) rotate(0)"
-                ,width="106"
-                ,height="98"
-            )
-            , .children = newXMLNode(
-                "image"
-                , attrs = c(
-                    "xlink:href" = "http://i.imgur.com/JP4s21O.jpg"
-                    ,width = 106
-                    ,height = 80
-                )
-            )
-        )
-    )
+# # tm <- treemap( df, index = "character", vSize = "score" 
+# # svg <- grid.export()$sv
+# # # see http://stackoverflow.com/questions/10688516/fill-svg-path-with-a-background-image-without-knowing-heightwidth?rq=1
+# # pattern <- newXMLNode(
+# #     "defs"
+# #     ,.children = list(
+# #         newXMLNode(
+# #             "pattern"
+# #             , attrs = c(
+# #                 id = "img_homer"
+# #                 ,patternUnits="userSpaceOnUse"
+# #                 ,patternTransform="translate(0, 0) scale(1, -1) rotate(0)"
+# #                 ,width="106"
+# #                 ,height="98"
+# #             )
+# #             , .children = newXMLNode(
+# #                 "image"
+# #                 , attrs = c(
+# #                     "xlink:href" = "http://i.imgur.com/JP4s21O.jpg"
+# #                     ,width = 106
+# #                     ,height = 80
+# #                 )
+# #             )
+# #         )
+# #     )
 
-addChildren( svg, pattern 
-homer <- getNodeSet(
-    getNodeSet( svg, "//*[contains(@id,'data.2')]")[[1]]
-    ,"//*[local-name()='rect']"
-)[[5]
-homer_attrs <- xmlAttrs(homer)
-homer_attrs[["fill"]] <- "url(#img_homer)"
-xmlAttrs(homer) <- homer_attr
-library(htmltools)
-browsable(HTML(saveXML(svg)))
-
-
+# # addChildren( svg, pattern 
+# # homer <- getNodeSet(
+# #     getNodeSet( svg, "//*[contains(@id,'data.2')]")[[1]]
+# #     ,"//*[local-name()='rect']"
+# # )[[5]
+# # homer_attrs <- xmlAttrs(homer)
+# # homer_attrs[["fill"]] <- "url(#img_homer)"
+# # xmlAttrs(homer) <- homer_attr
+# # library(htmltools)
+# # browsable(HTML(saveXML(svg)))
 
 
 
-g <- ggplot(iris, aes(x = Sepal.Length,
-                      y = Petal.Length,
-                      color = Species,
-                      text = Species)) + geom_point()
-p <- ggplotly(g, tooltip = "text") %>% partial_bundle() 
 
 
-p %>% htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip_adapted.js"))
-
-fig_treemap <- plot_ly(
-  data = matttree,
-  type = "treemap",
-  ids = ~value,
-  labels = ~matttree$full_hl,
-  parents = ~parent.value,
-  values = ~count.x,
-  branchvalues = "total",
-  maxdepth = 3,
-  marker = list(
-    colors = matttree$count.y,
-    colorscale = list(
-      c(0, 0.5, 1),
-      c("#A89639", "#FFFFFF", "#337AB7")),
-    cmin = max(abs(matttree$count.y)) * (-1),
-    cmax = max(abs(matttree$count.y)),
-    showscale = TRUE,
-    colorbar = list(
-     title = '<b>Increased in </b>',
-      tickmode = "array",
-      tickvals = c((quantile(abs(matttree$count.y),probs=0.5)*(-1)), 0, (quantile(abs(matttree$count.y),probs=0.5))),
-      ticktext = c("wild-type","", "Control"),
-      len = 0.5,
-      thickness = 30,
-      outlinewidth = 1,
-      tickangle = 270
-    ),
-    reversescale = FALSE  # Set to FALSE to maintain the color gradient order
-  )
-)%>% 
-  layout(
-    title = "<b>Metabolomic Variations Across Treatments</b>"
-  )
-
-fig_treemap
+# # g <- ggplot(iris, aes(x = Sepal.Length,
+# #                       y = Petal.Length,
+# #                       color = Species,
+# #                       text = Species)) + geom_point()
+# # p <- ggplotly(g, tooltip = "text") %>% partial_bundle() 
 
 
-# We now save the treempa as a html file locally
+# # p %>% htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip_adapted.js"))
 
-htmlwidgets::saveWidget(p, file = "fig_treemap.html", selfcontained = TRUE)
+# fig_treemap <- plot_ly(
+#   data = matttree,
+#   type = "treemap",
+#   ids = ~value,
+#   labels = ~matttree$full_hl,
+#   parents = ~parent.value,
+#   values = ~count.x,
+#   branchvalues = "total",
+#   maxdepth = 3,
+#   marker = list(
+#     colors = matttree$count.y,
+#     colorscale = list(
+#       c(0, 0.5, 1),
+#       c("#A89639", "#FFFFFF", "#337AB7")),
+#     cmin = max(abs(matttree$count.y)) * (-1),
+#     cmax = max(abs(matttree$count.y)),
+#     showscale = TRUE,
+#     colorbar = list(
+#     # the title html is set to add a line return
+#      title = '<b>Increased in </b> <br> <br> <br>',
+#       tickmode = "array",
+#       tickvals = c((quantile(abs(matttree$count.y),probs=0.5)*(-1)), 0, (quantile(abs(matttree$count.y),probs=0.5))),
+#       ticktext = c("wild-type","", "Control"),
+#       len = 0.5,
+#       thickness = 30,
+#       outlinewidth = 1,
+#       tickangle = 270
+#     ),
+#     reversescale = FALSE  # Set to FALSE to maintain the color gradient order
+#   )
+# )%>% 
+#   layout(
+#     title = "<b>Metabolomic Variations Across Treatments</b>"
+#   )
+
+# fig_treemap
+
+# params$posthoc$p_value
+
+
+# # We now save the treempa as a html file locally
+
+# htmlwidgets::saveWidget(p, file = "fig_treemap.html", selfcontained = TRUE)
 
 
 #############################################################################
