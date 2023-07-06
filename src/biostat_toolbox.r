@@ -1338,7 +1338,7 @@ DE_fc = DE
 
 DE_fc$data = DE_fc$data + 1
 
-fold_change_result = model_apply(fold_change_model, DE)
+fold_change_result = model_apply(fold_change_model, DE_fc)
 
 #view(DE$data)
 #DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
@@ -1723,7 +1723,7 @@ for (condition in conditions) {
   
   # Print the filtered data
   cat("Filtered data for condition", condition, ":\n")
-  print(head(DE_foldchange_pvalues_signi))
+  # print(head(DE_foldchange_pvalues_signi))
   cat("\n")
 
   condition_parts <- strsplit(condition, "_")[[1]]
@@ -2014,6 +2014,7 @@ for (condition in conditions) {
 
   txt <- as.character(paste0
   ("feature id: ",matttree$cluster.index_gnps,"<br>",
+  "name: ", matttree$labels_adjusted,"<br>",
   "RT: ", round(matttree$feature_rt,2),"<br>",
   "m/z: ", round(matttree$feature_mz,4),"<br>",
   "FC (log 2): ", round(matttree$foldchange_log2,2),
@@ -2040,13 +2041,6 @@ for (condition in conditions) {
     layout(
       title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
     )
-
-  fig_treemap_qual
-
-
-
-
-
 
   fig_treemap_quan <- plot_ly(
     data = matttree,
@@ -2087,10 +2081,6 @@ for (condition in conditions) {
     layout(
       title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
     )
-
-  fig_treemap_quan
-
-
 
   # We now save the treempa as a html file locally
  
@@ -2979,41 +2969,41 @@ summary_stat_output_selected_simple = DE_foldchange_pvalues %>%
   )
 
 
-mol_list_2d <- list()
+# mol_list_2d <- list()
 
-for (i in c(1:nrow(summary_stat_output_selected_simple))) {
-  psml <- parse.smiles(summary_stat_output_selected_simple$smiles_sirius[i], omit.nulls = TRUE)
-  if (length(psml) == 0) {
-    psml <- parse.smiles("C")
-  }
-img <- view.image.2d(psml[1][[1]])
-test <-  as.matrix(as.raster(img))
-matrice_df <- melt(test)
-# Renommer les colonnes
-colnames(matrice_df) <- c("y", "x", "couleur")
-mol_list_2d[[i]] = ggplot(matrice_df, aes(x = x, y = rev(y), fill = couleur)) +
-                   geom_tile() +
-                   scale_fill_identity() +
-                   labs(x = "Axe X", y = "Axe Y") +
-                  theme(legend.position="none") + theme_void()
-}
-
-
+# for (i in c(1:nrow(summary_stat_output_selected_simple))) {
+#   psml <- parse.smiles(summary_stat_output_selected_simple$smiles_sirius[i], omit.nulls = TRUE)
+#   if (length(psml) == 0) {
+#     psml <- parse.smiles("C")
+#   }
+# img <- view.image.2d(psml[1][[1]])
+# test <-  as.matrix(as.raster(img))
+# matrice_df <- melt(test)
+# # Renommer les colonnes
+# colnames(matrice_df) <- c("y", "x", "couleur")
+# mol_list_2d[[i]] = ggplot(matrice_df, aes(x = x, y = rev(y), fill = couleur)) +
+#                    geom_tile() +
+#                    scale_fill_identity() +
+#                    labs(x = "Axe X", y = "Axe Y") +
+#                   theme(legend.position="none") + theme_void()
+# }
 
 
-summary_stat_output_selected_simple$plots  <- mol_list_2d
-summary_stat_output_selected_simple$ggplot  <- rep(NA,length(mol_list_2d))
 
-tab_1 <- summary_stat_output_selected_simple %>%
-    select(-plots) %>%
-    gt() %>%
-  text_transform(locations = cells_body(c(ggplot)),
-                 fn = function(x) {
-                  map(summary_stat_output_selected_simple$plots, ggplot_image, height = px(100))
-                 }
-                 )
 
-tab_1 %>% gtsave(filename = filename_interactive_table, inline_css = TRUE) ### add path to save
+# summary_stat_output_selected_simple$plots  <- mol_list_2d
+# summary_stat_output_selected_simple$ggplot  <- rep(NA,length(mol_list_2d))
+
+# tab_1 <- summary_stat_output_selected_simple %>%
+#     select(-plots) %>%
+#     gt() %>%
+#   text_transform(locations = cells_body(c(ggplot)),
+#                  fn = function(x) {
+#                   map(summary_stat_output_selected_simple$plots, ggplot_image, height = px(100))
+#                  }
+#                  )
+
+# tab_1 %>% gtsave(filename = filename_interactive_table, inline_css = TRUE) ### add path to save
 
 #############################################################################
 #############################################################################
