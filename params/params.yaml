@@ -1,19 +1,19 @@
 mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00020
-met_annot_enhancer_folder : mapp_batch_00020
-gnps_job_id : dbb61f53ca4e4ab8bac13d4662aadd8e
+mapp_batch : mapp_batch_00059
+met_annot_enhancer_folder : mapp_batch_00059
+gnps_job_id : b44c9fecbbe843a7ab3b25a59c2200d3
 
 dataset_experiment : 
-  name: "mapp_batch_00020 LCMS metabolomics dataset"
-  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos "
+  name: "mapp_batch_00059 LCMS metabolomics dataset"
+  description: "Didier reinhardt Medicago Nodules HILIC Metabo neg "
 
-polarity: "pos"
+polarity: "neg"
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 27ac08b3bd43408c8d7f6a8e42d51cb9.graphml
+  gnps_graphml: c93d24007a2c4d42857c724ce15421d6.graphml
 
 actions:
   scale_data : TRUE
@@ -25,6 +25,7 @@ actions:
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
+  run_fc_treemaps : TRUE
 
 filter_sample_type :
   mode : 'include'
@@ -32,14 +33,14 @@ filter_sample_type :
   levels : 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'exclude'
-  factor_name : 'condition'
+  mode : 'include'
+  factor_name : 'ATTRIBUTE_condition'
   levels : 
-      - 'C'
-      #- 'HN'
-      #- 'NifH'
-      #- 'Argon'
-      - 'WT'
+      #- 'C'
+      # - 'HN'
+      - 'NifH'
+      - 'Argon'
+      # - 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'
@@ -57,18 +58,17 @@ filter_variable_metadata_two :
   levels : 'Fatty acids' 
 
 
-
 filters:
-  metadata_variable: "condition_simplified" # This variable will be used throughout the whole script
+  metadata_variable: "ATTRIBUTE_condition" # This variable will be used throughout the whole script
 
 
 colnames:
   to_combine: 
-     - "condition"
-     - "condition_detailed"
+     - "ATTRIBUTE_condition"
+    #  - "condition_detailed"
 
   to_output:
-     - "condition"
+    #  - "ATTRIBUTE_condition"
 
 
 to_combine_horizontally: # beware : do not use underscore in your new names !
@@ -80,12 +80,12 @@ to_combine_horizontally: # beware : do not use underscore in your new names !
       #   cols: 
       #   - "HN"
       #   - "WT"
-      group2: 
-        name: "ArgonNifH"
-        cols: 
-        - "Argon"
-        - "NifH"
-        # - "HN"
+      # group2: 
+      #   name: "ArgonNifH"
+      #   cols: 
+      #   - "Argon"
+      #   - "NifH"
+      #   #- "HN"
   # column2: 
   #   name: "sample_type"
   #   groups:
