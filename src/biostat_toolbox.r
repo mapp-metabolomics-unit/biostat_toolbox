@@ -48,6 +48,7 @@ usePackage("dplyr")
 usePackage("emmeans")
 usePackage("EnhancedVolcano")
 usePackage("fpc")
+usePackage("funModeling")
 usePackage("ggdendro")
 usePackage("ggplot2")
 usePackage("ggraph")
@@ -55,34 +56,34 @@ usePackage("ggrepel")
 usePackage("ggtree")
 usePackage("graphlayouts")
 usePackage("gridExtra")
-usePackage("here")
+usePackage("gt")
 usePackage("heatmaply")
+usePackage("here")
 usePackage("igraph")
 usePackage("manhattanly")
 usePackage("openxlsx")
 usePackage("plotly")
-usePackage("pmp")
 usePackage("pls")
+usePackage("pmp")
+usePackage("purrr")
 usePackage("randomcoloR")
 usePackage("randomForest")
+usePackage("rcdk")
 usePackage("readr")
+usePackage("reticulate")
 usePackage("rfPermute")
 usePackage("rgl")
+usePackage("rockchalk")
 usePackage("ropls")
 usePackage("structToolbox")
 usePackage("this.path")
+usePackage("tidyr")
 usePackage("tidyverse")
 usePackage("vegan")
 usePackage("viridis")
+usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
-usePackage("funModeling")
-usePackage("rcdk")
-usePackage("gt")
-usePackage("purrr")
-usePackage("tidyr")
-usePackage("webchem")
-usePackage("reticulate")
 
 
 
@@ -1731,7 +1732,7 @@ for (condition in conditions) {
 
 
   mydata_meta <- select(DE_foldchange_pvalues_signi, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
-  "cluster.index_gnps","feature_rt","feature_mz")  
+  "cluster.index_gnps","feature_rt","feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius")
   mydata_meta$name_comp <- "unknown"
   mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
 
@@ -1921,6 +1922,8 @@ for (condition in conditions) {
   matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
   matttree$value[matttree$labels_adjusted== "unknown"] <- ""
   matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+
+
   #####################################################################
 
   # The follow function creates a new hyperlink column based on the labels_adjusted columns
@@ -1955,6 +1958,17 @@ for (condition in conditions) {
     "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
   )
 
+    # Generate hl URL only if InChIkey2D_sirius is not NA
+  matttree$chebi_hl <- ifelse(!is.na(matttree$chebiid_sirius),
+                        paste0("https://www.ebi.ac.uk/chebi/searchId.do?chebiId=", matttree$chebiid_sirius),
+                        NA)
+
+  # Generate full_hl hyperlink only if hl is not NA
+  matttree$chebi_hl_formatted <- ifelse(!is.na(matttree$chebiid_sirius),
+  paste0(
+    "<a href='", matttree$chebi_hl, "' target='_blank' style='color: black;'>", matttree$chebiid_sirius, "</a>"
+  ), "")
+
   # Generate smiles_url only if smiles_sirius is not NA
   matttree$smiles_url <- ifelse(!is.na(matttree$smiles_sirius),
                                 paste0("https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"),
@@ -1969,6 +1983,8 @@ for (condition in conditions) {
   # Here we replace all NA by empty cells in the matttree$smiles_clickable_url column
 
   matttree$smiles_clickable_url[is.na(matttree$smiles_clickable_url)] <- ""
+  matttree$chebiid_sirius[is.na(matttree$chebiid_sirius)] <- ""
+  matttree$chebiasciiname_sirius[is.na(matttree$chebiasciiname_sirius)] <- ""
 
 
     # Create a new column in the data frame to store the colors for each value
@@ -1987,6 +2003,7 @@ for (condition in conditions) {
   matttree$colors[matttree$parent.value == "Polyketides x Terpenoids" | matttree$value == "Polyketides x Terpenoids"] <- "#6a5c8a"
   matttree$colors[matttree$parent.value == "Shikimates and Phenylpropanoids" | matttree$value == "Shikimates and Phenylpropanoids"] <- "#6ba148"
   matttree$colors[matttree$parent.value == "Terpenoids" | matttree$value == "Terpenoids"] <- "#63acf5"
+
 
   # To check what this is doing
   matttree <- matttree[order(matttree$value),]
@@ -2010,7 +2027,7 @@ for (condition in conditions) {
     data = matttree,
     type = "treemap",
     ids = ~value,
-    labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "</a>"),
+    labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
     parents = ~parent.value,
     values = ~count,
     branchvalues = "total",
@@ -2035,7 +2052,7 @@ for (condition in conditions) {
     data = matttree,
     type = "treemap",
     ids = ~value,
-    labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "</a>"),
+    labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
     parents = ~parent.value,
     values = ~count,
     branchvalues = "total",
