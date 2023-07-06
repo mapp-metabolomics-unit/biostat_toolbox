@@ -1694,6 +1694,13 @@ npclassifier_newpath <- aggregate(cbind(superclass, pathway) ~ class, data = npc
 colnames(npclassifier_newpath) <-  c("NPC.class_canopus","NPC.superclass_canopus","NPC.pathway_canopus")
 npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)] <- paste(npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)],"x")
 
+# Here we list the distinct values in the npclassifier_newpath$NPC.pathway_canopus and order them alphabetically
+
+# npclassifier_newpath  %>%  
+# distinct(NPC.pathway_canopus)  %>% 
+# arrange(NPC.pathway_canopus)
+
+
 index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassifier_newpath$NPC.pathway_canopus)))
 
 
@@ -1926,17 +1933,60 @@ for (condition in conditions) {
   #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
   # )
 
-  matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
+  # matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
 
-  # <a href='https://example.com/box1' target='_blank'>Box 1</a>
-  matttree$full_hl <- paste0(
-    "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
-  )
+  # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
+  # matttree$full_hl <- paste0(
+  #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+  # )
 
   # <a href='https://example.com/box1' target='_blank'>Box 1</a>
   matttree$smiles_url <- paste0(
     "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
   )
+
+    # Generate hl URL only if InChIkey2D_sirius is not NA
+  matttree$hl <- ifelse(!is.na(matttree$InChIkey2D_sirius),
+                        paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt"),
+                        NA)
+
+  # Generate full_hl hyperlink only if hl is not NA
+  matttree$full_hl <- paste0(
+    "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
+  )
+
+  # Generate smiles_url only if smiles_sirius is not NA
+  matttree$smiles_url <- ifelse(!is.na(matttree$smiles_sirius),
+                                paste0("https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"),
+                                NA)
+  # Generate clickable smiles_url only if smiles_url is not NA
+  matttree$smiles_clickable_url <- ifelse(!is.na(matttree$smiles_url),
+                                paste0("<a href='", matttree$smiles_url, "' target='_blank' style='color: black;'>", matttree$smiles_sirius, "</a>"),
+                                NA)
+  # mattree$smiles_clickable_url <- paste0("<a href=", matttree$smiles_url, " target='_blank' rel='noopener noreferrer'>", matttree$smiles_sirius, "</a>")
+
+
+  # Here we replace all NA by empty cells in the matttree$smiles_clickable_url column
+
+  matttree$smiles_clickable_url[is.na(matttree$smiles_clickable_url)] <- ""
+
+
+    # Create a new column in the data frame to store the colors for each value
+  matttree$colors <- NA
+
+  # Assign specific colors to the classes
+  matttree$colors[matttree$parent.value == "Alkaloids" | matttree$value == "Alkaloids"] <- "#514300"
+  matttree$colors[matttree$parent.value == "Alkaloids x Amino acids and Peptides" | matttree$value == "Alkaloids x Amino acids and Peptides"] <- "#715e00"
+  matttree$colors[matttree$parent.value == "Alkaloids x Terpenoids" | matttree$value == "Alkaloids x Terpenoids"] <- "#756101"
+  matttree$colors[matttree$parent.value == "Amino acids and Peptides" | matttree$value == "Amino acids and Peptides"] <- "#ca5a04"
+  matttree$colors[matttree$parent.value == "Amino acids and Peptides x Polyketides" | matttree$value == "Amino acids and Peptides x Polyketides"] <- "#d37f3e"
+  matttree$colors[matttree$parent.value == "Amino acids and Peptides x Shikimates and Phenylpropanoids" | matttree$value == "Amino acids and Peptides x Shikimates and Phenylpropanoids"] <- "#ca9f04"
+  matttree$colors[matttree$parent.value == "Carbohydrates" | matttree$value == "Carbohydrates"] <- "#485f2f"
+  matttree$colors[matttree$parent.value == "Fatty acids" | matttree$value == "Fatty acids"] <- "#612ece"
+  matttree$colors[matttree$parent.value == "Polyketides" | matttree$value == "Polyketides"] <- "#865993"
+  matttree$colors[matttree$parent.value == "Polyketides x Terpenoids" | matttree$value == "Polyketides x Terpenoids"] <- "#6a5c8a"
+  matttree$colors[matttree$parent.value == "Shikimates and Phenylpropanoids" | matttree$value == "Shikimates and Phenylpropanoids"] <- "#6ba148"
+  matttree$colors[matttree$parent.value == "Terpenoids" | matttree$value == "Terpenoids"] <- "#63acf5"
 
   # To check what this is doing
   matttree <- matttree[order(matttree$value),]
@@ -1954,32 +2004,42 @@ for (condition in conditions) {
   ))
   matttree$txt <- txt
 
+
+
   fig_treemap_qual = plot_ly(
     data = matttree,
     type = "treemap",
     ids = ~value,
-    labels = ~matttree$full_hl,
+    labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "</a>"),
     parents = ~parent.value,
     values = ~count,
     branchvalues = "total",
     maxdepth=3,
-    hovertemplate = ~txt # Set the desired width of the treemap
-  ) %>% 
+    hovertemplate = ~txt,
+    marker = list(
+      colors = matttree$colors  # Use the colors column from the data frame
+    )
+    ) %>% 
     layout(
       title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
     )
 
   fig_treemap_qual
 
+
+
+
+
+
   fig_treemap_quan <- plot_ly(
     data = matttree,
     type = "treemap",
     ids = ~value,
-    labels = ~matttree$full_hl,
+    labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "</a>"),
     parents = ~parent.value,
     values = ~count,
     branchvalues = "total",
-    maxdepth = 3,
+    maxdepth = 4,
     hovertemplate = ~txt,
     marker = list(
       colors = matttree$foldchange_log2,
@@ -2023,143 +2083,6 @@ for (condition in conditions) {
 
 }
 
-
-library(htmltools)
-
-txt <- as.character(paste0(
-  "feature id: ", matttree$cluster.index_gnps, "<br>",
-  "RT: ", round(matttree$feature_rt, 2), "<br>",
-  "m/z: ", round(matttree$feature_mz, 4), "<br>",
-  "FC (log 2): ", round(matttree$foldchange_log2, 2), "<br>",
-  "SMILES: <a href='", matttree$smiles_url, "' target='_blank'>", matttree$smiles_sirius, "</a>",
-  "<extra></extra>"
-))
-matttree$txt <- txt
-
-custom_tooltip <- htmltools::tags$div(
-  style = "font-family: Arial; font-size: 14px;",
-  htmltools::HTML('<a href="https://plot.ly/">Powered by Plotly</a>'),
-  htmltools::tags$br(),
-  htmltools::tags$br(),
-  htmltools::tags$p("Custom Tooltip:"),
-  htmltools::tags$p(
-    style = "white-space: pre-wrap;",
-    htmltools::tags$span(
-      style = "font-weight: bold;",
-      htmltools::tags$span(style = "color: #000000;", "{{label}}")
-    ),
-    htmltools::tags$br(),
-    htmltools::tags$span(style = "color: #808080;", "{{text}}")
-  )
-)
-
-fig_treemap_qual <- plot_ly(
-  data = matttree,
-  type = "treemap",
-  ids = ~value,
-  labels = ~matttree$full_hl,
-  parents = ~parent.value,
-  values = ~count,
-  branchvalues = "total",
-  maxdepth = 3,
-  hovertemplate = "%{customdata}<extra></extra>",
-  customdata = txt,
-  tooltip = custom_tooltip
-) %>% 
-  layout(
-    title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
-  )
-fig_treemap_qual
-
-
-
-
-
-library(htmltools)
-
-txt <- as.character(paste0(
-  "feature id: ", matttree$cluster.index_gnps, "<br>",
-  "RT: ", round(matttree$feature_rt, 2), "<br>",
-  "m/z: ", round(matttree$feature_mz, 4), "<br>",
-  "FC (log 2): ", round(matttree$foldchange_log2, 2), "<br>",
-  "SMILES: <a href='", matttree$smiles_url, "' target='_blank'>", matttree$smiles_sirius, "</a>",
-  "<extra></extra>"
-))
-matttree$txt <- txt
-
-custom_tooltip <- htmltools::tags$div(
-  style = "font-family: Arial; font-size: 14px;",
-  htmltools::HTML('<a href="https://plot.ly/">Powered by Plotly</a>'),
-  htmltools::tags$br(),
-  htmltools::tags$br(),
-  htmltools::tags$p("Custom Tooltip:"),
-  htmltools::tags$p(
-    style = "white-space: pre-wrap;",
-    htmltools::tags$span(
-      style = "font-weight: bold;",
-      htmltools::tags$span(style = "color: #000000;", "{{label}}")
-    ),
-    htmltools::tags$br(),
-    htmltools::tags$span(style = "color: #808080;", "{{text}}")
-  )
-)
-
-jscode <- "
-function(feature) {
-  var txt = feature.data.customdata[feature.index];
-  return txt;
-}
-"
-
-fig_treemap_qual <- plot_ly(
-  data = matttree,
-  type = "treemap",
-  ids = ~value,
-  labels = ~matttree$full_hl,
-  parents = ~parent.value,
-  values = ~count,
-  branchvalues = "total",
-  maxdepth = 3,
-  customdata = txt,
-  hovertemplate = "%{customdata}<extra></extra>",
-  hoveron = "fills",
-  hoverlabel = list(bgcolor = "white"),
-  transforms = list(
-    list(
-      type = "filter",
-      target = ~ids,
-      operation = "=",
-      value = ~ids
-    )
-  ),
-  texttemplate = "",
-  text = ~value,
-  hovertext = ~value
-) %>%
-  layout(
-    title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>"),
-    updatemenus = list(
-      list(
-        buttons = list(
-          list(
-            method = "restyle",
-            args = list("transforms[0].value", NULL),
-            label = "Reset Zoom",
-            execute = TRUE
-          )
-        ),
-        direction = "left",
-        pad = list(t = 10, r = 10),
-        showactive = FALSE,
-        type = "buttons",
-        x = 0.1,
-        y = 1.1
-      )
-    )
-  ) %>%
-  htmlwidgets::onRender(jscode)
-
-fig_treemap_qual
 
 
 # mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
