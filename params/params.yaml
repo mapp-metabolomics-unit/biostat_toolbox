@@ -40,7 +40,7 @@ filter_sample_metadata_one :
       # - 'HN'
       - 'NifH'
       - 'Argon'
-      # - 'WT'
+       - 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'
@@ -80,12 +80,12 @@ to_combine_horizontally: # beware : do not use underscore in your new names !
       #   cols: 
       #   - "HN"
       #   - "WT"
-      # group2: 
-      #   name: "ArgonNifH"
-      #   cols: 
-      #   - "Argon"
-      #   - "NifH"
-      #   #- "HN"
+       group2: 
+         name: "ArgonNifH"
+         cols: 
+         - "Argon"
+         - "NifH"
+         #- "HN"
   # column2: 
   #   name: "sample_type"
   #   groups:
