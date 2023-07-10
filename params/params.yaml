@@ -1,13 +1,13 @@
 mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00059
-met_annot_enhancer_folder : mapp_batch_00059
+mapp_batch : mapp_batch_00020
+met_annot_enhancer_folder : mapp_batch_00020
 gnps_job_id : b44c9fecbbe843a7ab3b25a59c2200d3
 
 dataset_experiment : 
-  name: "mapp_batch_00059 LCMS metabolomics dataset"
-  description: "Didier reinhardt Medicago Nodules HILIC Metabo neg "
+  name: "mapp_batch_00020 LCMS metabolomics dataset"
+  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos"
 
-polarity: "neg"
+polarity: "pos"
 ms_files_extension: ".mzML"
 
 filenames:
@@ -40,7 +40,7 @@ filter_sample_metadata_one :
       # - 'HN'
       - 'NifH'
       - 'Argon'
-       - 'WT'
+      - 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'
