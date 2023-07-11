@@ -169,9 +169,9 @@ sep = "_")
 # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
 if (params$paths$output != "") {
-  output_directory <- file.path(params$paths$output, paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  output_directory <- file.path(params$paths$output, paste(params$mapp_batch,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "") #filter_variable_metadata_status,
 } else {
-  output_directory <- file.path(working_directory, "results", "stats", paste(params$mapp_batch, params$filters$metadata_variable, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  output_directory <- file.path(working_directory, "results", "stats", paste(params$mapp_batch,  filter_sample_metadata_status, scaling_status, sep = "_"), sep = "") #filter_variable_metadata_status,
 }
 
 dir.create(output_directory)
@@ -814,9 +814,21 @@ title = title_PCA3D
 
 ggsave(plot = fig_PCA, filename = filename_PCA , width = 10, height = 10)
 
+
+if (params$operating_system$system == "linux") {
+### linux version
 fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
+}
 
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+fig_PCA3D %>%
+    htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
 
 # #################################################################################################
 # #################################################################################################
@@ -1024,8 +1036,22 @@ legend = list(title=list(text=params$filters$metadata_variable)))
 
 ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
 
+
+if (params$operating_system$system == "linux") {
+### linux version
 fig_PCoA3D %>%
     htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE)
+}
+
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+fig_PCoA3D %>%
+    htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
+
 
 
 #################################################################################################
@@ -2101,11 +2127,26 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       )
 
     # We now save the treempa as a html file locally
-  
-    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE)
-    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html"), selfcontained = TRUE)
+
+  if (params$operating_system$system == "linux") {
+    ###linux version
+    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+   
+    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0(first_part, "_vs_", second_part, "_treemap_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
+    }
 
 
+if (params$operating_system$system == "windows") {
+    ###windows version
+    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+    unlink("lib", recursive = FALSE)
+    
+    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0(first_part, "_vs_", second_part, "_treemap_quan.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+    unlink("lib", recursive = FALSE)
+    }
+
+    }
   }
 }
 
@@ -2655,8 +2696,22 @@ layout(title = list(text = title_treemap, y = 0.02))
 # The files is exported
 # The title should be updated !!! 
 
+
+
+if (params$operating_system$system == "linux") {
+### linux version
 fig_treemap %>%
     htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE)
+}
+
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+fig_treemap %>%
+    htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
 
 
 #############################################################################
@@ -2725,9 +2780,20 @@ fig_rf = fig_rf %>%
 # The title should be updated !!! 
 
 
+if (params$operating_system$system == "linux") {
+### linux version
 fig_rf %>%
     htmlwidgets::saveWidget(file = filename_random_forest , selfcontained = TRUE)
+}
 
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+fig_rf %>%
+    htmlwidgets::saveWidget(file = filename_random_forest, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
 
 #############################################################################
 #############################################################################
@@ -2847,9 +2913,22 @@ heatmap_filtered = heatmap_filtered %>% layout(title = list(text = title_heatmap
 
 # The file is exported
 
+
+if (params$operating_system$system == "linux") {
+### linux version
+
 heatmap_filtered %>%
     htmlwidgets::saveWidget(file = filename_heatmap, selfcontained = TRUE)
+}
 
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+heatmap_filtered %>%
+    htmlwidgets::saveWidget(file = filename_heatmap, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
 
 #############################################################################
 #############################################################################
