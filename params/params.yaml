@@ -64,6 +64,7 @@ filter_variable_metadata_two :
 
 filters:
   metadata_variable: "ATTRIBUTE_condition_simplified" # This variable will be used throughout the whole script
+   ## XXX_simplified  for combined horizontally
 
 
 colnames:
@@ -85,7 +86,7 @@ to_combine_horizontally: # beware : do not use underscore in your new names !
       #   - "HN"
       #   - "WT"
        group2: 
-         name: "ArgonNifH"
+         name: "HNArgonNifH"
          cols: 
          - "Argon"
          - "NifH"
