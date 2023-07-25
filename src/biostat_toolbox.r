@@ -194,35 +194,35 @@ sep = "_")
 file_prefix = paste("")
 
 
-filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
-filename_PCA3D <- paste(file_prefix, "PCA3D.html", sep = "")
-filename_PLSDA <- paste(file_prefix, "PLSDA.pdf", sep = "")
-filename_PLSDA_VIP <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
-filename_PCoA <- paste(file_prefix, "PCoA.pdf", sep = "")
-filename_PCoA3D <- paste(file_prefix, "PCoA3D.html", sep = "")
-filename_volcano <- paste(file_prefix, "Volcano.pdf", sep = "")
-filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", sep = "")
-filename_treemap <- paste(file_prefix, "Treemap_interactive.html", sep = "")
-filename_random_forest <- paste(file_prefix, "RF_importance.html", sep = "")
-filename_random_forest_model <- paste(file_prefix, "RF_model.txt", sep = "")
 filename_box_plots <- paste(file_prefix, "Boxplots.pdf", sep = "")
 filename_box_plots_interactive <- paste(file_prefix, "Boxplots_interactive.html", sep = "")
-filename_heatmap <- paste(file_prefix, "Heatmap.html", sep = "")
-filename_summary_stats_table_full <- paste(file_prefix, "summary_stats_table_full.csv", sep = "")
-filename_summary_stats_table_selected <- paste(file_prefix, "summary_stats_table_selected.csv", sep = "")
-filename_graphml <- paste(file_prefix, "graphml.graphml", sep = "")
-filename_params <- paste(file_prefix, "params.yaml", sep = "")
-filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
-filename_session_info <- paste(file_prefix, "session_info.txt", sep = "")
-filename_R_script <- paste(file_prefix, "R_script_backup.R", sep = "")
 filename_DE_model <- paste(file_prefix, "DE_description.txt", sep = "")
-filename_formatted_peak_table <- paste(file_prefix, "formatted_peak_table.csv", sep = "")
-filename_formatted_variable_metadata <- paste(file_prefix, "formatted_variable_metadata.csv", sep = "")
-filename_formatted_sample_metadata <- paste(file_prefix, "formatted_sample_metadata.csv", sep = "")
-filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_data_table.csv", sep = "")
 filename_foldchange_pvalues <- paste(file_prefix, "foldchange_pvalues.csv", sep = "")
+filename_formatted_peak_table <- paste(file_prefix, "formatted_peak_table.csv", sep = "")
+filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_data_table.csv", sep = "")
+filename_formatted_sample_metadata <- paste(file_prefix, "formatted_sample_metadata.csv", sep = "")
+filename_formatted_variable_metadata <- paste(file_prefix, "formatted_variable_metadata.csv", sep = "")
+filename_graphml <- paste(file_prefix, "graphml.graphml", sep = "")
+filename_heatmap <- paste(file_prefix, "Heatmap.html", sep = "")
 filename_interactive_table <- paste(file_prefix, "interactive_table.html", sep = "")
 filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = "")
+filename_params <- paste(file_prefix, "params.yaml", sep = "")
+filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
+filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
+filename_PCA3D <- paste(file_prefix, "PCA3D.html", sep = "")
+filename_PCoA <- paste(file_prefix, "PCoA.pdf", sep = "")
+filename_PCoA3D <- paste(file_prefix, "PCoA3D.html", sep = "")
+filename_PLSDA <- paste(file_prefix, "PLSDA.pdf", sep = "")
+filename_PLSDA_VIP <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
+filename_R_script <- paste(file_prefix, "R_script_backup.R", sep = "")
+filename_random_forest <- paste(file_prefix, "RF_importance.html", sep = "")
+filename_random_forest_model <- paste(file_prefix, "RF_model.txt", sep = "")
+filename_session_info <- paste(file_prefix, "session_info.txt", sep = "")
+filename_summary_stats_table_full <- paste(file_prefix, "summary_stats_table_full.csv", sep = "")
+filename_summary_stats_table_selected <- paste(file_prefix, "summary_stats_table_selected.csv", sep = "")
+filename_treemap <- paste(file_prefix, "Treemap_interactive.html", sep = "")
+filename_volcano <- paste(file_prefix, "Volcano.pdf", sep = "")
+filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", sep = "")
 
 ################################### load peak table ########################################
 ############################################################################################
@@ -2160,22 +2160,21 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
   if (params$operating_system$system == "unix") {
     ###linux version
-    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
    
-    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0(first_part, "_vs_", second_part, "_treemap_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
+    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
     }
 
 
 if (params$operating_system$system == "windows") {
     ###windows version
     Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
     unlink("lib", recursive = FALSE)
     
-    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0(first_part, "_vs_", second_part, "_treemap_quan.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
     unlink("lib", recursive = FALSE)
     }
-
     }
   }
 
