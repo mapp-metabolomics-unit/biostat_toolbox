@@ -123,11 +123,12 @@ params_user = yaml.load_file(path_to_params_user)
 
 params$paths$docs = params_user$paths$docs
 params$paths$output = params_user$paths$output
-
+params$operating_system$system = params_user$operating_system$system
+params$operating_system$pandoc = params_user$operating_system$pandoc
 
 # We set the working directory
 
-working_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch, params$polarity)
+working_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch)
 
 # We set the output directory 
 
@@ -169,9 +170,9 @@ sep = "_")
 # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
 if (params$paths$output != "") {
-  output_directory <- file.path(params$paths$output, paste(params$mapp_batch,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "") #filter_variable_metadata_status,
+  output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
 } else {
-  output_directory <- file.path(working_directory, "results", "stats", paste(params$mapp_batch,  filter_sample_metadata_status, scaling_status, sep = "_"), sep = "") #filter_variable_metadata_status,
+  output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
 }
 
 dir.create(output_directory)
@@ -186,12 +187,12 @@ dir.create(output_directory)
 # The Figures titles are conditionally defined according to the user's choices and option in the parameters file
 
 
-title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
-title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ") 
-title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$filters$metadata_variable, sep = " ")
+title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
+title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
+title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
+title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
 title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
@@ -203,49 +204,49 @@ title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest fil
 
 
 #file_prefix = paste(params$mapp_batch, 
-#                    params$filters$metadata_variable, 
+#                    params$target$sample_metadata_header, 
 #                    filter_variable_metadata_status, 
 #                    filter_sample_metadata_status, 
 #                    params$polarity, 
 #                    scaling_status, 
 #                    sep = "_")
 
-file_prefix = paste(params$mapp_batch, 
-                    params$filters$metadata_variable,
-                    sep = "_")
+# file_prefix = paste(params$mapp_batch, 
+#                     params$target$sample_metadata_header,
+#                     sep = "_")
+
+file_prefix = paste("")
 
 
-
-
-filename_PCA <- paste(file_prefix, "_PCA.pdf", sep = "")
-filename_PCA3D <- paste(file_prefix, "_PCA3D.html", sep = "")
-filename_PLSDA <- paste(file_prefix, "_PLSDA.pdf", sep = "")
-filename_PLSDA_VIP <- paste(file_prefix, "_PLSDA_VIP.pdf", sep = "")
-filename_PCoA <- paste(file_prefix, "_PCoA.pdf", sep = "")
-filename_PCoA3D <- paste(file_prefix, "_PCoA3D.html", sep = "")
-filename_volcano <- paste(file_prefix, "_Volcano.pdf", sep = "")
-filename_volcano_interactive <- paste(file_prefix, "_Volcano_interactive.html", sep = "")
-filename_treemap <- paste(file_prefix, "_Treemap_interactive.html", sep = "")
-filename_random_forest <- paste(file_prefix, "_RF_importance.html", sep = "")
-filename_random_forest_model <- paste(file_prefix, "_RF_model.txt", sep = "")
-filename_box_plots <- paste(file_prefix, "_Boxplots.pdf", sep = "")
-filename_box_plots_interactive <- paste(file_prefix, "_Boxplots_interactive.html", sep = "")
-filename_heatmap <- paste(file_prefix, "_Heatmap.html", sep = "")
-filename_summary_stats_table_full <- paste(file_prefix, "_summary_stats_table_full.csv", sep = "")
-filename_summary_stats_table_selected <- paste(file_prefix, "_summary_stats_table_selected.csv", sep = "")
-filename_graphml <- paste(file_prefix, "_graphml.graphml", sep = "")
-filename_params <- paste(file_prefix, "_params.yaml", sep = "")
-filename_params_user <- paste(file_prefix, "_params_user.yaml", sep = "")
-filename_session_info <- paste(file_prefix, "_session_info.txt", sep = "")
-filename_R_script <- paste(file_prefix, "_R_script_backup.R", sep = "")
-filename_DE_model <- paste(file_prefix, "_DE_description.txt", sep = "")
-filename_formatted_peak_table <- paste(file_prefix, "_formatted_peak_table.csv", sep = "")
-filename_formatted_variable_metadata <- paste(file_prefix, "_formatted_variable_metadata.csv", sep = "")
-filename_formatted_sample_metadata <- paste(file_prefix, "_formatted_sample_metadata.csv", sep = "")
-filename_formatted_sample_data_table <- paste(file_prefix, "_formatted_sample_data_table.csv", sep = "")
-filename_foldchange_pvalues <- paste(file_prefix, "_foldchange_pvalues.csv", sep = "")
-filename_interactive_table <- paste(file_prefix, "_interactive_table.html", sep = "")
-filename_metaboverse_table <- paste(file_prefix, "_metaboverse_table.tsv", sep = "")
+filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
+filename_PCA3D <- paste(file_prefix, "PCA3D.html", sep = "")
+filename_PLSDA <- paste(file_prefix, "PLSDA.pdf", sep = "")
+filename_PLSDA_VIP <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
+filename_PCoA <- paste(file_prefix, "PCoA.pdf", sep = "")
+filename_PCoA3D <- paste(file_prefix, "PCoA3D.html", sep = "")
+filename_volcano <- paste(file_prefix, "Volcano.pdf", sep = "")
+filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", sep = "")
+filename_treemap <- paste(file_prefix, "Treemap_interactive.html", sep = "")
+filename_random_forest <- paste(file_prefix, "RF_importance.html", sep = "")
+filename_random_forest_model <- paste(file_prefix, "RF_model.txt", sep = "")
+filename_box_plots <- paste(file_prefix, "Boxplots.pdf", sep = "")
+filename_box_plots_interactive <- paste(file_prefix, "Boxplots_interactive.html", sep = "")
+filename_heatmap <- paste(file_prefix, "Heatmap.html", sep = "")
+filename_summary_stats_table_full <- paste(file_prefix, "summary_stats_table_full.csv", sep = "")
+filename_summary_stats_table_selected <- paste(file_prefix, "summary_stats_table_selected.csv", sep = "")
+filename_graphml <- paste(file_prefix, "graphml.graphml", sep = "")
+filename_params <- paste(file_prefix, "params.yaml", sep = "")
+filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
+filename_session_info <- paste(file_prefix, "session_info.txt", sep = "")
+filename_R_script <- paste(file_prefix, "R_script_backup.R", sep = "")
+filename_DE_model <- paste(file_prefix, "DE_description.txt", sep = "")
+filename_formatted_peak_table <- paste(file_prefix, "formatted_peak_table.csv", sep = "")
+filename_formatted_variable_metadata <- paste(file_prefix, "formatted_variable_metadata.csv", sep = "")
+filename_formatted_sample_metadata <- paste(file_prefix, "formatted_sample_metadata.csv", sep = "")
+filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_data_table.csv", sep = "")
+filename_foldchange_pvalues <- paste(file_prefix, "foldchange_pvalues.csv", sep = "")
+filename_interactive_table <- paste(file_prefix, "interactive_table.html", sep = "")
+filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = "")
 
 ## We save the used params.yaml
 
@@ -780,7 +781,7 @@ pca_object = pca_seq_result[length(pca_seq_result)]
 # PCA scores plot
 
 pca_scores_plot = pca_scores_plot(
-  factor_name = params$filters$metadata_variable,
+  factor_name = params$target$sample_metadata_header,
   label_factor = "sample_id",
   ellipse_type = "t",
   ellipse_confidence = 0.9,
@@ -798,14 +799,14 @@ fig_PCA = pca_plot + theme_classic() + facet_wrap(~ pca_plot$labels$title) + ggt
 PCA_meta = merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
 
 
-fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$filters$metadata_variable])
+fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header])
 fig_PCA3D = fig_PCA3D %>% add_markers()
 fig_PCA3D = fig_PCA3D %>% layout(scene = list(
   xaxis = list(title = "PC1"),
   yaxis = list(title = "PC2"),
   zaxis = list(title = "PC3")
 ),
-legend = list(title=list(text=params$filters$metadata_variable)),
+legend = list(title=list(text=params$target$sample_metadata_header)),
 title = title_PCA3D
 )
 
@@ -815,7 +816,7 @@ title = title_PCA3D
 ggsave(plot = fig_PCA, filename = filename_PCA , width = 10, height = 10)
 
 
-if (params$operating_system$system == "linux") {
+if (params$operating_system$system == "unix") {
 ### linux version
 fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
@@ -843,7 +844,7 @@ message("Launching PLSDA calculations ...")
 # First we make sure that the sample metadata variable of interest is a factor
 # For now we use DE_original here ... check if this is correct
 
-DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,params$filters$metadata_variable])
+DE$sample_meta[,params$target$sample_metadata_header] = as.factor(DE$sample_meta[,params$target$sample_metadata_header])
 
 # glimpse(DE_filtered$sample_meta)
 
@@ -852,16 +853,16 @@ DE$sample_meta[,params$filters$metadata_variable] = as.factor(DE$sample_meta[,pa
 
 # # prepare model sequence
 plsda_seq_model = # autoscale() +
-                  filter_na_count(threshold=3,factor_name=params$filters$metadata_variable) +
+                  filter_na_count(threshold=3,factor_name=params$target$sample_metadata_header) +
                   # knn_impute() +
-                  PLSDA(factor_name=params$filters$metadata_variable, number_components=2)
+                  PLSDA(factor_name=params$target$sample_metadata_header, number_components=2)
 
 plsda_seq_result = model_apply(plsda_seq_model,DE)
 
 # Fetching the PLSDA data object
 plsda_object = plsda_seq_result[length(plsda_seq_result)]
 
-C = pls_scores_plot(factor_name = params$filters$metadata_variable)
+C = pls_scores_plot(factor_name = params$target$sample_metadata_header)
 
 plsda_plot = chart_plot(C,plsda_object)
 
@@ -1010,7 +1011,7 @@ metadata_merge = data_RF$sample_meta[order(sample_name), ]
 
 data_PCOA_merge = data.frame(cbind(D3_data_dist, metadata_merge))
 
-cols = data_PCOA_merge[params$filters$metadata_variable]
+cols = data_PCOA_merge[params$target$sample_metadata_header]
 cols = cols[, 1]
 
 
@@ -1029,7 +1030,7 @@ fig_PCoA3D = plot_ly(
     "</br> num: ", data_PCOA_merge$sample_id
   )
 ) %>% layout(title = title_PCoA3D,
-legend = list(title=list(text=params$filters$metadata_variable)))
+legend = list(title=list(text=params$target$sample_metadata_header)))
 
 
 # The files are exported
@@ -1037,7 +1038,7 @@ legend = list(title=list(text=params$filters$metadata_variable)))
 ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
 
 
-if (params$operating_system$system == "linux") {
+if (params$operating_system$system == "unix") {
 ### linux version
 fig_PCoA3D %>%
     htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE)
@@ -1129,7 +1130,7 @@ message("Launching Volcano Plots calculations ...")
 ################# heat filter
 
 # data_RF = DE
-# sample_name = paste(data_RF$sample_meta$sample_id, data_RF$sample_meta[[params$filters$metadata_variable]], sep = "_")
+# sample_name = paste(data_RF$sample_meta$sample_id, data_RF$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
 # data_subset_norm_rf = data_RF$data
 # data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
@@ -1144,7 +1145,7 @@ message("Launching Volcano Plots calculations ...")
 #############################################################################
 
 
-# matt_trait = data_RF$sample_meta[params$filters$metadata_variable]
+# matt_trait = data_RF$sample_meta[params$target$sample_metadata_header]
 # vec_trait = matt_trait[, 1]
 # data_subset_norm_rf$treatment = as.factor(vec_trait) ### select the variable
 # data_subset_norm_rf = data.frame(data_subset_norm_rf)
@@ -1202,9 +1203,9 @@ for (i in params$multi_series$points) {
   # assign(paste("DE_filtered", i, sep = "_"), filter_smeta_result@filtered)
 
   # The formula is defined externally
-  formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
+  formula = as.formula(paste0('y', '~', params$target$sample_metadata_header, '+' ,
   'Error(sample_id/',
-  params$filters$metadata_variable,
+  params$target$sample_metadata_header,
   ')'
   )
   )
@@ -1236,7 +1237,7 @@ for (i in params$multi_series$points) {
   # We build a fold change model
 
   fold_change_model = fold_change(
-    factor_name = params$filters$metadata_variable,
+    factor_name = params$target$sample_metadata_header,
     paired = FALSE,
     sample_name = character(0),
     threshold = 0.5,
@@ -1309,9 +1310,9 @@ DE_foldchange_pvalues = Reduce(function(x, y) merge(x, y, by = "row_id"), l)
 
 
 # The formula is defined externally
-formula = as.formula(paste0('y', '~', params$filters$metadata_variable, '+' ,
+formula = as.formula(paste0('y', '~', params$target$sample_metadata_header, '+' ,
 'Error(sample_id/',
- params$filters$metadata_variable,
+ params$target$sample_metadata_header,
  ')'
 )
 )
@@ -1349,7 +1350,7 @@ HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
 
 
 fold_change_model = fold_change(
-  factor_name = params$filters$metadata_variable,
+  factor_name = params$target$sample_metadata_header,
   paired = FALSE,
   sample_name = character(0),
   threshold = 0.5,
@@ -2128,7 +2129,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
     # We now save the treempa as a html file locally
 
-  if (params$operating_system$system == "linux") {
+  if (params$operating_system$system == "unix") {
     ###linux version
     htmlwidgets::saveWidget(fig_treemap_qual, file = paste0(first_part, "_vs_", second_part, "_treemap_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
    
@@ -2148,7 +2149,6 @@ if (params$operating_system$system == "windows") {
 
     }
   }
-}
 
 
 # mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
@@ -2698,7 +2698,7 @@ layout(title = list(text = title_treemap, y = 0.02))
 
 
 
-if (params$operating_system$system == "linux") {
+if (params$operating_system$system == "unix") {
 ### linux version
 fig_treemap %>%
     htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE)
@@ -2733,7 +2733,7 @@ features_of_importance = DE_foldchange_pvalues %>%
   pull()
 
 
-# We select all columns except the params$filters$metadata_variable columns in 
+# We select all columns except the params$target$sample_metadata_header columns in 
 # data_subset_norm_rf_filter and we prefix the column names with an X.
 # We use the dplyr syntax to do this and the rename function to rename the columns
 # We then subset the data to keep only the columns that are in the imp_filter1 variable
@@ -2745,14 +2745,14 @@ data_subset_for_RF = DE$data %>%
   merge(DE$sample_meta, ., by = "row.names")  %>% 
   # We keep the row.names columnn as row.names
   transform(row.names = Row.names)  %>%
-  # We keep the params$filters$metadata_variable column and the columns that start with X
-  select(params$filters$metadata_variable, starts_with("X"))  %>% 
-  # We set the params$filters$metadata_variable column as a factor
-  mutate(!!as.symbol(params$filters$metadata_variable) := factor(!!as.symbol(params$filters$metadata_variable)))
+  # We keep the params$target$sample_metadata_header column and the columns that start with X
+  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  # We set the params$target$sample_metadata_header column as a factor
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))
 
-# We define the formula externally to inject the external variable # params$filters$metadata_variable
+# We define the formula externally to inject the external variable # params$target$sample_metadata_header
 
-formula = as.formula(paste0(params$filters$metadata_variable," ~ ."))
+formula = as.formula(paste0(params$target$sample_metadata_header," ~ ."))
 
 # We launch the rfPermute function
 
@@ -2780,7 +2780,7 @@ fig_rf = fig_rf %>%
 # The title should be updated !!! 
 
 
-if (params$operating_system$system == "linux") {
+if (params$operating_system$system == "unix") {
 ### linux version
 fig_rf %>%
     htmlwidgets::saveWidget(file = filename_random_forest , selfcontained = TRUE)
@@ -2812,20 +2812,20 @@ imp.scaled = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ]
 boxplot_top_N = row.names(head(imp.scaled, n = params$boxplot$topN))
 
 data_subset_boxplot = data_subset_for_RF %>%
-  select(all_of(boxplot_top_N), params$filters$metadata_variable)
+  select(all_of(boxplot_top_N), params$target$sample_metadata_header)
 
 # We now establish a side by side box plot for each columns of the data_subset_norm_boxplot
 # We use the melt function to reshape the data to a long format
 # We then use the ggplot2 syntax to plot the data and the facet_wrap function to plot the data side by side
 
 # Gather value columns into key-value pairs
-df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$filters$metadata_variable)
+df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$target$sample_metadata_header)
 
 
 # Create boxplots faceted by variable and colored by age
 # Note how we use the get function to access the variable name
 # See here for details  https://stackoverflow.com/a/22309328/4908629
-p = ggplot(df_long, aes(x = get(params$filters$metadata_variable), y = value, fill = get(params$filters$metadata_variable))) +
+p = ggplot(df_long, aes(x = get(params$target$sample_metadata_header), y = value, fill = get(params$target$sample_metadata_header))) +
   geom_boxplot() +
   facet_wrap(~ variable, ncol = 4) +
   theme_minimal()+
@@ -2872,7 +2872,7 @@ imp_filter2 = gsub("X", "", imp_filter2X)
 data_subset_for_RF = data_subset_for_RF[, colnames(data_subset_for_RF) %in% imp_filter2X]
 # my_sample_col = DE$sample_meta$sample_id
 
-my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$filters$metadata_variable]], sep = "_")
+my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
 annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
 
@@ -2914,7 +2914,7 @@ heatmap_filtered = heatmap_filtered %>% layout(title = list(text = title_heatmap
 # The file is exported
 
 
-if (params$operating_system$system == "linux") {
+if (params$operating_system$system == "unix") {
 ### linux version
 
 heatmap_filtered %>%

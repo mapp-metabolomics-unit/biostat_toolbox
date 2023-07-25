@@ -1,7 +1,3 @@
-operating_system:
-  system: windows # linux
-  pandoc: "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools" ### only for windows
-
 mapp_project : mapp_project_00007
 mapp_batch : mapp_batch_00020
 met_annot_enhancer_folder : mapp_batch_00020
@@ -11,7 +7,6 @@ dataset_experiment :
   name: "mapp_batch_00020 LCMS metabolomics dataset"
   description: "Didier reinhardt Medicago Nodules HILIC Metabo pos"
 
-polarity: "pos"
 ms_files_extension: ".mzML"
 
 filenames:
@@ -38,17 +33,17 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'ATTRIBUTE_condition'
+  factor_name : 'condition'
   levels : 
       #- 'C'
       - 'HN'
       - 'NifH'
       - 'Argon'
-      - 'WT'
+      #- 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'
-  factor_name : 'ATTRIBUTE_condition'
+  factor_name : 'condition'
   levels : 'C'
 
 filter_variable_metadata_one :
@@ -62,23 +57,23 @@ filter_variable_metadata_two :
   levels : 'Fatty acids' 
 
 
-filters:
-  metadata_variable: "ATTRIBUTE_condition_simplified" # This variable will be used throughout the whole script
+target:
+  sample_metadata_header: "condition_simplified" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
 colnames:
   to_combine: 
-     - "ATTRIBUTE_condition"
+     - "condition"
     #  - "condition_detailed"
 
   to_output:
-    - "ATTRIBUTE_condition"
+    - "condition"
 
 
 to_combine_horizontally: # beware : do not use underscore in your new names !
   column1: 
-    name: "ATTRIBUTE_condition"
+    name: "condition"
     groups:
       # group1: 
       #   name: "HN_WT"
@@ -86,11 +81,11 @@ to_combine_horizontally: # beware : do not use underscore in your new names !
       #   - "HN"
       #   - "WT"
        group2: 
-         name: "HNArgonNifH"
+         name: "ArgonNifH"
          cols: 
          - "Argon"
          - "NifH"
-         - "HN"
+        #  - "HN"
   # column2: 
   #   name: "sample_type"
   #   groups:
