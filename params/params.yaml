@@ -39,7 +39,7 @@ filter_sample_metadata_one :
       - 'HN'
       - 'NifH'
       - 'Argon'
-      #- 'WT'
+      - 'WT'
 
 filter_sample_metadata_two :
   mode : 'exclude'

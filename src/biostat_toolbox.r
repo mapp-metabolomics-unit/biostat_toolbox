@@ -44,6 +44,7 @@ usePackage("BiocFileCache")
 usePackage("cowplot")
 usePackage("data.table")
 usePackage("dbscan")
+usePackage("tools")
 usePackage("dplyr")
 usePackage("emmeans")
 usePackage("EnhancedVolcano")
@@ -165,39 +166,14 @@ filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode
 params$filter_variable_metadata_one$factor_name,
 paste(params$filter_variable_metadata_one$levels, collapse = "_"),
 sep = "_") 
-} else { filter_variable_metadata_status = "no_vm_filter" }
+} else { filter_variable_metadata_status = "" }
 
-# Here we check if the params$paths$out value exist and use it else we use the default output_directory
-
-if (params$paths$output != "") {
-  output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-} else {
-  output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-}
-
-dir.create(output_directory)
 
 
 #################################################################################################
 #################################################################################################
 ################### Filename and paths establishment ##########################################
 #################################################################################################
-
-
-# The Figures titles are conditionally defined according to the user's choices and option in the parameters file
-
-
-title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
-title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
-title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
-title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 
 
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
@@ -247,21 +223,6 @@ filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_dat
 filename_foldchange_pvalues <- paste(file_prefix, "foldchange_pvalues.csv", sep = "")
 filename_interactive_table <- paste(file_prefix, "interactive_table.html", sep = "")
 filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = "")
-
-## We save the used params.yaml
-
-message("Writing params.yaml ...")
-
-
-file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
-file.copy(path_to_params_user, file.path(output_directory,filename_params_user), overwrite = TRUE)
-
-
-# We move to the output directory
-
-setwd(output_directory)
-
-
 
 ################################### load peak table ########################################
 ############################################################################################
@@ -702,20 +663,7 @@ half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
 
 min_sec = min(DE$data[DE$data > 0], na.rm = TRUE)
 
-
 DE$data[DE$data == 0] = min_sec
-
-# We display the properties of the DatasetExperiment object to the user.
-message("DatasetExperiment object properties: ")
-
-sink(filename_DE_model)
-
-print(DE)
-
-sink() 
-} else {
-  stop("Please check the value of the 'scale_data' parameter in the params file.")
-}
 
 ################################################################################################
 ################################################################################################
@@ -752,10 +700,91 @@ formatted_sample_metadata = DE_filtered$sample_meta
 formatted_sample_data_table = merge(DE_filtered$sample_meta, DE_filtered$data, by="row.names")
 
 
+
+###################################################################################################
+######################### rename main folder - short version
+# Here we check if the params$paths$out value exist and use it else we use the default output_directory
+
+
+target_name <- paste(as.vector(unique(DE$sample_meta[[params$target$sample_metadata_header]])), collapse = "_vs_")
+
+
+if (params$paths$output != "") {
+  output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name,filter_variable_metadata_status, scaling_status, sep = "_"), sep = "")
+} else {
+  output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = "_"), sep = "")
+}
+
+output_directory <- gsub("__","_",output_directory)
+
+dir.create(output_directory)
+
+
+#################################################################################
+#################################################################################
+##### write raw data and param 
+
+## We save the used params.yaml
+
+message("Writing params.yaml ...")
+
+
+file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
+file.copy(path_to_params_user, file.path(output_directory,filename_params_user), overwrite = TRUE)
+
+# We move to the output directory
+
+setwd(output_directory)
+
+# We display the properties of the DatasetExperiment object to the user.
+message("DatasetExperiment object properties: ")
+
+sink(filename_DE_model)
+
+print(DE)
+
+sink() 
+} else {
+  stop("Please check the value of the 'scale_data' parameter in the params file.")
+}
+
+
+#######################
+
+
 write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",", row.names = FALSE)
 write.table(formatted_variable_metadata_filtered, file = filename_formatted_variable_metadata, sep = ",", row.names = FALSE)
 write.table(formatted_sample_metadata, file = filename_formatted_sample_metadata, sep = ",", row.names = FALSE)
 write.table(formatted_sample_data_table, file = filename_formatted_sample_data_table, sep = ",", row.names = FALSE)
+################################################################################################
+################################################################################################
+
+# The Figures titles are conditionally defined according to the user's choices and option in the parameters file
+
+#title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
+#title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+#title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
+#title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+#title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
+#title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+#title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+#title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+#title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+#title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+#title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+
+title_PCA = paste("PCA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_PLSDA = paste("PLSDA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_PCA3D = paste("PCA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_PCoA = paste("PCoA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_PCoA3D = paste("PCoA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_treemap = paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_random_forest = paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
 
 #################################################################################################
 #################################################################################################
@@ -2764,18 +2793,33 @@ imp_table_rf = data.frame(imp_table_rf)
 
 summary(data.rp)
 
-f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
+#f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
 
-sink()
+sink() 
 
 ########### plot importance
-# plot.new()
+# 
+sorted_indices <- order(-imp_table_rf$MeanDecreaseGini)
+# Load the required libraries
+# Sort the data based on MeanDecreaseGini
+imp_table_rf <- imp_table_rf[sorted_indices, ]
 
-fig_rf = ggplotly(f[[(length(f) - 1)]] + theme_classic() + facet_wrap(~ f[[(length(f) - 1)]]$labels$title))
-fig_rf = fig_rf %>%
-  layout(title = title_random_forest)
-
-
+# Create the plotly bar plot
+fig_rf <- plot_ly(
+  data = imp_table_rf,
+  x = ~MeanDecreaseGini,
+  y = ~reorder(row.names(imp_table_rf), -MeanDecreaseGini,decreasing = TRUE),  # Use reorder to maintain sorting order
+  type = "bar",
+  orientation = "h"
+) %>%
+  layout(
+    title = title_random_forest,
+    xaxis = list(title = "Importance", tickfont = list(size = 12)),   # Adjust the label size here (e.g., size = 12)
+    yaxis = list(title = "Features", tickfont = list(size = 5)),      # Adjust the label size here (e.g., size = 10)
+    margin = list(l = 100, r = 20, t = 50, b = 70),
+    showlegend = FALSE
+  )
+fig_rf
 # The file is exported
 # The title should be updated !!! 
 
