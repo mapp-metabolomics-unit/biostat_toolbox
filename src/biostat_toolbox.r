@@ -203,7 +203,8 @@ filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_dat
 filename_formatted_sample_metadata <- paste(file_prefix, "formatted_sample_metadata.csv", sep = "")
 filename_formatted_variable_metadata <- paste(file_prefix, "formatted_variable_metadata.csv", sep = "")
 filename_graphml <- paste(file_prefix, "graphml.graphml", sep = "")
-filename_heatmap <- paste(file_prefix, "Heatmap.html", sep = "")
+filename_heatmap_pval <- paste(file_prefix, "Heatmap_pval.html", sep = "")
+filename_heatmap_rf <- paste(file_prefix, "Heatmap_rf.html", sep = "")
 filename_interactive_table <- paste(file_prefix, "interactive_table.html", sep = "")
 filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = "")
 filename_params <- paste(file_prefix, "params.yaml", sep = "")
@@ -255,9 +256,9 @@ feature_table$"feature_id_full" = paste(feature_table$feature_id,
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
 feature_table_intensities = feature_table %>%
-  select(feature_id_full, contains(" Peak area")) %>%
+  select(feature_id, contains(" Peak area")) %>%
   rename_with(~gsub(" Peak area", "", .x)) %>%
-  column_to_rownames(var = "feature_id_full") %>%
+  column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
 
@@ -401,7 +402,7 @@ VM = list_df %>% reduce(full_join, by='feature_id')
 # We now convert the VM tibble into a dataframe and set the `feature_id_full` column as the rownames
 
 VM = as.data.frame(VM)
-row.names(VM) = VM$feature_id_full
+row.names(VM) = VM$feature_id
 
 
 # We order the VM by rownames and by column names
@@ -835,7 +836,9 @@ title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metada
 title_treemap = paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_random_forest = paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_heatmap_rf = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_heatmap_pval = paste("Heatmap of significant feature for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
 
 
 #################################################################################################
@@ -2720,7 +2723,7 @@ if (params$operating_system$system == "windows") {
 #############################################################################
 #############################################################################
 
-message("Preparing Tree Map ...")
+message("Preparing Tree Map ...") 
 
 # glimpse(DE_foldchange_pvalues)
 
@@ -2827,7 +2830,7 @@ sink(filename_random_forest_model)
 
 features_of_importance = DE_foldchange_pvalues %>%
   filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
-  select(feature_id_full) %>%
+  select(feature_id) %>%
   # we output the data as a vector
   pull()
 
@@ -2838,7 +2841,7 @@ features_of_importance = DE_foldchange_pvalues %>%
 # We then subset the data to keep only the columns that are in the imp_filter1 variable
 
 data_subset_for_RF = DE$data %>%
-  select(all_of(features_of_importance)) %>% 
+  select(all_of(as.character(features_of_importance))) %>% 
   rename_all(~ paste0("X", .))  %>% 
   # here we join the data with the associated sample metadata using the row.names as index
   merge(DE$sample_meta, ., by = "row.names")  %>% 
@@ -2963,12 +2966,100 @@ fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
 #   layout(title = title_box_plots,
 #   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
 
-
 # The files are exported
 
 ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
 # fig_boxplotly %>%
 #     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
+#############################################################################
+############## Pvalue filtered Heat Map  #############################
+#############################################################################
+#############################################################################
+
+message("Preparing  Pvalue filtered Heatmap ...")
+
+data_subset_for_Pval = DE$data %>%
+  select(all_of(as.character(features_of_importance))) %>% 
+  rename_all(~ paste0("X", .))  %>% 
+  # here we join the data with the associated sample metadata using the row.names as index
+  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  # We keep the row.names columnn as row.names
+  transform(row.names = Row.names)  %>%
+  # We keep the params$target$sample_metadata_header column and the columns that start with X
+  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  # We set the params$target$sample_metadata_header column as a factor
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))
+
+
+imp_filter2X = row.names(imp_table_rf)
+imp_filter2 = gsub("X", "", imp_filter2X)
+
+data_subset_for_Pval = data_subset_for_Pval[, colnames(data_subset_for_Pval) %in% imp_filter2X]
+# my_sample_col = DE$sample_meta$sample_id
+
+my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
+
+annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
+
+colnames(annot_col) = c("Superclass", "Pathway")
+
+rownames(annot_col) = DE$variable_meta$feature_id
+annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
+
+
+ByPal = colorRampPalette(c(wes_palette("Zissou1")))
+
+data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
+
+
+ByPal = colorRampPalette(c(wes_palette("Zissou1")))
+
+data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
+# heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
+
+
+
+heatmap_filtered_pval = heatmaply(
+  percentize(data_subset_for_Pval),
+  seriate = "mean", # none , GW , mean, OLO
+  col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
+  col_side_palette = ByPal,
+  labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
+  subplot_margin = 0.01,
+  scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+    low = "lightsteelblue2",
+    # mid = "goldenrod1",
+    high = "firebrick3",
+    midpoint = 0.5,
+    limits = c(0, 1)
+  ),
+  fontsize_col = 5,
+  branches_lwd = 0.3,
+  k_row = 4,
+  distfun_row = "pearson",
+  distfun_col = "pearson"
+)
+
+heatmap_filtered_pval = heatmap_filtered_pval %>% layout(title = list(text = title_heatmap_pval, y = 0.05)) ##
+
+# The file is exported
+
+
+if (params$operating_system$system == "unix") {
+### linux version
+
+heatmap_filtered_pval %>%
+    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE) 
+}
+
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+heatmap_filtered_pval %>%
+    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
 
 #############################################################################
 #############################################################################
@@ -2978,7 +3069,7 @@ ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 1
 
 message("Preparing Random Forest filtered Heatmap ...")
 
-imp_table_rf_order = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ] # imp_table_rf[order(imp_table_rf$MeanDecreaseGini,decreasing=TRUE),]
+imp_table_rf_order = imp_table_rf[order(imp_table_rf$MeanDecreaseGini, decreasing = TRUE), ] # imp_table_rf[order(imp_table_rf$MeanDecreaseGini,decreasing=TRUE),]
 
 imp_filter2X = row.names(imp_table_rf_order)[1:params$heatmap$topN]
 imp_filter2 = gsub("X", "", imp_filter2X)
@@ -2992,7 +3083,7 @@ annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_m
 
 colnames(annot_col) = c("Superclass", "Pathway")
 
-rownames(annot_col) = DE$variable_meta$feature_id_full
+rownames(annot_col) = DE$variable_meta$feature_id
 annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
 
 
@@ -3002,7 +3093,7 @@ data_subset_for_RF = apply(data_subset_for_RF, 2, as.numeric)
 # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
-heatmap_filtered = heatmaply(
+heatmap_filtered_rf = heatmaply(
   percentize(data_subset_for_RF),
   seriate = "mean", # none , GW , mean, OLO
   col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
@@ -3023,7 +3114,7 @@ heatmap_filtered = heatmaply(
   distfun_col = "pearson"
 )
 
-heatmap_filtered = heatmap_filtered %>% layout(title = list(text = title_heatmap, y = 0.05))
+heatmap_filtered_rf = heatmap_filtered_rf %>% layout(title = list(text = title_heatmap_rf, y = 0.05))
 
 # The file is exported
 
@@ -3031,15 +3122,15 @@ heatmap_filtered = heatmap_filtered %>% layout(title = list(text = title_heatmap
 if (params$operating_system$system == "unix") {
 ### linux version
 
-heatmap_filtered %>%
-    htmlwidgets::saveWidget(file = filename_heatmap, selfcontained = TRUE)
+heatmap_filtered_rf %>%
+    htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE)
 }
 
 if (params$operating_system$system == "windows") {
 ### windows version
 Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-heatmap_filtered %>%
-    htmlwidgets::saveWidget(file = filename_heatmap, selfcontained = TRUE,libdir = "lib")
+heatmap_filtered_rf %>%
+    htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE,libdir = "lib")
 unlink("lib", recursive = FALSE)
 
 }
@@ -3052,7 +3143,6 @@ unlink("lib", recursive = FALSE)
 
 message("Outputing Summary Table ...")
 
-
 # Output is not clean. Feature id are repeated x times. 
 # To tidy ---
 
@@ -3064,7 +3154,6 @@ message("Outputing Summary Table ...")
 # NPC.pathway_canopus = DE$variable_meta$NPC.pathway_canopus
 # NPC.superclass_canopus = DE$variable_meta$NPC.superclass_canopus
 # Annotation_merge = data.frame(feature_id, sample_raw_id, name_sirius, smiles_sirius, InChI_sirius, NPC.pathway_canopus, NPC.superclass_canopus)
-
 
 # RF_importance = imp_table_rf$MeanDecreaseGini
 # sample_raw_id = row.names(imp_table_rf)
@@ -3170,6 +3259,7 @@ summary_stat_output_selected_simple = DE_foldchange_pvalues %>%
   filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value))  %>% 
   arrange(across(ends_with("_p_value"))) %>%
   select(
+  feature_id,
   feature_id_full,
   contains("p_value"), 
   NPC.pathway_canopus,
@@ -3277,12 +3367,12 @@ summary_stat_output_red = summary_stat_output_full %>%
   select(-contains("_canopus")) %>%
   select(-contains("_metannot")) %>%
   select(-contains("_gnps"))  %>% 
-  select(-ends_with("_id"))  %>% 
+  #select(-ends_with("_id"))  %>% 
   select(-ends_with("_mz"))  %>%
   select(-ends_with("_rt"))
 
 
-df_from_graph_vertices_plus = merge(DE_original$variable_meta, summary_stat_output_red, by.x = "feature_id_full", by.y = "feature_id_full", all.x = T)
+df_from_graph_vertices_plus = merge(DE_original$variable_meta, summary_stat_output_red, by.x = "feature_id", by.y = "feature_id", all.x = T)
 
 
 # We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
@@ -3322,7 +3412,7 @@ full_flat_dfList = merge(flat_dfList, t(DE_original$data), by.x = 'name', by.y =
 
 # We add the raw feature list
 
-df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id_full", by.y = "name", all.x = T)
+df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id", by.y = "name", all.x = T)
 
 
 # We set back the id column as the first column of the dataframe
