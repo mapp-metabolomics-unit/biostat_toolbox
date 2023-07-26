@@ -150,7 +150,7 @@ filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
 params$filter_sample_metadata_one$factor_name,
 paste(params$filter_sample_metadata_one$levels, collapse = "_"),
 sep = "_") 
-} else { filter_sample_metadata_status = "no_sm_filter" }
+} else { filter_sample_metadata_status = "" }
 
 
 if (params$actions$filter_variable_metadata_one == "TRUE" & params$actions$filter_variable_metadata_two == "TRUE") {
@@ -710,9 +710,9 @@ target_name <- paste(as.vector(unique(DE$sample_meta[[params$target$sample_metad
 
 
 if (params$paths$output != "") {
-  output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name,filter_variable_metadata_status, scaling_status, sep = "_"), sep = "")
+  output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
 } else {
-  output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = "_"), sep = "")
+  output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
 }
 
 output_directory <- gsub("__","_",output_directory)
@@ -773,12 +773,64 @@ write.table(formatted_sample_data_table, file = filename_formatted_sample_data_t
 #title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 #title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 
-title_PCA = paste("PCA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_PLSDA = paste("PLSDA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+# title_PCA = paste("PCA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
+
+title_PCA = paste(
+  paste("PCA", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
+
+# title_PLSDA = paste("PLSDA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
+title_PLSDA = paste(
+  paste("PLSDA", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
 title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_PCA3D = paste("PCA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_PCoA = paste("PCoA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_PCoA3D = paste("PCoA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
+# title_PCA3D = paste("PCA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
+title_PCA3D = paste(
+  paste("PCA3D", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
+# title_PCoA = paste("PCoA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
+title_PCoA = paste(
+  paste("PCoA", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
+# title_PCoA3D = paste("PCoA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
+title_PCoA3D = paste(
+  paste("PCoA3D", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
 title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_treemap = paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_random_forest = paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
@@ -821,7 +873,14 @@ pca_scores_plot = pca_scores_plot(
 pca_plot = chart_plot(pca_scores_plot, pca_object)
 
 
-fig_PCA = pca_plot + theme_classic() + facet_wrap(~ pca_plot$labels$title) + ggtitle(title_PCA)
+# pca_plot$labels$title <- title_PCA
+
+fig_PCA = pca_plot + 
+theme_classic() + 
+facet_wrap(~ pca_plot$labels$title) +
+ggtitle(title_PCA)
+#   theme(plot.title = element_text(hjust = 0.2, vjust = -2)) +
+
 
 # We merge PCA scores and metadata info in a single df
 
@@ -1138,7 +1197,7 @@ unlink("lib", recursive = FALSE)
 #################################################################################################
 ##### Volcano plot and Heatmap filtered by Random Forest
 
-message("Launching Volcano Plots calculations ...")
+message("Launching Fold Changes and Tukey’s Honest Significant Difference calculations ...")
 
 
 # # prepare model sequence
@@ -2113,7 +2172,13 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       )
       ) %>% 
       layout(
-        title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
+        title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"),
+                   margin = list(
+    l = 100,  # Left margin in pixels, adjust as needed
+    r = 100,  # Right margin in pixels, adjust as needed
+    t = 100,  # Top margin in pixels, adjust as needed
+    b = 100   # Bottom margin in pixels, adjust as needed
+  )
       )
 
     fig_treemap_quan <- plot_ly(
@@ -2153,7 +2218,13 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       )
     )%>% 
       layout(
-        title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>")
+        title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"),
+            margin = list(
+    l = 100,  # Left margin in pixels, adjust as needed
+    r = 100,  # Right margin in pixels, adjust as needed
+    t = 100,  # Top margin in pixels, adjust as needed
+    b = 100   # Bottom margin in pixels, adjust as needed
+  )
       )
 
     # We now save the treempa as a html file locally
