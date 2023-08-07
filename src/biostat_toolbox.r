@@ -85,15 +85,15 @@ usePackage("viridis")
 usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
-
+usePackage("ggh4x")
 
 
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
 
-#library(devtools)
-#install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
+# library(devtools)
+# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
 library(MAPPstructToolbox)
 
 
@@ -167,6 +167,11 @@ params$filter_variable_metadata_one$factor_name,
 paste(params$filter_variable_metadata_one$levels, collapse = "_"),
 sep = "_") 
 } else { filter_variable_metadata_status = "" }
+
+
+if (params$actions$filter_variable_metadata_annotated == "TRUE") {
+filter_variable_metadata_status = paste0(filter_variable_metadata_status, "_only_chebi_annotated")
+}
 
 
 
@@ -399,6 +404,16 @@ data_gnps$feature_id = as.numeric(data_gnps$feature_id)
 list_df = list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
 VM = list_df %>% reduce(full_join, by='feature_id')
 
+
+# The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full_annotated`
+VM$"feature_id_full_annotated" = paste0(
+  VM$chebiasciiname_sirius,
+  "_[",
+  VM$feature_id_full,
+  "]",
+  sep = ""
+)
+
 # We now convert the VM tibble into a dataframe and set the `feature_id_full` column as the rownames
 
 VM = as.data.frame(VM)
@@ -625,6 +640,27 @@ if (params$actions$filter_variable_metadata_two == "TRUE") {
 filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_two$mode,
                           factor_name = params$filter_variable_metadata_two$factor_name,
                           levels = params$filter_variable_metadata_two$levels)
+
+# apply model sequence
+filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
+
+DE_filtered = filter_vmeta_result@filtered
+
+}
+
+
+
+if (params$actions$filter_variable_metadata_annotated == "TRUE") {
+
+# Convert the "levels" value to NA if it is "NA" as a character string
+if (params$filter_variable_metadata_annotated$levels == "NA") {
+  params$filter_variable_metadata_annotated$levels <- NA
+}
+
+filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_annotated$mode,
+                          factor_name = params$filter_variable_metadata_annotated$factor_name,
+                          levels = as.character(params$filter_variable_metadata_annotated$levels)
+                          )
 
 # apply model sequence
 filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
@@ -2918,7 +2954,7 @@ unlink("lib", recursive = FALSE)
 #############################################################################
 #############################################################################
 
-message("Preparing Box plots ...")
+message("Preparing RF-selected Box plots ...")
 
 
 imp.scaled = rfPermute::importance(data.rp, scale = TRUE)
@@ -2971,12 +3007,137 @@ fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
 ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
 # fig_boxplotly %>%
 #     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
+
+
+
+#############################################################################
+#############################################################################
+############## p-Value selected Box Plots #############################
+#############################################################################
+#############################################################################
+
+message("Preparing p-value selected Box plots ...")
+
+features_of_importance = DE_foldchange_pvalues %>%
+  # we keep only the features that have a p-value lower than the threshold
+  # filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
+  # We keep only the lowest top n = params$boxplot$topN in the p_value_column
+  top_n(-params$boxplot$topN, !!as.symbol(p_value_column))  %>%
+  # we order the features by increasing p-value
+  arrange(!!as.symbol(p_value_column))  %>%
+  select(feature_id) %>%
+  # we output the data as a vector
+  pull()
+
+
+data_subset_for_boxplots = DE$data %>%
+  select(all_of(as.character(features_of_importance))) %>% 
+  rename_all(~ paste0("X", .))  %>% 
+  # here we join the data with the associated sample metadata using the row.names as index
+  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  # We keep the row.names columnn as row.names
+  transform(row.names = Row.names)  %>%
+  # We keep the params$target$sample_metadata_header column and the columns that start with X
+  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  # We set the params$target$sample_metadata_header column as a factor
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))  %>% 
+  # Finally we remove the X from the columns names
+  rename_all(~ gsub("X", "", .))
+
+# We now establish a side by side box plot for each columns of the data_subset_norm_boxplot
+# We use the melt function to reshape the data to a long format
+# We then use the ggplot2 syntax to plot the data and the facet_wrap function to plot the data side by side
+
+# Gather value columns into key-value pairs
+df_long <- tidyr::gather(data_subset_for_boxplots, key = "variable", value = "value", -params$target$sample_metadata_header)
+
+# Here we merge the df_long with the DE$variable_meta data frame to get the variable type
+
+df_long_informed <- merge(df_long, DE_foldchange_pvalues, by.x = "variable", by.y = "feature_id")
+
+
+p = ggplot(df_long_informed, aes(x = !!sym(params$target$sample_metadata_header), y = value, fill = !!sym(params$target$sample_metadata_header))) +
+  geom_boxplot() +
+  facet_wrap(~feature_id_full_annotated , ncol = 4) +
+  # theme_minimal()+
+  ggtitle(title_box_plots) 
+
+ridiculous_strips <- strip_themed(
+     # Horizontal strips
+     background_x = elem_list_rect(),
+     text_x = elem_list_text(face = c("bold", "italic")),
+     by_layer_x = TRUE,
+     # Vertical strips
+     background_y = elem_list_rect(
+       fill = c("gold", "tomato", "deepskyblue")
+     ),
+     text_y = elem_list_text(angle = c(0, 90)),
+     by_layer_y = FALSE
+)
+
+fig_boxplot = p + facet_wrap2(~ chebiasciiname_sirius + feature_id_full, labeller = label_value, strip = ridiculous_strips) + theme(
+  legend.position = "top",
+  legend.title = element_blank()
+)
+
+# Display the modified plot
+print(fig_boxplot)
+
+# The files are exported
+
+ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
+
+
+####
+# We now create individual box plots for each selected variable
+
+
+output_directory_bp <- "./selected_boxplots/"
+
+# Create the directory if it doesn't exist
+if (!dir.exists(output_directory_bp)) {
+  dir.create(output_directory_bp, recursive = TRUE)
+}
+
+# Create and save individual box plots for each selected variable
+for (var in selected_variables) {
+  # Filter data for the current variable using dplyr
+  data_for_plot <- df_long_informed %>%
+    filter(variable == var)
+
+
+  # Round the p-value to 5 digits
+  rounded_p_value <- round(pull(data_for_plot, !!as.name(p_value_column)), 5)
+
+  # Create the plot for the current variable (simple box plot)
+  p <- ggplot(data_for_plot, aes(x = !!sym(params$target$sample_metadata_header), y = value, fill = !!sym(params$target$sample_metadata_header))) +
+    geom_boxplot() +
+    geom_point(position = position_jitter(width = 0.2), size = 2, alpha = 0.5) +  # Add data points with jitter for better visibility
+    # ggtitle(paste("Box Plot for", "\n", 
+    # "Compound name: ", data_for_plot$chebiasciiname_sirius[1], "\n",
+    # "Feature details: ", data_for_plot$feature_id_full[1]))
+labs(x=params$target$sample_metadata_header,
+       y="Normalized Intensity",
+       title = paste("Compared intensities for feature:", var),
+       subtitle = paste("\n",
+       "Compound name: ", data_for_plot$chebiasciiname_sirius[1], "\n",
+       "Feature details: ", data_for_plot$feature_id_full[1]),
+       caption  = paste("Calculated p-value is ~ ", rounded_p_value)) +
+  theme(plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+        plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+        plot.caption.position =  "plot") #NEW parameter
+
+  # Save the plot to a file with a unique filename for each variable
+  filename <- paste(output_directory_bp, "boxplot_", gsub(" ", "_", var), ".png", sep = "")
+  ggsave(plot = p, filename = filename, width = 8, height = 8)
+}
+
 #############################################################################
 ############## Pvalue filtered Heat Map  #############################
 #############################################################################
 #############################################################################
 
-message("Preparing  Pvalue filtered Heatmap ...")
+message("Preparing p-value filtered Heatmap ...")
 
 data_subset_for_Pval = DE$data %>%
   select(all_of(as.character(features_of_importance))) %>% 
