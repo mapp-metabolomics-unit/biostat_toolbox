@@ -3018,7 +3018,7 @@ ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 1
 
 message("Preparing p-value selected Box plots ...")
 
-features_of_importance = DE_foldchange_pvalues %>%
+features_of_importance_boxplots = DE_foldchange_pvalues %>%
   # we keep only the features that have a p-value lower than the threshold
   # filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
   # We keep only the lowest top n = params$boxplot$topN in the p_value_column
@@ -3031,7 +3031,7 @@ features_of_importance = DE_foldchange_pvalues %>%
 
 
 data_subset_for_boxplots = DE$data %>%
-  select(all_of(as.character(features_of_importance))) %>% 
+  select(all_of(as.character(features_of_importance_boxplots))) %>% 
   rename_all(~ paste0("X", .))  %>% 
   # here we join the data with the associated sample metadata using the row.names as index
   merge(DE$sample_meta, ., by = "row.names")  %>% 
@@ -3100,7 +3100,7 @@ if (!dir.exists(output_directory_bp)) {
 }
 
 # Create and save individual box plots for each selected variable
-for (var in selected_variables) {
+for (var in features_of_importance_boxplots) {
   # Filter data for the current variable using dplyr
   data_for_plot <- df_long_informed %>%
     filter(variable == var)
@@ -3139,7 +3139,27 @@ labs(x=params$target$sample_metadata_header,
 
 message("Preparing p-value filtered Heatmap ...")
 
-data_subset_for_Pval = DE$data %>%
+features_of_importance = DE_foldchange_pvalues %>%
+  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
+  select(feature_id) %>%
+  # we output the data as a vector
+  pull()
+
+
+# data_subset_for_Pval = DE$data %>%
+#   select(all_of(as.character(features_of_importance))) %>% 
+#   rename_all(~ paste0("X", .))  %>% 
+#   # here we join the data with the associated sample metadata using the row.names as index
+#   merge(DE$sample_meta, ., by = "row.names")  %>% 
+#   # We keep the row.names columnn as row.names
+#   transform(row.names = Row.names)  %>%
+#   # We keep the params$target$sample_metadata_header column and the columns that start with X
+#   select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+#   # We set the params$target$sample_metadata_header column as a factor
+#   mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))
+
+
+data_subset_for_pval_hm = DE$data %>%
   select(all_of(as.character(features_of_importance))) %>% 
   rename_all(~ paste0("X", .))  %>% 
   # here we join the data with the associated sample metadata using the row.names as index
@@ -3149,43 +3169,80 @@ data_subset_for_Pval = DE$data %>%
   # We keep the params$target$sample_metadata_header column and the columns that start with X
   select(params$target$sample_metadata_header, starts_with("X"))  %>% 
   # We set the params$target$sample_metadata_header column as a factor
-  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))  %>% 
+  # Finally we remove the X from the columns names
+  rename_all(~ gsub("X", "", .))
+
+data_subset_for_pval_hm_sel = data_subset_for_pval_hm %>%
+  select(params$target$sample_metadata_header)
+
+# imp_filter2X = row.names(imp_table_rf)
+# imp_filter2 = gsub("X", "", imp_filter2X)
 
 
-imp_filter2X = row.names(imp_table_rf)
-imp_filter2 = gsub("X", "", imp_filter2X)
+# features_of_importance_heatmap = DE_foldchange_pvalues %>%
+#   # we keep only the features that have a p-value lower than the threshold
+#   # filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
+#   # We keep only the lowest top n = params$boxplot$topN in the p_value_column
+#   top_n(-params$heatmap$topN, !!as.symbol(p_value_column))  %>%
+#   # we order the features by increasing p-value
+#   arrange(!!as.symbol(p_value_column))  %>%
+#   select(feature_id) %>%
+#   # we output the data as a vector
+#   pull()
 
-data_subset_for_Pval = data_subset_for_Pval[, colnames(data_subset_for_Pval) %in% imp_filter2X]
+
+
+data_subset_for_pval_hm = data_subset_for_pval_hm[, colnames(data_subset_for_pval_hm) %in% features_of_importance]
 # my_sample_col = DE$sample_meta$sample_id
+
+# data_subset_for_Pval = data_subset_for_Pval[, colnames(data_subset_for_Pval) %in% imp_filter2X]
+# # my_sample_col = DE$sample_meta$sample_id
 
 my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
-annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
+# annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
 
-colnames(annot_col) = c("Superclass", "Pathway")
+# colnames(annot_col) = c("Superclass", "Pathway")
 
-rownames(annot_col) = DE$variable_meta$feature_id
-annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
+# rownames(annot_col) = DE$variable_meta$feature_id
+# annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
 
+# We filter the annotation table (DE$variable_meta) to keep only the features of interest identified in the (features_of_importance). We use dplyr
+
+selected_variable_meta = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance) 
+  # %>%
+  # select(feature_id, NPC.pathway_canopus, NPC.superclass_canopus) %>%
+  # mutate(NPC.pathway_canopus = paste(NPC.pathway_canopus, NPC.superclass_canopus, sep = "_")) %>%
+  # select(feature_id, NPC.pathway_canopus) %>%
+  # column_to_rownames("feature_id")
+
+selected_variable_meta_NPC = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)  %>% 
+  select(feature_id, NPC.superclass_canopus, NPC.pathway_canopus, NPC.class_canopus) %>%
+  mutate(NPC.superclass_merged_canopus = paste(NPC.pathway_canopus, NPC.superclass_canopus, sep = "_")) %>%
+  mutate(NPC.class_merged_canopus = paste(NPC.superclass_merged_canopus, NPC.class_canopus, sep = "_")) %>%
+  select(NPC.class_merged_canopus, NPC.superclass_merged_canopus, NPC.pathway_canopus)
 
 ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
-data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
+# data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
+# # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
-ByPal = colorRampPalette(c(wes_palette("Zissou1")))
-
-data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
+data_subset_for_pval_hm = apply(data_subset_for_pval_hm, 2, as.numeric)
 # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
-
 heatmap_filtered_pval = heatmaply(
-  percentize(data_subset_for_Pval),
+  percentize(data_subset_for_pval_hm),
   seriate = "mean", # none , GW , mean, OLO
-  col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
+  col_side_colors = data.frame(selected_variable_meta_NPC, check.names = FALSE),
   col_side_palette = ByPal,
+  row_side_colors = as.vector(as.character(data_subset_for_pval_hm_sel)),
   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
+  labCol = selected_variable_meta$feature_id_full_annotated,
   subplot_margin = 0.01,
   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
     low = "lightsteelblue2",
@@ -3199,9 +3256,27 @@ heatmap_filtered_pval = heatmaply(
   k_row = 4,
   distfun_row = "pearson",
   distfun_col = "pearson"
+)  %>% layout(
+  title = list(text = title_heatmap_pval, font = list(size = 14)),
+  margin = list(t = 80, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
 )
 
-heatmap_filtered_pval = heatmap_filtered_pval %>% layout(title = list(text = title_heatmap_pval, y = 0.05)) ##
+heatmap_filtered_pval
+
+# x  <- as.matrix(datasets::mtcars)
+# rc <- colorspace::rainbow_hcl(nrow(x))
+
+
+# heatmaply(
+#   x[, -c(8, 9)],
+#   seriate = "mean",
+#   col_side_colors = c(rep(0, 5), rep(1, 4)),
+#   row_side_colors = x[, 8:9]
+# )
+
+# c(rep(0, 8), rep(1, 8))
+
+# as.character(data_subset_for_pval_hm_sel[[1]])
 
 # The file is exported
 
