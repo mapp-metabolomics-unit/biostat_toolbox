@@ -873,8 +873,17 @@ title_treemap = paste("Treemap", "for dataset", params$target$sample_metadata_he
 title_random_forest = paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_heatmap_rf = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_heatmap_pval = paste("Heatmap of significant feature for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
+# title_heatmap_pval = paste("Heatmap of significant feature for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+
+title_heatmap_pval = paste(
+  paste("Heatmap of significant feature for dataset", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
 
 
 #################################################################################################
@@ -1457,7 +1466,7 @@ HSDEM_result_p_value = HSDEM_result$p_value
 
 # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
 
-colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_")
+colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_vs_")
 
 # We now add a specific suffix (`_p_value`) to each of the colnames
 
@@ -1505,7 +1514,7 @@ fold_change_result_fold_change = fold_change_result$fold_change
 #n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
 
 
-colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
+colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_vs_")
 
 
 # We now add a specific suffix (`_p_value`) to each of the colnames
@@ -1871,6 +1880,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   # Print message before iterating over conditions
   cat("Iterating over the following conditions:\n")
 
+
   # Iterate over the prefixes
   for (condition in conditions) {
 
@@ -1883,7 +1893,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     # print(head(DE_foldchange_pvalues_signi))
     cat("\n")
 
-    condition_parts <- strsplit(condition, "_")[[1]]
+    condition_parts <- strsplit(condition, "_vs_")[[1]]
     first_part <- condition_parts[1]
     second_part <- condition_parts[2]
 
@@ -1916,22 +1926,46 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       filter(!!sym(paste0(condition, "_fold_change_log2")) >= 0)
 
 
+    # Check if the data frame has zero rows
+    if (nrow(mydata1_pos) == 0) {
+      # Recycle the original column names and create a new data frame with zeros
+      mydata1_pos <- tibble(
+        !!!setNames(rep(0, length(names(mydata1_pos))), names(mydata1_pos))
+      )
+    } else {
+      # Data frame already has rows, no need to fill with zeros
+      # You can add additional code here to perform operations on the existing data
+    }
+        # Check if the data frame has zero rows
+    if (nrow(mydata1_neg) == 0) {
+      # Recycle the original column names and create a new data frame with zeros
+      mydata1_neg <- tibble(
+        !!!setNames(rep(0, length(names(mydata1_neg))), names(mydata1_neg))
+      )
+    } else {
+      # Data frame already has rows, no need to fill with zeros
+      # You can add additional code here to perform operations on the existing data
+    }
+
     # Aggregate the data
-    ####
-    mydata1 = mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
-    mydata1$counter = 1
+    #### 
+    # We protect the code with a tryCatch to avoid errors if the data is empty. This can hapen when no classified features are returned fopr a specific condition. This should return an empty treemap. Beware !!!!
+
+    mydata1 <- mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
+    mydata1$counter <- 1
 
     # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-    mydata1_neg = mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
-    mydata1_neg$counter = 1
-    mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
+    mydata1_neg <- mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
+    mydata1_neg$counter <- 1
+    mydata1_neg$fold_dir <- paste("neg", mydata1_neg$NPC.superclass_canopus, sep = "_")
     # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-    mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
-    mydata1_pos$counter = 1
-    mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
+    mydata1_pos <- mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
+    mydata1_pos$counter <- 1
+    mydata1_pos$fold_dir <- paste("pos", mydata1_pos$NPC.superclass_canopus, sep = "_")
 
     #####################################################################
     #####################################################################
+
 
     dt_se_prop_prep_count_tot = dt_for_treemap(
       datatable = mydata1,
@@ -3240,7 +3274,7 @@ heatmap_filtered_pval = heatmaply(
   seriate = "mean", # none , GW , mean, OLO
   col_side_colors = data.frame(selected_variable_meta_NPC, check.names = FALSE),
   col_side_palette = ByPal,
-  row_side_colors = as.vector(as.character(data_subset_for_pval_hm_sel)),
+  # row_side_colors = as.vector(as.character(data_subset_for_pval_hm_sel)),
   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
   labCol = selected_variable_meta$feature_id_full_annotated,
   subplot_margin = 0.01,
@@ -3251,14 +3285,15 @@ heatmap_filtered_pval = heatmaply(
     midpoint = 0.5,
     limits = c(0, 1)
   ),
-  fontsize_col = 5,
   branches_lwd = 0.3,
   k_row = 4,
   distfun_row = "pearson",
-  distfun_col = "pearson"
+  distfun_col = "pearson",
+  fontsize_row = 9,
+  fontsize_col = 9,
 )  %>% layout(
-  title = list(text = title_heatmap_pval, font = list(size = 14)),
-  margin = list(t = 80, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
+  title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
+  margin = list(t = 150, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
 )
 
 heatmap_filtered_pval

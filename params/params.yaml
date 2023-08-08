@@ -20,10 +20,10 @@ actions:
   scale_data : TRUE
   filter_sample_type : TRUE
   filter_sample_metadata_one : TRUE
-  filter_sample_metadata_two : TRUE
+  filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : FALSE
+  filter_variable_metadata_annotated : TRUE
   filter_features : TRUE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -63,7 +63,7 @@ filter_variable_metadata_annotated :
 
 
 target:
-  sample_metadata_header: "period" # This variable will be used throughout the whole script
+  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
