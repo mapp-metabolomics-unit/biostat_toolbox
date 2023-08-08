@@ -86,7 +86,7 @@ usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
 usePackage("ggh4x")
-
+usePackage("iheatmapr")
 
 
 # We use the MAPPstructToolbox package 
@@ -3271,10 +3271,11 @@ data_subset_for_pval_hm = apply(data_subset_for_pval_hm, 2, as.numeric)
 
 heatmap_filtered_pval = heatmaply(
   percentize(data_subset_for_pval_hm),
-  seriate = "mean", # none , GW , mean, OLO
+  seriate = "none", # none , GW , mean, OLO
   col_side_colors = data.frame(selected_variable_meta_NPC, check.names = FALSE),
   col_side_palette = ByPal,
-  # row_side_colors = as.vector(as.character(data_subset_for_pval_hm_sel)),
+  row_side_colors = data_subset_for_pval_hm_sel,
+  # row_side_palette = ByPal,
   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
   labCol = selected_variable_meta$feature_id_full_annotated,
   subplot_margin = 0.01,
@@ -3283,20 +3284,29 @@ heatmap_filtered_pval = heatmaply(
     # mid = "goldenrod1",
     high = "firebrick3",
     midpoint = 0.5,
-    limits = c(0, 1)
+    limits = c(0, 1),
+    position = "left"
   ),
+  hide_colorbar = TRUE,
   branches_lwd = 0.3,
   k_row = 4,
   distfun_row = "pearson",
   distfun_col = "pearson",
   fontsize_row = 9,
   fontsize_col = 9,
+  Rowv = FALSE,
+  side_color_colorbar_len = 1,
+  # # # # Colv = NULL,
+  plot_method = "plotly"
 )  %>% layout(
   title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
   margin = list(t = 150, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
 )
 
 heatmap_filtered_pval
+
+https://docs.ropensci.org/iheatmapr/articles/full_vignettes/iheatmapr.html
+
 
 # x  <- as.matrix(datasets::mtcars)
 # rc <- colorspace::rainbow_hcl(nrow(x))
@@ -3331,6 +3341,26 @@ heatmap_filtered_pval %>%
 unlink("lib", recursive = FALSE)
 
 }
+
+library(iheatmapr)
+data(measles, package = "iheatmapr")
+
+main_heatmap(measles, name = "Measles<br>Cases", x_categorical = FALSE,
+             layout = list(font = list(size = 8))) %>%
+  add_col_groups(ifelse(1930:2001 < 1961,"No","Yes"),
+                  side = "bottom", name = "Vaccine<br>Introduced?",
+                  title = "Vaccine?",
+                  colors = c("lightgray","blue")) %>%
+  add_col_labels(ticktext = seq(1930,2000,10),font = list(size = 8)) %>%
+  add_row_labels(size = 0.3,font = list(size = 6)) %>% 
+  add_col_summary(layout = list(title = "Average<br>across<br>states"),
+                  yname = "summary")  %>%                 
+  add_col_title("Measles Cases from 1930 to 2001", side= "top") %>%
+  add_row_summary(groups = TRUE, 
+                  type = "bar",
+                  layout = list(title = "Average<br>per<br>year",
+                                font = list(size = 8)))
+                                
 
 #############################################################################
 #############################################################################
