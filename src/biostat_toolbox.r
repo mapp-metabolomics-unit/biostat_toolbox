@@ -87,6 +87,9 @@ usePackage("wesanderson")
 usePackage("yaml")
 usePackage("ggh4x")
 usePackage("iheatmapr")
+usePackage("datasets")
+usePackage("reshape2")
+
 
 
 # We use the MAPPstructToolbox package 
@@ -3265,8 +3268,10 @@ ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 # # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
-data_subset_for_pval_hm = apply(data_subset_for_pval_hm, 2, as.numeric)
+data_subset_for_pval_hm_mat = apply(data_subset_for_pval_hm, 2, as.numeric)
 # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
+data_subset_for_pval_hm_mat <- data_subset_for_pval_hm
+data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 
 
 heatmap_filtered_pval = heatmaply(
@@ -3295,9 +3300,9 @@ heatmap_filtered_pval = heatmaply(
   fontsize_row = 9,
   fontsize_col = 9,
   Rowv = FALSE,
-  side_color_colorbar_len = 1,
-  # # # # Colv = NULL,
-  plot_method = "plotly"
+  side_color_colorbar_len = 1
+  # # # # # Colv = NULL,
+  # plot_method = "plotly"
 )  %>% layout(
   title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
   margin = list(t = 150, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
@@ -3361,6 +3366,57 @@ main_heatmap(measles, name = "Measles<br>Cases", x_categorical = FALSE,
                   layout = list(title = "Average<br>per<br>year",
                                 font = list(size = 8)))
                                 
+
+
+data_subset_for_pval_hm_mat = as.matrix(data_subset_for_pval_hm_mat)
+
+main_heatmap(data_subset_for_pval_hm_mat, name = "Intensity")
+
+rownames(data_subset_for_pval_hm_mat)
+
+my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
+
+
+genotype_period = DE$sample_meta[[params$target$sample_metadata_header]]
+
+main_heatmap(data_subset_for_pval_hm_mat, name = "Intensity") %>%
+  add_row_annotation(genotype_period, side = "left") %>%
+  add_row_clustering() %>%
+  add_col_annotation(selected_variable_meta_NPC) %>%
+  add_col_clustering() %>%
+  add_row_labels() %>%
+  add_col_labels(
+    tickvals = NULL,
+    ticktext = selected_variable_meta$feature_id_full_annotated,
+    textangle = -70,
+    size = 0.2
+  )
+
+selected_variable_meta_NPC
+
+colnames(data_subset_for_pval_hm_mat) = selected_variable_meta$feature_id_full_annotated
+
+typeof(measles)
+DE$sample_meta[[params$target$sample_metadata_header]]
+
+
+Indometh_matrix <- acast(Indometh, Subject ~ time, value.var = "conc")
+Indometh_matrix <- Indometh_matrix[as.character(1:6),]
+rownames(Indometh_matrix) <- paste("Patient",rownames(Indometh_matrix))
+Indometh_patient_cor <- cor(t(Indometh_matrix))
+
+patient_max_conc <- apply(Indometh_matrix,1,max)
+patient_min_conc <- apply(Indometh_matrix,1,min)
+patient_groups <- c("A","A","B","A","B","A") # Arbitrary groups
+
+example_heatmap <- main_heatmap(Indometh_patient_cor, name = "Correlation")
+
+example_heatmap
+typeof(Indometh_patient_cor)
+
+data_subset_for_pval_hm
+
+rownames(data_subset_for_pval_hm) <- my_sample_col
 
 #############################################################################
 #############################################################################
