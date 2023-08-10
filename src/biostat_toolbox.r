@@ -3262,6 +3262,18 @@ selected_variable_meta_NPC = DE$variable_meta %>%
   mutate(NPC.class_merged_canopus = paste(NPC.superclass_merged_canopus, NPC.class_canopus, sep = "_")) %>%
   select(NPC.class_merged_canopus, NPC.superclass_merged_canopus, NPC.pathway_canopus)
 
+selected_variable_meta_NPC_simple = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)  %>% 
+  select(NPC.class_canopus, NPC.superclass_canopus, NPC.pathway_canopus)
+
+selected_variable_meta_NPC_simple_ordered = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)  %>% 
+  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+
+
+npclassifier_origin_ordered = npclassifier_origin  %>% 
+select(pathway, superclass, class)
+
 ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
 # data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
@@ -3357,7 +3369,7 @@ main_heatmap(measles, name = "Measles<br>Cases", x_categorical = FALSE,
                   title = "Vaccine?",
                   colors = c("lightgray","blue")) %>%
   add_col_labels(ticktext = seq(1930,2000,10),font = list(size = 8)) %>%
-  add_row_labels(size = 0.3,font = list(size = 6)) %>% 
+  add_row_labels(size = 0.3,font = list(size = 6), textangle = 20) %>% 
   add_col_summary(layout = list(title = "Average<br>across<br>states"),
                   yname = "summary")  %>%                 
   add_col_title("Measles Cases from 1930 to 2001", side= "top") %>%
@@ -3379,18 +3391,386 @@ my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sa
 
 genotype_period = DE$sample_meta[[params$target$sample_metadata_header]]
 
-main_heatmap(data_subset_for_pval_hm_mat, name = "Intensity") %>%
-  add_row_annotation(genotype_period, side = "left") %>%
-  add_row_clustering() %>%
-  add_col_annotation(selected_variable_meta_NPC) %>%
-  add_col_clustering() %>%
-  add_row_labels() %>%
-  add_col_labels(
+
+grid_params <- setup_colorbar_grid(nrows = 5, 
+                                   y_length = 0.3, 
+                                   x_spacing = 0.3,
+                                   y_spacing = 0.3, 
+                                   x_start = 1.2, 
+                                   y_start = 1)
+
+ByPal = colorRampPalette(c(wes_palette("Zissou1")))
+
+
+main_heatmap(t(data_subset_for_pval_hm_mat), 
+name = "Intensity", 
+layout = list(margin = list(b = 120)),
+colorbar_grid = grid_params) %>%
+  add_row_labels(
     tickvals = NULL,
     ticktext = selected_variable_meta$feature_id_full_annotated,
-    textangle = -70,
+    side = "left",
+    buffer = 0.005,
+    textangle = 0,
+    size = 1
+  ) %>%
+  # add_row_annotation(selected_variable_meta_NPC_simple,
+  #   side = "right",
+  #   buffer = 0.005
+  # colors = list(ByPal, ByPal, ByPal) %>%
+  add_row_annotation(data.frame("NPC_Class" = selected_variable_meta_NPC_simple$NPC.class_canopus),
+    side = "right",
+    buffer = 0.005,
+    colors = list("NPC_Class" = col_np_class)) %>%
+  add_row_annotation(data.frame("NPC_SuperClass" = selected_variable_meta_NPC_simple$NPC.superclass_canopus),
+    side = "right",
+    buffer = 0.005,
+    colors = list("NPC_SuperClass" = col_np_superclass)) %>%
+  add_row_annotation(data.frame("NPC_Pathway" = selected_variable_meta_NPC_simple$NPC.pathway_canopus),
+    side = "right",
+    buffer = 0.005,
+    colors = list("NPC_Pathway" = col_np_pathway)) %>%
+  # add_row_annotation(selected_variable_meta_NPC_simple$NPC.superclass_canopus,
+  #   side = "right",
+  #   buffer = 0.005
+  # colors = list(ByPal, ByPal, ByPal) %>%
+  # add_row_annotation(selected_variable_meta_NPC_simple$NPC.pathway_canopus,
+  #   side = "right",
+  #   buffer = 0.005
+  # colors = list(ByPal, ByPal, ByPal) %>%
+  add_row_clustering(side = "right") %>%
+  add_col_annotation(data.frame("Condition" = genotype_period)) %>%
+  add_col_clustering() %>%
+  add_col_labels(
+    tickvals = NULL,
+    ticktext = my_sample_col,
+    textangle = -90,
     size = 0.2
   )
+
+
+hex_values <-c(microshades_palette("micro_green", 5, lightest = FALSE), 
+               microshades_palette("micro_blue", 3, lightest = FALSE), 
+               microshades_palette("micro_purple", 3, lightest = FALSE))
+
+
+library(RColorBrewer)
+
+col.g <- c(brewer.pal(9,"Greens"))[1:102] # select 5 colors from class Greens
+col.r <- c(brewer.pal(9,"Reds"))[6:9] # select 4 colors from class Reds
+col.b <- c(brewer.pal(9,"Blues"))[6:9] # select 4 colors from class Blues
+my.cols <- c(col.g,col.r,col.b)
+
+
+df_col <- treepalette(
+  selected_variable_meta_NPC_simple_ordered,
+  index = names(selected_variable_meta_NPC_simple_ordered),
+  method = "HCL",
+  palette = NULL,
+  return.parameters = TRUE,
+  prepare.dat = TRUE
+)
+
+df_col_np <- treepalette(
+  npclassifier_origin_ordered,
+  index = names(npclassifier_origin_ordered),
+  method = "HCL",
+  palette = NULL,
+  palette.HCL.options = list(hue_perm = TRUE),
+  return.parameters = TRUE,
+  prepare.dat = TRUE
+)
+
+
+
+npclassifier_origin_ordered
+
+# we drop the row with the NA value in all columns 
+
+npclassifier_origin_ordered = npclassifier_origin_ordered[complete.cases(npclassifier_origin_ordered), ]
+
+# We now subset the df to keep only rows with a value in the 'pathway' column and NAs in the superclass and class columns. We use dplyr.
+
+df_col_np_pathway = df_col_np %>% 
+  filter(!is.na(pathway) & is.na(superclass) & is.na(class))
+
+# Same thing for the superclass column
+
+df_col_np_superclass = df_col_np %>% 
+  filter(!is.na(pathway) & !is.na(superclass) & is.na(class))
+
+# Same thing for the class column
+
+df_col_np_class = df_col_np %>% 
+  filter(!is.na(pathway) & !is.na(superclass) & !is.na(class))
+
+# We now merge the 3 dataframes
+
+df_col_np_long = rbind(df_col_np_pathway, df_col_np_superclass, df_col_np_class)
+
+# Using the df_col_np_long df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. We use dplyr.
+
+col_np_class = df_col_np_class %>% 
+  filter(class %in% selected_variable_meta_NPC_simple$NPC.class_canopus) %>% 
+  select(HCL.color) %>% 
+  unlist()
+
+# Same thing for the superclass column
+
+col_np_superclass = df_col_np_superclass %>% 
+  filter(superclass %in% selected_variable_meta_NPC_simple$NPC.superclass_canopus) %>% 
+  select(HCL.color) %>% 
+  unlist()
+
+# Same thing for the pathway column
+
+col_np_pathway = df_col_np_pathway %>% 
+  filter(pathway %in% selected_variable_meta_NPC_simple$NPC.pathway_canopus) %>% 
+  select(HCL.color) %>% 
+  unlist()
+
+# Using the df_col_np_class df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. For this we merge both df using the NPC.superclass_canopus on one side and the superclass column on the other. We use dplyr. We proceed using merge and not filter because we want to keep the order of the rows in the selected_variable_meta_NPC_simple df.
+
+
+col_np_superclass = merge(
+  selected_variable_meta_NPC_simple,
+  df_col_np_superclass,
+  by.x = "NPC.superclass_canopus",
+  by.y = "superclass",
+  all.x = FALSE
+) %>% 
+  select(HCL.color) %>% 
+  unlist()
+
+
+unique(col_np_superclass$HCL.color)
+
+
+show_col(col_np_superclass$HCL.color, cex_label = 0.5)
+
+unique(col_np_superclass$HCL.color)
+
+unique(col_np_superclass$superclass)
+unique(selected_variable_meta_NPC_simple$NPC.superclass_canopus)
+
+library(scales)
+pal <- rgb(ddf$r, ddf$g, ddf$b)
+show_col(df_col_np$HCL.color, cex_label = 0.5)
+
+
+library("treemap")
+treecolors()
+
+library(microshades, quietly = TRUE)
+
+## Colors
+nice_colors <- list(
+  microshades_palette("micro_cvd_green", lightest = FALSE),
+  microshades_palette("micro_cvd_orange", lightest = FALSE),
+  microshades_palette("micro_cvd_blue", lightest = FALSE),
+  microshades_palette("micro_cvd_purple", lightest = FALSE),
+  # microshades_palette("micro_cvd_gray", lightest = FALSE),
+  microshades_palette("micro_cvd_turquoise", lightest = FALSE),
+  microshades_palette("micro_purple", lightest = FALSE),
+  microshades_palette("micro_orange", lightest = FALSE),
+  microshades_palette("micro_blue", lightest = FALSE),
+  microshades_palette("micro_green", lightest = FALSE),
+  microshades_palette("micro_brown", lightest = FALSE)
+  # microshades_palette("micro_gray", lightest = FALSE)
+)
+
+## Grey
+grey_colors <- list(
+  microshades_palette("micro_cvd_gray", lightest = FALSE),
+  microshades_palette("micro_gray", lightest = FALSE)
+)
+
+sunburst_colors <- character()
+
+for (i in seq_len(length(nice_colors))) {
+  sunburst_colors[i] <- nice_colors[[i]][5]
+}
+
+sunburst_colors_grey <- character()
+
+for (i in seq_len(length(grey_colors))) {
+  sunburst_colors_grey[i] <- grey_colors[[i]][5]
+}
+
+## From microshades
+cvd_green <- c("#4E7705", "#6D9F06", "#97CE2F", "#BDEC6F", "#DDFFA0")
+cvd_orange <- c("#9D654C", "#C17754", "#F09163", "#FCB076", "#FFD5AF")
+cvd_blue <- c("#098BD9", "#56B4E9", "#7DCCFF", "#BCE1FF", "#E7F4FF")
+cvd_turquoise <- c("#148F77", "#009E73", "#43BA8F", "#48C9B0", "#A3E4D7")
+cvd_purple <- c("#7D3560", "#A1527F", "#CC79A7", "#E794C1", "#EFB6D6")
+orange <- c("#ff7f00", "#fe9929", "#fdae6b", "#fec44f", "#feeda0")
+purple <- c("#6a51a3", "#807dba", "#9e9ac8", "#bcbddc", "#dadaeb")
+
+## Qualitative
+paired <- c(
+  "#a6cee3",
+  "#1f78b4",
+  "#b2df8a",
+  "#33a02c",
+  "#fb9a99",
+  "#e31a1c",
+  "#fdbf6f",
+  "#ff7f00",
+  "#cab2d6",
+  "#6a3d9a",
+  "#ffff99",
+  "#b15928"
+)
+
+minibits <- c(
+  "#817",
+  "#a35",
+  "#c66",
+  "#e94",
+  "#ed0",
+  "#9d5",
+  "#4d8",
+  "#2cb",
+  "#0bc",
+  "#09c",
+  "#36b",
+  "#639"
+)
+
+tableau20 <- c(
+  "#4E79A7",
+  "#A0CBE8",
+  "#F28E2B",
+  "#FFBE7D",
+  "#59A14F",
+  "#8CD17D",
+  "#B6992D",
+  "#F1CE63",
+  "#499894",
+  "#86BCB6",
+  "#E15759",
+  "#FF9D9A",
+  "#79706E",
+  "#BAB0AC",
+  "#D37295",
+  "#FABFD2",
+  "#B07AA1",
+  "#D4A6C8",
+  "#9D7660",
+  "#D7B5A6"
+)
+
+elife <- c(
+  "#7CB13F",
+  "#336A2D",
+  "#2994D2",
+  "#08589B",
+  "#D71D62",
+  "#861450"
+)
+
+#' Sequential
+green_4 <- c(
+  "#e5efd9",
+  "#b0d08c",
+  "#7cb13f",
+  "#4a6a26"
+)
+
+blue_4 <- c(
+  "#d4eaf6",
+  "#7fbfe4",
+  "#2994d2",
+  "#19597e"
+)
+
+pink_4 <- c(
+  "#f7d2e0",
+  "#e777a1",
+  "#d71d62",
+  "#81113b"
+)
+
+green_24 <- c(
+  "#fafcf7",
+  "#eff6e8",
+  "#e5efd9",
+  "#dae9c9",
+  "#d0e3ba",
+  "#c5ddab",
+  "#bbd69b",
+  "#b0d08c",
+  "#a6ca7c",
+  "#9bc46d",
+  "#91bd5e",
+  "#86b74e",
+  "#7cb13f",
+  "#72a33a",
+  "#689535",
+  "#5e8730",
+  "#54782b",
+  "#4a6a26",
+  "#405c21",
+  "#374e1c",
+  "#2d4017",
+  "#233212",
+  "#19230d",
+  "#0f1508"
+)
+
+blue_24 <- c(
+  "#f6fbfd",
+  "#e5f2fa",
+  "#d4eaf6",
+  "#c3e1f2",
+  "#b2d8ef",
+  "#a1d0eb",
+  "#90c7e8",
+  "#7fbfe4",
+  "#6db6e0",
+  "#5caedd",
+  "#4ba5d9",
+  "#3a9dd6",
+  "#2994d2",
+  "#2688c1",
+  "#227cb0",
+  "#1f70a0",
+  "#1c658f",
+  "#19597e",
+  "#154d6d",
+  "#12415c",
+  "#0f354c",
+  "#0b293b",
+  "#081e2a",
+  "#051219"
+)
+
+pink_24 <- c(
+  "#fdf6f9",
+  "#fae4ec",
+  "#f7d2e0",
+  "#f4c0d3",
+  "#f1aec6",
+  "#ed9cba",
+  "#ea89ad",
+  "#e777a1",
+  "#e46594",
+  "#e15388",
+  "#dd417b",
+  "#da2f6f",
+  "#d71d62",
+  "#c61b5a",
+  "#b51852",
+  "#a3164a",
+  "#921443",
+  "#81113b",
+  "#700f33",
+  "#5f0d2b",
+  "#4d0a23",
+  "#3c081b",
+  "#2b0614",
+  "#1a030c"
+)
 
 selected_variable_meta_NPC
 
