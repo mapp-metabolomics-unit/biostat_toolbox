@@ -583,6 +583,7 @@ DE_original = DatasetExperiment(
   description = params$dataset_experiment$description
 )
 
+variable_meta = DE_original$variable_meta
 
 ## Filtering steps
 
@@ -3436,34 +3437,34 @@ target_metadata = DE$sample_meta[[params$target$sample_metadata_header]]
 
 # # We split the pathway column to get the first word of the pathway and save it as a new column "top_level_pathway"
 
-npclassifier_newpath$top_level_pathway = strsplit(npclassifier_newpath$NPC.pathway_canopus, " ") %>% 
-  sapply(function(x) x[1]) %>% 
-  as.factor() %>% 
-  as.data.frame() %>% 
-  rename(top_level_pathway = ".")
+# npclassifier_newpath$top_level_pathway = strsplit(npclassifier_newpath$NPC.pathway_canopus, " ") %>% 
+#   sapply(function(x) x[1]) %>% 
+#   as.factor() %>% 
+#   as.data.frame() %>% 
+#   rename(top_level_pathway = ".")
 
 
 
-df_col_np_newpath <- treepalette(
-  npclassifier_newpath,
-  index = c("top_level_pathway", "NPC.pathway_canopus", "NPC.superclass_canopus"),
-  method = "HCL",
-  palette = NULL,
-  palette.HCL.options = list(
-  hue_start = 30,
-  hue_end = 390,
-  hue_perm = TRUE,
-  hue_rev = FALSE,
-  hue_fraction = 0.5,
-  chroma = 60,
-  luminance = 70,
-  chroma_slope = 5,
-  luminance_slope = -10),
-  return.parameters = TRUE,
-  prepare.dat = TRUE
-)
+# df_col_np_newpath <- treepalette(
+#   npclassifier_newpath,
+#   index = c("top_level_pathway", "NPC.pathway_canopus", "NPC.superclass_canopus"),
+#   method = "HCL",
+#   palette = NULL,
+#   palette.HCL.options = list(
+#   hue_start = 30,
+#   hue_end = 390,
+#   hue_perm = TRUE,
+#   hue_rev = FALSE,
+#   hue_fraction = 0.5,
+#   chroma = 60,
+#   luminance = 70,
+#   chroma_slope = 5,
+#   luminance_slope = -10),
+#   return.parameters = TRUE,
+#   prepare.dat = TRUE
+# )
 
-show_col(df_col_np_newpath$HCL.color, cex_label = 0.5)
+# show_col(df_col_np_newpath$HCL.color, cex_label = 0.5)
 
 # treecolors()
 
@@ -3496,177 +3497,177 @@ hex_custom = data.frame(
 
 # Custom function adapted from https://github.com/KarstensLab/microshades
 
-custom_create_color_dfs <- function(mdf,
-                             selected_groups = c("Proteobacteria",
-                                                 "Actinobacteria",
-                                                 "Bacteroidetes",
-                                                 "Firmicutes"),
-                             top_n_subgroups = 4,
-                             group_level = "Phylum",
-                             subgroup_level = "Genus",
-                             cvd = FALSE,
-                             top_orientation = FALSE)
-    {
-    # Throws error if too many subgroups
-    if (top_n_subgroups > 4) {
-        stop("'top_n_subgroups' exceeds MAX value 4")
-    }
+# custom_create_color_dfs <- function(mdf,
+#                              selected_groups = c("Proteobacteria",
+#                                                  "Actinobacteria",
+#                                                  "Bacteroidetes",
+#                                                  "Firmicutes"),
+#                              top_n_subgroups = 4,
+#                              group_level = "Phylum",
+#                              subgroup_level = "Genus",
+#                              cvd = FALSE,
+#                              top_orientation = FALSE)
+#     {
+#     # Throws error if too many subgroups
+#     if (top_n_subgroups > 4) {
+#         stop("'top_n_subgroups' exceeds MAX value 4")
+#     }
 
-   if (class(mdf) != "data.frame")
-   {
-       stop("mdf argument must be a data frame")
-   }
-    if (!is.null(mdf$group)) {
-        stop("'group' column name already exists; consider renaming or removing")
-    }
+#    if (class(mdf) != "data.frame")
+#    {
+#        stop("mdf argument must be a data frame")
+#    }
+#     if (!is.null(mdf$group)) {
+#         stop("'group' column name already exists; consider renaming or removing")
+#     }
 
-    if (is.null(mdf[[group_level]])) {
-       stop("'group_level' does not exist")
-    }
+#     if (is.null(mdf[[group_level]])) {
+#        stop("'group_level' does not exist")
+#     }
 
-    if (is.null(mdf[[subgroup_level]])) {
-       stop("'subgroup_level' does not exist")
-    }
+#     if (is.null(mdf[[subgroup_level]])) {
+#        stop("'subgroup_level' does not exist")
+#     }
 
 
-    # Create new column for group level -----
-    # Add "Other" category immediately
-    col_name_group <- paste0("Top_", group_level)
-    mdf[[col_name_group]] <- "Other"
+#     # Create new column for group level -----
+#     # Add "Other" category immediately
+#     col_name_group <- paste0("Top_", group_level)
+#     mdf[[col_name_group]] <- "Other"
 
-    # Index and find rows containing the selected groups
-    rows_to_change <- mdf[[group_level]] %in% selected_groups
-    taxa_names_mdf <- row.names(mdf[rows_to_change, ])
-    mdf[taxa_names_mdf, col_name_group] <-
-        as.character(mdf[taxa_names_mdf, group_level])
+#     # Index and find rows containing the selected groups
+#     rows_to_change <- mdf[[group_level]] %in% selected_groups
+#     taxa_names_mdf <- row.names(mdf[rows_to_change, ])
+#     mdf[taxa_names_mdf, col_name_group] <-
+#         as.character(mdf[taxa_names_mdf, group_level])
 
-    # Create factor for the group level column
-    mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
-                                    levels = c("Other", selected_groups))
+#     # Create factor for the group level column
+#     mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
+#                                     levels = c("Other", selected_groups))
 
-    # Check to make sure the selected_groups specified all exist in the dataset
-    if(sum (selected_groups %in% as.character(unique(mdf[[col_name_group]]))) != length(selected_groups))
-    {
-      stop("some 'selected_groups' do not exist in the dataset. Consider SILVA 138 c('Proteobacteria', 'Actinobacteriota', 'Bacteroidota', 'Firmicutes')")
-    }
+#     # Check to make sure the selected_groups specified all exist in the dataset
+#     if(sum (selected_groups %in% as.character(unique(mdf[[col_name_group]]))) != length(selected_groups))
+#     {
+#       stop("some 'selected_groups' do not exist in the dataset. Consider SILVA 138 c('Proteobacteria', 'Actinobacteriota', 'Bacteroidota', 'Firmicutes')")
+#     }
 
-    # Rename missing genera
-    mdf_unknown_subgroup <- mdf %>%
-        mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown"))
+#     # Rename missing genera
+#     mdf_unknown_subgroup <- mdf %>%
+#         mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown"))
 
-    # Rank group-subgroup categories by ranked abundance and add order
-    # Ranked abundance aggregated using sum() function
-    col_name_subgroup <- paste0("Top_", subgroup_level)
-    subgroup_ranks <- mdf_unknown_subgroup %>%
-        group_by_at(c(paste(subgroup_level), paste(col_name_group))) %>%
-        summarise(rank_abundance = sum(Abundance)) %>%
-        arrange(desc(rank_abundance)) %>%
-        group_by_at(c(paste(col_name_group))) %>%
-        mutate(order = row_number()) %>%
-        ungroup()
+#     # Rank group-subgroup categories by ranked abundance and add order
+#     # Ranked abundance aggregated using sum() function
+#     col_name_subgroup <- paste0("Top_", subgroup_level)
+#     subgroup_ranks <- mdf_unknown_subgroup %>%
+#         group_by_at(c(paste(subgroup_level), paste(col_name_group))) %>%
+#         summarise(rank_abundance = sum(Abundance)) %>%
+#         arrange(desc(rank_abundance)) %>%
+#         group_by_at(c(paste(col_name_group))) %>%
+#         mutate(order = row_number()) %>%
+#         ungroup()
 
-    # Correctly keep "Other" for lower abundant genera
-    # Pseudocode:
-    # - set all (top) subgroups to "Other"
-    # - change subgroups back to actual subgroups (e.g., Genus) if it is in the
-    #   top N number of subgroups passed into `top_n_subgroups` (e.g., 4)
-    subgroup_ranks[[col_name_subgroup]] <- "Other"
-    rows_to_change <- subgroup_ranks$order <= top_n_subgroups
-    subgroup_ranks[rows_to_change, col_name_subgroup] <-
-        as.vector(subgroup_ranks[rows_to_change, subgroup_level])
+#     # Correctly keep "Other" for lower abundant genera
+#     # Pseudocode:
+#     # - set all (top) subgroups to "Other"
+#     # - change subgroups back to actual subgroups (e.g., Genus) if it is in the
+#     #   top N number of subgroups passed into `top_n_subgroups` (e.g., 4)
+#     subgroup_ranks[[col_name_subgroup]] <- "Other"
+#     rows_to_change <- subgroup_ranks$order <= top_n_subgroups
+#     subgroup_ranks[rows_to_change, col_name_subgroup] <-
+#         as.vector(subgroup_ranks[rows_to_change, subgroup_level])
 
-    # Generate group-subgroup categories -----
-    # There are `top_n_subgroups` additional groups because each group level has
-    # an additional subgroup of "Other"
-    # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
-    group_info <- subgroup_ranks %>%
-        mutate(group = paste(!!sym(col_name_group),
-                             !!sym(col_name_subgroup),
-                             sep = "-"))
+#     # Generate group-subgroup categories -----
+#     # There are `top_n_subgroups` additional groups because each group level has
+#     # an additional subgroup of "Other"
+#     # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
+#     group_info <- subgroup_ranks %>%
+#         mutate(group = paste(!!sym(col_name_group),
+#                              !!sym(col_name_subgroup),
+#                              sep = "-"))
 
-    # Ensure that the "Other" subgroup is always the lightest shade
-    group_info$order[group_info[[col_name_subgroup]] == "Other"] <- top_n_subgroups +1
+#     # Ensure that the "Other" subgroup is always the lightest shade
+#     group_info$order[group_info[[col_name_subgroup]] == "Other"] <- top_n_subgroups +1
 
-    # Merge group info back to df -----
-    # Get relevant columns from data frame with group info
-    group_info_to_merge <-
-        group_info[, c(col_name_group, subgroup_level,
-                       col_name_subgroup, "group")]
-    mdf_group <- mdf_unknown_subgroup %>%
-        left_join(group_info_to_merge, by = c(col_name_group, subgroup_level))
+#     # Merge group info back to df -----
+#     # Get relevant columns from data frame with group info
+#     group_info_to_merge <-
+#         group_info[, c(col_name_group, subgroup_level,
+#                        col_name_subgroup, "group")]
+#     mdf_group <- mdf_unknown_subgroup %>%
+#         left_join(group_info_to_merge, by = c(col_name_group, subgroup_level))
 
-    # Get beginning of color data frame with top groups/subgroups
-    # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
-    prep_cdf <- group_info %>%
-        select(all_of(c("group", "order", col_name_group, col_name_subgroup))) %>%
-        filter(order <= top_n_subgroups + 1) %>%  # "+ 1" for other subgroup
-        arrange(!!sym(col_name_group), order)
+#     # Get beginning of color data frame with top groups/subgroups
+#     # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
+#     prep_cdf <- group_info %>%
+#         select(all_of(c("group", "order", col_name_group, col_name_subgroup))) %>%
+#         filter(order <= top_n_subgroups + 1) %>%  # "+ 1" for other subgroup
+#         arrange(!!sym(col_name_group), order)
 
-    # Prepare hex colors -----
+#     # Prepare hex colors -----
 
-    # Generates default 5 row x 6 cols of 5 colors for 6 phylum categories
-    # Parameter for number of selected phylum
-    # "+ 1" is for "Other" group
-    num_group_colors <- length(selected_groups) + 1
+#     # Generates default 5 row x 6 cols of 5 colors for 6 phylum categories
+#     # Parameter for number of selected phylum
+#     # "+ 1" is for "Other" group
+#     num_group_colors <- length(selected_groups) + 1
 
-    # hex_df <- default_hex(num_group_colors, cvd)
+#     # hex_df <- default_hex(num_group_colors, cvd)
 
-      hex_df = hex_custom
-    # Add hex codes in ranked way
-    # creates nested data frame
-    # https://tidyr.tidyverse.org/articles/nest.html
-    # https://tidyr.tidyverse.org/reference/nest.html
-    cdf <- prep_cdf %>%
-        group_by_at(c(paste(col_name_group))) %>%
-        tidyr::nest() %>%
-        arrange(!!sym(col_name_group))
+#       hex_df = hex_custom
+#     # Add hex codes in ranked way
+#     # creates nested data frame
+#     # https://tidyr.tidyverse.org/articles/nest.html
+#     # https://tidyr.tidyverse.org/reference/nest.html
+#     cdf <- prep_cdf %>%
+#         group_by_at(c(paste(col_name_group))) %>%
+#         tidyr::nest() %>%
+#         arrange(!!sym(col_name_group))
 
-    # Loop through top group and add colors by nested data frame
-    # Higher row number = less abundant = lighter color
+#     # Loop through top group and add colors by nested data frame
+#     # Higher row number = less abundant = lighter color
 
-    if ("Other" %in% mdf[[col_name_group]])
-    {
-      start <- 1
-    } else
-    {
-      start <- 2
-      num_group_colors <- num_group_colors -1
-    }
+#     if ("Other" %in% mdf[[col_name_group]])
+#     {
+#       start <- 1
+#     } else
+#     {
+#       start <- 2
+#       num_group_colors <- num_group_colors -1
+#     }
 
-    for (i in 1:num_group_colors) {
-      cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
-      start = start + 1
-    }
+#     for (i in 1:num_group_colors) {
+#       cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
+#       start = start + 1
+#     }
 
-    # Unnest colors and groups and polish for output
-    cdf <- cdf %>%
-        ungroup() %>%
-        arrange(desc(row_number())) %>%
-        tidyr::unnest(data) %>%
-        select(!!sym(col_name_group),
-               !!sym(col_name_subgroup),
-               group, hex) %>%
-        mutate_all(as.character)  # Remove factor from hex codes
+#     # Unnest colors and groups and polish for output
+#     cdf <- cdf %>%
+#         ungroup() %>%
+#         arrange(desc(row_number())) %>%
+#         tidyr::unnest(data) %>%
+#         select(!!sym(col_name_group),
+#                !!sym(col_name_subgroup),
+#                group, hex) %>%
+#         mutate_all(as.character)  # Remove factor from hex codes
 
-    cdf <- cdf %>% filter( !is.na(hex))
+#     cdf <- cdf %>% filter( !is.na(hex))
 
-    if (top_orientation)
-    {
-      level_assign = unique(cdf$group)
-    }
-    else
-    {
-      level_assign = unique(rev(cdf$group))
-    }
+#     if (top_orientation)
+#     {
+#       level_assign = unique(cdf$group)
+#     }
+#     else
+#     {
+#       level_assign = unique(rev(cdf$group))
+#     }
 
-    mdf_group$group <- factor(mdf_group$group, levels = level_assign)
+#     mdf_group$group <- factor(mdf_group$group, levels = level_assign)
 
-    # Return final objects -----
-    list(
-        mdf = mdf_group,
-        cdf = cdf
-    )
-}
+#     # Return final objects -----
+#     list(
+#         mdf = mdf_group,
+#         cdf = cdf
+#     )
+# }
 
 
 # We create a fixed color scale function
@@ -3908,14 +3909,14 @@ fixed_custom_create_color_dfs <- function(mdf,
     )
 }
 
-mdf = selected_variable_meta_NPC_simple_resolved
-# selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
-selected_groups = selected_NPC_pathways
-group_level = "NPC.pathway_canopus"
-subgroup_level = "NPC.superclass_canopus"
-cvd = TRUE
-top_n_subgroups = 4
-top_orientation = FALSE
+# mdf = selected_variable_meta_NPC_simple_resolved
+# # selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
+# selected_groups = selected_NPC_pathways
+# group_level = "NPC.pathway_canopus"
+# subgroup_level = "NPC.superclass_canopus"
+# cvd = TRUE
+# top_n_subgroups = 4
+# top_orientation = FALSE
 
 
 
@@ -3927,42 +3928,42 @@ selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
   column_to_rownames('index') %>%
   select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
 
-variable_meta_NPC_simple_resolved = DE$variable_meta %>%
-  select(NPC.class_canopus) %>%
-  rownames_to_column('index') %>%
-  left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
-  column_to_rownames('index') %>%
-  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+# variable_meta_NPC_simple_resolved = DE$variable_meta %>%
+#   select(NPC.class_canopus) %>%
+#   rownames_to_column('index') %>%
+#   left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
+#   column_to_rownames('index') %>%
+#   select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
 
 
 
-npclassifier_newpath_simple$Abundance = 1
+# npclassifier_newpath_simple$Abundance = 1
 
-variable_meta_NPC_simple_resolved$Abundance = 1
+# variable_meta_NPC_simple_resolved$Abundance = 1
 
 selected_variable_meta_NPC_simple_resolved$Abundance = 1
 
 ### Full NPC
 
-npclassifier_newpath_colored <- fixed_custom_create_color_dfs(npclassifier_newpath_simple, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+# npclassifier_newpath_colored <- fixed_custom_create_color_dfs(npclassifier_newpath_simple, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
 
-# Extract
-mdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$mdf
-cdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$cdf
+# # Extract
+# mdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$mdf
+# cdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$cdf
 
-library(scales)
-show_col(cdf_npclassifier_newpath_colored$hex, cex_label = 0.5)
+# library(scales)
+# show_col(cdf_npclassifier_newpath_colored$hex, cex_label = 0.5)
 
 ### Full dataset
 
-variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(variable_meta_NPC_simple_resolved, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+# variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(variable_meta_NPC_simple_resolved, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
 
-# Extract
-mdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$mdf
-cdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$cdf
+# # Extract
+# mdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$mdf
+# cdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$cdf
 
 
-show_col(cdf_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 0.5)
+# show_col(cdf_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 0.5)
 
 ### Selected dataset
 
@@ -3986,43 +3987,9 @@ mdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta
 cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$cdf
 
 
-show_col(cdf_selected_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 1)
+# show_col(cdf_selected_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 1)
 
 
-
-
-
-
-npclassifier_newpath_count = npclassifier_newpath %>%
-  group_by(NPC.pathway_canopus) %>%
-  summarise(count = n()) %>%
-  arrange(desc(count))
-
-npclassifier_newpath_simple_count = npclassifier_newpath_simple %>%
-  group_by(NPC.pathway_canopus) %>%
-  summarise(count = n()) %>%
-  arrange(desc(count))
-
-# We keep the first 7 rows of the previous df in a variable called selected_NPC_pathways. We keep these value in a vector after getting rid of NAs. We use only dplyr.
-
-
-
-selected_variable_meta_NPC_simple_resolvedcolored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_NPC_pathways, group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
-
-
-mdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$mdf
-cdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$cdf
-
-
-# We now replace the add the hex color code from the cdf_npclassifier_newpath_colored to the cdf_selected_variable_meta_NPC_simple_resolved_colored df. For this we merge the two df by the group column. We use dplyr.
-
-cdf_selected_variable_meta_NPC_simple_resolved_colored_plus <- cdf_selected_variable_meta_NPC_simple_resolved_colored %>%
-  left_join(cdf_npclassifier_newpath_colored, by = "group")
-
-
-
-library(scales)
-show_col(cdf_npclassifier_newpath_colored$hex, cex_label = 0.5)
 
 # We count the total numbers of rows for each values in the NPC.pathway_canopus column. We order by descending count.
 # We use dplyr. 
@@ -4038,54 +4005,54 @@ show_col(cdf_npclassifier_newpath_colored$hex, cex_label = 0.5)
 
 # We now subset the df to keep only rows with a value in the 'pathway' column and NAs in the superclass and class columns. We use dplyr.
 
-df_col_np_pathway = df_col_np_newpath %>% 
-  filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
+# df_col_np_pathway = df_col_np_newpath %>% 
+#   filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
 
-df_col_np_pathway = df_col_np_newpath %>% 
-  filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus))
+# df_col_np_pathway = df_col_np_newpath %>% 
+#   filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus))
 
-# Same thing for the superclass column
+# # Same thing for the superclass column
 
-df_col_np_superclass = df_col_np_newpath %>% 
-  filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
+# df_col_np_superclass = df_col_np_newpath %>% 
+#   filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
 
-df_col_np_superclass = df_col_np_newpath %>% 
-  filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus))
+# df_col_np_superclass = df_col_np_newpath %>% 
+#   filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus))
 
 
-# Same thing for the class column
+# # Same thing for the class column
 
-df_col_np_class = df_col_np_newpath %>% 
-  filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & !is.na(NPC.class_canopus))
+# df_col_np_class = df_col_np_newpath %>% 
+#   filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & !is.na(NPC.class_canopus))
 
 
 # # Using the df_col_np_long df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. We use dplyr.
 
 
-col_np_class = selected_variable_meta_NPC_simple_resolved %>% 
-distinct(NPC.class_canopus) %>% 
-arrange(NPC.class_canopus)  %>% 
-left_join(df_col_np_class, by = "NPC.class_canopus")  %>% 
-select(HCL.color) %>% 
-as.vector() %>% 
-unlist()
+# col_np_class = selected_variable_meta_NPC_simple_resolved %>% 
+# distinct(NPC.class_canopus) %>% 
+# arrange(NPC.class_canopus)  %>% 
+# left_join(df_col_np_class, by = "NPC.class_canopus")  %>% 
+# select(HCL.color) %>% 
+# as.vector() %>% 
+# unlist()
 
-col_np_superclass = selected_variable_meta_NPC_simple_resolved %>% 
-distinct(NPC.superclass_canopus) %>% 
-arrange(NPC.superclass_canopus)  %>% 
-left_join(df_col_np_superclass, by = "NPC.superclass_canopus") %>% 
-select(HCL.color) %>% 
-as.vector() %>% 
-unlist()
+# col_np_superclass = selected_variable_meta_NPC_simple_resolved %>% 
+# distinct(NPC.superclass_canopus) %>% 
+# arrange(NPC.superclass_canopus)  %>% 
+# left_join(df_col_np_superclass, by = "NPC.superclass_canopus") %>% 
+# select(HCL.color) %>% 
+# as.vector() %>% 
+# unlist()
 
 
-col_np_pathway = selected_variable_meta_NPC_simple_resolved %>% 
-distinct(NPC.pathway_canopus) %>% 
-arrange(NPC.pathway_canopus)  %>% 
-left_join(df_col_np_pathway, by = "NPC.pathway_canopus") %>% 
-select(HCL.color) %>% 
-as.vector() %>%
-unlist()
+# col_np_pathway = selected_variable_meta_NPC_simple_resolved %>% 
+# distinct(NPC.pathway_canopus) %>% 
+# arrange(NPC.pathway_canopus)  %>% 
+# left_join(df_col_np_pathway, by = "NPC.pathway_canopus") %>% 
+# select(HCL.color) %>% 
+# as.vector() %>%
+# unlist()
 
 col_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 distinct(group, .keep_all = TRUE) %>% 
@@ -4108,7 +4075,7 @@ grid_params <- setup_colorbar_grid(nrows = 5,
 
 # ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
-main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
+iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   name = "Intensity",
   layout = list(margin = list(b = 120)),
   colorbar_grid = grid_params,
@@ -4159,7 +4126,10 @@ main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
     size = 0.2
   )
 
+iheatmap
 
+iheatmap %>% save_iheatmap("iheatmap_myplot.html") # Save interactive HTML
+iheatmap %>% save_iheatmap("iheatmap_myplot.pdf") # Save static plot (pdf, png, or jpeg)
 
 
 
