@@ -1882,6 +1882,15 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   colnames(npclassifier_newpath) <-  c("NPC.class_canopus","NPC.superclass_canopus","NPC.pathway_canopus")
   npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)] <- paste(npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)],"x")
 
+  # Alternatively we generate a new df where all class-superclass pairs are distinct and we add a column with the corresponding pathway (we keep the first occurence). We rename the columns (NPC.class_canopus = class, NPC.superclass_canopus = superclass, NPC.pathway_canopus = pathway).We return a data.frame.
+
+  npclassifier_newpath_simple <- npclassifier_origin %>%
+    distinct(class, .keep_all	= TRUE) %>%
+    rename(NPC.class_canopus = class, NPC.superclass_canopus = superclass, NPC.pathway_canopus = pathway) %>%
+    data.frame() 
+
+
+
   # Here we list the distinct values in the npclassifier_newpath$NPC.pathway_canopus and order them alphabetically
 
   # npclassifier_newpath  %>%  
@@ -3292,20 +3301,7 @@ selected_variable_meta_NPC_simple = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
   select(NPC.class_canopus, NPC.superclass_canopus, NPC.pathway_canopus)
 
-selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance)  %>% 
-  select(NPC.class_canopus) %>%
-  rownames_to_column('index') %>%
-  left_join(npclassifier_newpath,by="NPC.class_canopus") %>% 
-  column_to_rownames('index') %>%
-  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
 
-variable_meta_NPC_simple_resolved = DE$variable_meta %>%
-  select(NPC.class_canopus) %>%
-  rownames_to_column('index') %>%
-  left_join(npclassifier_newpath,by="NPC.class_canopus") %>% 
-  column_to_rownames('index') %>%
-  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
 
       mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
 
@@ -3313,7 +3309,7 @@ variable_meta_NPC_simple_resolved = DE$variable_meta %>%
 rownames(selected_variable_meta_NPC_simple)
 
 
-
+npclassifier_newpath_simple
 
 npclassifier_origin_ordered = npclassifier_origin  %>% 
 select(pathway, superclass, class)
@@ -3472,14 +3468,6 @@ show_col(df_col_np_newpath$HCL.color, cex_label = 0.5)
 # treecolors()
 
 # microshades_palette()
-
-npclassifier_newpath = npclassifier_newpath  %>% 
-select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
-
-
-npclassifier_newpath$Abundance = 1
-
-variable_meta_NPC_simple_resolved$Abundance = 1
 
 
 
@@ -3716,6 +3704,19 @@ fixed_custom_create_color_dfs <- function(mdf,
        stop("'subgroup_level' does not exist")
     }
 
+    # Here we add a security check to make sure that the Others is present in mdf[[group_level]]. Else we add it directly to the mdf dataframe
+
+    if ("Other" %in% mdf[[group_level]]) {
+      print("Other is present in the dataframe")
+    } else {
+      print("Other is not present in the dataframe. We add it directly to the dataframe")
+      row_to_insert = data.frame(NPC.pathway_canopus = "Other",
+      NPC.superclass_canopus = "Other",
+      NPC.class_canopus = "Other",
+      Abundance = 1)
+      mdf <- mdf %>% 
+      rows_insert(row_to_insert)
+    }
 
     # Create new column for group level -----
     # Add "Other" category immediately
@@ -3799,7 +3800,11 @@ fixed_custom_create_color_dfs <- function(mdf,
 
     # hex_df <- default_hex(num_group_colors, cvd)
 
-      hex_df = hex_custom
+    hex_df = hex_custom  %>% 
+    rownames_to_column("order")  %>% 
+    mutate(order = as.numeric(order))
+
+     
     # Add hex codes in ranked way
     # creates nested data frame
     # https://tidyr.tidyverse.org/articles/nest.html
@@ -3825,38 +3830,52 @@ fixed_custom_create_color_dfs <- function(mdf,
     #   cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
     #   start = start + 1
     # }
-    # 1 is micro_cvd_gray
-    if ("Other" %in% mdf[[col_name_group]]) {
-      cdf$data[[1]]$hex <- hex_df[1:length(cdf$data[[1]]$group),1]
+    # 1 is micro_cvd_gray 
+   
+
+    # Define a function to create a pathway tibble
+    create_pathway_tibble <- function(pathway_name, hex_column_name) {
+      cdf %>%
+        filter(Top_NPC.pathway_canopus == pathway_name) %>%
+        pull(data) %>%
+        as.data.frame() %>% 
+        left_join(hex_df, by = "order") %>%
+        select(group, order, Top_NPC.superclass_canopus, !!hex_column_name := !!sym(hex_column_name)) %>%
+        rename(hex = !!sym(hex_column_name)) %>%
+        as_tibble()  %>% 
+        distinct()
     }
-    # 2 is micro_cvd_purple
-    if ("Terpenoids" %in% mdf[[col_name_group]]) {
-      cdf$data[[2]]$hex <- hex_df[1:length(cdf$data[[2]]$group),2]
+
+
+    # List of pathway names and corresponding hex column names
+    pathway_data <- list(
+      "Terpenoids" = "micro_cvd_purple",
+      "Fatty acids" = "micro_cvd_blue",
+      "Polyketides" = "micro_cvd_orange",
+      "Alkaloids" = "micro_cvd_green",
+      "Shikimates and Phenylpropanoids" = "micro_cvd_turquoise",
+      "Amino acids and Peptides" = "micro_orange",
+      "Carbohydrates" = "micro_purple",
+      "Other" = "micro_cvd_gray"
+    )
+
+    # Subset pathway_data to match the levels in cdf$Top_NPC.pathway_canopus
+    valid_pathway_names <- levels(cdf$Top_NPC.pathway_canopus)
+    valid_pathway_data <- pathway_data[names(pathway_data) %in% valid_pathway_names]
+
+
+    # Loop through the pathway_data and create tibbles
+    pathway_tibbles <- list()
+    for (pathway_name in names(valid_pathway_data)) {
+      hex_column_name <- valid_pathway_data[[pathway_name]]
+      pathway_tibbles[[pathway_name]] <- create_pathway_tibble(pathway_name, hex_column_name)
     }
-    # 3 is micro_cvd_blue
-    if ("Fatty acids" %in% mdf[[col_name_group]]) {
-      cdf$data[[3]]$hex <- hex_df[1:length(cdf$data[[3]]$group),3]
-    }
-    # 4 is micro_cvd_orange
-    if ("Polyketides" %in% mdf[[col_name_group]]) {
-      cdf$data[[4]]$hex <- hex_df[1:length(cdf$data[[4]]$group),4]
-    }
-    # 5 is micro_cvd_green
-    if ("Alkaloids" %in% mdf[[col_name_group]]) {
-      cdf$data[[5]]$hex <- hex_df[1:length(cdf$data[[5]]$group),5]
-    }
-    # 6 is micro_cvd_turquoise
-    if ("Shikimates and Phenylpropanoids" %in% mdf[[col_name_group]]) {
-      cdf$data[[6]]$hex <- hex_df[1:length(cdf$data[[6]]$group),6]
-    }
-    # 7 is micro_orange
-    if ("Amino acids and Peptides" %in% mdf[[col_name_group]]) {
-      cdf$data[[7]]$hex <- hex_df[1:length(cdf$data[[7]]$group),7]
-    }
-    # 8 is micro_purple
-    if ("Carbohydrates" %in% mdf[[col_name_group]]) {
-      cdf$data[[8]]$hex <- hex_df[1:length(cdf$data[[8]]$group),8]
-    }
+
+    # Convert the list of tibbles to a tibble
+    cdf <- tibble(
+      Top_NPC.pathway_canopus = names(pathway_tibbles),
+      data = map(pathway_tibbles, as_tibble)
+    )
 
     # Unnest colors and groups and polish for output
     cdf <- cdf %>%
@@ -3881,6 +3900,7 @@ fixed_custom_create_color_dfs <- function(mdf,
 
     mdf_group$group <- factor(mdf_group$group, levels = level_assign)
 
+
     # Return final objects -----
     list(
         mdf = mdf_group,
@@ -3888,7 +3908,8 @@ fixed_custom_create_color_dfs <- function(mdf,
     )
 }
 
-mdf =variable_meta_NPC_simple_resolved
+mdf = selected_variable_meta_NPC_simple_resolved
+# selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
 selected_groups = selected_NPC_pathways
 group_level = "NPC.pathway_canopus"
 subgroup_level = "NPC.superclass_canopus"
@@ -3897,28 +3918,96 @@ top_n_subgroups = 4
 top_orientation = FALSE
 
 
-npclassifier_newpath_colored <- fixed_custom_create_color_dfs(npclassifier_newpath, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+
+selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)  %>% 
+  select(NPC.class_canopus) %>%
+  rownames_to_column('index') %>%
+  left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
+  column_to_rownames('index') %>%
+  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+
+variable_meta_NPC_simple_resolved = DE$variable_meta %>%
+  select(NPC.class_canopus) %>%
+  rownames_to_column('index') %>%
+  left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
+  column_to_rownames('index') %>%
+  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+
+
+
+npclassifier_newpath_simple$Abundance = 1
+
+variable_meta_NPC_simple_resolved$Abundance = 1
+
+selected_variable_meta_NPC_simple_resolved$Abundance = 1
+
+### Full NPC
+
+npclassifier_newpath_colored <- fixed_custom_create_color_dfs(npclassifier_newpath_simple, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
 
 # Extract
 mdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$mdf
 cdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$cdf
 
+library(scales)
+show_col(cdf_npclassifier_newpath_colored$hex, cex_label = 0.5)
 
-variable_meta_NPC_simple_resolved_count = variable_meta_NPC_simple_resolved %>%
+### Full dataset
+
+variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(variable_meta_NPC_simple_resolved, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+
+# Extract
+mdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$mdf
+cdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$cdf
+
+
+show_col(cdf_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 0.5)
+
+### Selected dataset
+
+selected_variable_meta_NPC_simple_resolved_count = selected_variable_meta_NPC_simple_resolved %>%
+  group_by(NPC.pathway_canopus) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>% 
+  select(NPC.pathway_canopus) %>%
+  pull()
+
+# selected_NPC_pathways = selected_variable_meta_NPC_simple_resolved_count %>%
+#   top_n(7, count) %>%
+#   filter(!is.na(NPC.pathway_canopus)) %>%
+#   select(NPC.pathway_canopus) %>%
+#   pull()
+
+selected_variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_variable_meta_NPC_simple_resolved_count, group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+
+# Extract
+mdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$mdf
+cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$cdf
+
+
+show_col(cdf_selected_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 1)
+
+
+
+
+
+
+npclassifier_newpath_count = npclassifier_newpath %>%
+  group_by(NPC.pathway_canopus) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+npclassifier_newpath_simple_count = npclassifier_newpath_simple %>%
   group_by(NPC.pathway_canopus) %>%
   summarise(count = n()) %>%
   arrange(desc(count))
 
 # We keep the first 7 rows of the previous df in a variable called selected_NPC_pathways. We keep these value in a vector after getting rid of NAs. We use only dplyr.
 
-selected_NPC_pathways = variable_meta_NPC_simple_resolved_count %>%
-  top_n(7, count) %>%
-  filter(!is.na(NPC.pathway_canopus)) %>%
-  select(NPC.pathway_canopus) %>%
-  pull()
 
 
-variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(variable_meta_NPC_simple_resolved, selected_groups = selected_NPC_pathways, group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+selected_variable_meta_NPC_simple_resolvedcolored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_NPC_pathways, group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
 
 
 mdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$mdf
@@ -3998,12 +4087,12 @@ select(HCL.color) %>%
 as.vector() %>%
 unlist()
 
-col_np_pathway = mdf_variable_meta_NPC_simple_resolved_colored %>% 
+col_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 distinct(group, .keep_all = TRUE) %>% 
 arrange(group)  %>% 
 # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
 # with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
-left_join(cdf_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
+left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
 # left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
 select(hex) %>% 
 as.vector() %>%
