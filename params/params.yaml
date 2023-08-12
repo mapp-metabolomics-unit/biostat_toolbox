@@ -1,11 +1,11 @@
-mapp_project : mapp_project_00013
-mapp_batch : mapp_batch_00026
-met_annot_enhancer_folder : mapp_batch_00026
-gnps_job_id : ae571ceb70644788ac0e14b90546275f
+mapp_project : mapp_project_00034
+mapp_batch : mapp_batch_00066
+met_annot_enhancer_folder : mapp_batch_00066
+gnps_job_id : 521ea1ab01ce405eabf448bd47447a1d
 
 dataset_experiment : 
-  name: "mapp_batch_00026 LCMS metabolomics dataset"
-  description: "Katrin - Mice CSF - total per2"
+  name: "mapp_batch_00066 LCMS metabolomics dataset"
+  description: "Abhishek Pseudomonas C18"
 
 
 ms_files_extension: ".mzML"
@@ -13,7 +13,7 @@ ms_files_extension: ".mzML"
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 60b99eff119447a8b426f598c054f31c.graphml
+  gnps_graphml: 1eccaf4948654840b8156760ca708edf.graphml
 
 
 actions:
@@ -23,8 +23,8 @@ actions:
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : TRUE
-  filter_features : TRUE
+  filter_variable_metadata_annotated : FALSE
+  filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -63,7 +63,7 @@ filter_variable_metadata_annotated :
 
 
 target:
-  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
+  sample_metadata_header: "type" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 

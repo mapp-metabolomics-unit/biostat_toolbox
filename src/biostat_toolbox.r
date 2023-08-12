@@ -453,9 +453,13 @@ sample_metadata = read_delim(file.path(working_directory, "metadata", "treated",
 
 # Here we establish a small test which will check if the sample metadata file contains the required columns (filename, sample_id, sample_type and species)
 
-if (!all(c("filename", "sample_id", "sample_type", "species") %in% colnames(sample_metadata))) {
-  stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type and species). Please check your metadata file and try again.")
+required_columns <- c("filename", "sample_id", "sample_type")
+
+if (!all(required_columns %in% colnames(sample_metadata)) ||
+    !any(c("species", "source_taxon") %in% colnames(sample_metadata))) {
+  stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type) or one of the alternative columns (species or source_taxon). Please check your metadata file and try again.")
 }
+
 
 SM = data.frame(sample_metadata)
 
