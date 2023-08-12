@@ -43,14 +43,15 @@ usePackage("base")
 usePackage("BiocFileCache")
 usePackage("cowplot")
 usePackage("data.table")
+usePackage("datasets")
 usePackage("dbscan")
-usePackage("tools")
 usePackage("dplyr")
 usePackage("emmeans")
 usePackage("EnhancedVolcano")
 usePackage("fpc")
 usePackage("funModeling")
 usePackage("ggdendro")
+usePackage("ggh4x")
 usePackage("ggplot2")
 usePackage("ggraph")
 usePackage("ggrepel")
@@ -61,6 +62,7 @@ usePackage("gt")
 usePackage("heatmaply")
 usePackage("here")
 usePackage("igraph")
+usePackage("iheatmapr")
 usePackage("manhattanly")
 usePackage("openxlsx")
 usePackage("plotly")
@@ -70,7 +72,9 @@ usePackage("purrr")
 usePackage("randomcoloR")
 usePackage("randomForest")
 usePackage("rcdk")
+usePackage("RColorBrewer")
 usePackage("readr")
+usePackage("reshape2")
 usePackage("reticulate")
 usePackage("rfPermute")
 usePackage("rgl")
@@ -80,15 +84,15 @@ usePackage("structToolbox")
 usePackage("this.path")
 usePackage("tidyr")
 usePackage("tidyverse")
+usePackage("tools")
+usePackage("treemap")
 usePackage("vegan")
 usePackage("viridis")
 usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
-usePackage("ggh4x")
-usePackage("iheatmapr")
-usePackage("datasets")
-usePackage("reshape2")
+
+usePackage("microshades")
 
 
 
@@ -1870,7 +1874,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   # distinct(NPC.pathway_canopus)  %>% 
   # arrange(NPC.pathway_canopus)
 
-
+# Check wether this line is used or not ?
   index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassifier_newpath$NPC.pathway_canopus)))
 
 
@@ -3270,6 +3274,26 @@ selected_variable_meta_NPC_simple_ordered = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
   select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
 
+selected_variable_meta_NPC_simple = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)  %>% 
+  select(NPC.class_canopus, NPC.superclass_canopus, NPC.pathway_canopus)
+
+selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)  %>% 
+  select(NPC.class_canopus) %>%
+  rownames_to_column('index') %>%
+  left_join(npclassifier_newpath,by="NPC.class_canopus") %>% 
+  column_to_rownames('index') %>%
+  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+
+
+      mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
+
+
+rownames(selected_variable_meta_NPC_simple)
+
+
+
 
 npclassifier_origin_ordered = npclassifier_origin  %>% 
 select(pathway, superclass, class)
@@ -3392,6 +3416,101 @@ my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sa
 genotype_period = DE$sample_meta[[params$target$sample_metadata_header]]
 
 
+
+
+# We split the pathway column to get the first word of the pathway and save it as a new column "top_level_pathway"
+
+npclassifier_newpath$top_level_pathway = strsplit(npclassifier_newpath$NPC.pathway_canopus, " ") %>% 
+  sapply(function(x) x[1]) %>% 
+  as.factor() %>% 
+  as.data.frame() %>% 
+  rename(top_level_pathway = ".")
+
+
+
+df_col_np_newpath <- treepalette(
+  npclassifier_newpath,
+  index = c("top_level_pathway", "NPC.pathway_canopus", "NPC.superclass_canopus"),
+  method = "HCL",
+  palette = NULL,
+  palette.HCL.options = list(
+  hue_start = 30,
+  hue_end = 390,
+  hue_perm = TRUE,
+  hue_rev = FALSE,
+  hue_fraction = 0.5,
+  chroma = 60,
+  luminance = 70,
+  chroma_slope = 5,
+  luminance_slope = -10),
+  return.parameters = TRUE,
+  prepare.dat = TRUE
+)
+
+show_col(df_col_np_newpath$HCL.color, cex_label = 0.5)
+
+treecolors()
+
+microshades_palette()
+
+npclassifier_newpath = npclassifier_newpath  %>% 
+select(top_level_pathway, NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+
+
+treeplot()
+
+# We now subset the df to keep only rows with a value in the 'pathway' column and NAs in the superclass and class columns. We use dplyr.
+
+df_col_np_pathway = df_col_np_newpath %>% 
+  filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
+
+df_col_np_pathway = df_col_np_newpath %>% 
+  filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus))
+
+# Same thing for the superclass column
+
+df_col_np_superclass = df_col_np_newpath %>% 
+  filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
+
+df_col_np_superclass = df_col_np_newpath %>% 
+  filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus))
+
+
+# Same thing for the class column
+
+df_col_np_class = df_col_np_newpath %>% 
+  filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & !is.na(NPC.class_canopus))
+
+
+# Using the df_col_np_long df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. We use dplyr.
+
+
+col_np_class = selected_variable_meta_NPC_simple_resolved %>% 
+distinct(NPC.class_canopus) %>% 
+arrange(NPC.class_canopus)  %>% 
+left_join(df_col_np_class, by = "NPC.class_canopus")  %>% 
+select(HCL.color) %>% 
+as.vector() %>% 
+unlist()
+
+col_np_superclass = selected_variable_meta_NPC_simple_resolved %>% 
+distinct(NPC.superclass_canopus) %>% 
+arrange(NPC.superclass_canopus)  %>% 
+left_join(df_col_np_superclass, by = "NPC.superclass_canopus") %>% 
+select(HCL.color) %>% 
+as.vector() %>% 
+unlist()
+
+col_np_pathway = selected_variable_meta_NPC_simple_resolved %>% 
+distinct(NPC.pathway_canopus) %>% 
+arrange(NPC.pathway_canopus)  %>% 
+left_join(df_col_np_pathway, by = "NPC.pathway_canopus") %>% 
+select(HCL.color) %>% 
+as.vector() %>%
+unlist()
+
+
+
 grid_params <- setup_colorbar_grid(nrows = 5, 
                                    y_length = 0.3, 
                                    x_spacing = 0.3,
@@ -3401,11 +3520,12 @@ grid_params <- setup_colorbar_grid(nrows = 5,
 
 ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
-
-main_heatmap(t(data_subset_for_pval_hm_mat), 
-name = "Intensity", 
-layout = list(margin = list(b = 120)),
-colorbar_grid = grid_params) %>%
+main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
+  name = "Intensity",
+  layout = list(margin = list(b = 120)),
+  colorbar_grid = grid_params,
+  colors = "RdBu"
+) %>%
   add_row_labels(
     tickvals = NULL,
     ticktext = selected_variable_meta$feature_id_full_annotated,
@@ -3418,18 +3538,21 @@ colorbar_grid = grid_params) %>%
   #   side = "right",
   #   buffer = 0.005
   # colors = list(ByPal, ByPal, ByPal) %>%
-  add_row_annotation(data.frame("NPC_Class" = selected_variable_meta_NPC_simple$NPC.class_canopus),
+  # add_row_annotation(data.frame("NPC_Class" = selected_variable_meta_NPC_simple_resolved$NPC.class_canopus),
+  #   side = "right",
+  #   buffer = 0.005,
+  #   colors = list("NPC_Class" = col_np_class)
+  # ) %>%
+  add_row_annotation(data.frame("NPC_SuperClass" = selected_variable_meta_NPC_simple_resolved$NPC.superclass_canopus),
     side = "right",
     buffer = 0.005,
-    colors = list("NPC_Class" = col_np_class)) %>%
-  add_row_annotation(data.frame("NPC_SuperClass" = selected_variable_meta_NPC_simple$NPC.superclass_canopus),
+    colors = list("NPC_SuperClass" = col_np_superclass)
+  ) %>%
+  add_row_annotation(data.frame("NPC_Pathway" = selected_variable_meta_NPC_simple_resolved$NPC.pathway_canopus),
     side = "right",
     buffer = 0.005,
-    colors = list("NPC_SuperClass" = col_np_superclass)) %>%
-  add_row_annotation(data.frame("NPC_Pathway" = selected_variable_meta_NPC_simple$NPC.pathway_canopus),
-    side = "right",
-    buffer = 0.005,
-    colors = list("NPC_Pathway" = col_np_pathway)) %>%
+    colors = list("NPC_Pathway" = col_np_pathway)
+  ) %>%
   # add_row_annotation(selected_variable_meta_NPC_simple$NPC.superclass_canopus,
   #   side = "right",
   #   buffer = 0.005
@@ -3449,6 +3572,15 @@ colorbar_grid = grid_params) %>%
   )
 
 
+
+
+
+
+unique(selected_variable_meta_NPC_simple_resolved$NPC.superclass_canopus)
+
+col_np_superclass
+
+
 hex_values <-c(microshades_palette("micro_green", 5, lightest = FALSE), 
                microshades_palette("micro_blue", 3, lightest = FALSE), 
                microshades_palette("micro_purple", 3, lightest = FALSE))
@@ -3462,14 +3594,14 @@ col.b <- c(brewer.pal(9,"Blues"))[6:9] # select 4 colors from class Blues
 my.cols <- c(col.g,col.r,col.b)
 
 
-df_col <- treepalette(
-  selected_variable_meta_NPC_simple_ordered,
-  index = names(selected_variable_meta_NPC_simple_ordered),
-  method = "HCL",
-  palette = NULL,
-  return.parameters = TRUE,
-  prepare.dat = TRUE
-)
+# df_col <- treepalette(
+#   selected_variable_meta_NPC_simple_ordered,
+#   index = names(selected_variable_meta_NPC_simple_ordered),
+#   method = "HCL",
+#   palette = NULL,
+#   return.parameters = TRUE,
+#   prepare.dat = TRUE
+# )
 
 df_col_np <- treepalette(
   npclassifier_origin_ordered,
@@ -3481,6 +3613,13 @@ df_col_np <- treepalette(
   prepare.dat = TRUE
 )
 
+show_col(df_col_np$HCL.color, cex_label = 0.5)
+
+
+
+
+
+
 
 
 npclassifier_origin_ordered
@@ -3489,73 +3628,43 @@ npclassifier_origin_ordered
 
 npclassifier_origin_ordered = npclassifier_origin_ordered[complete.cases(npclassifier_origin_ordered), ]
 
-# We now subset the df to keep only rows with a value in the 'pathway' column and NAs in the superclass and class columns. We use dplyr.
 
-df_col_np_pathway = df_col_np %>% 
-  filter(!is.na(pathway) & is.na(superclass) & is.na(class))
-
-# Same thing for the superclass column
-
-df_col_np_superclass = df_col_np %>% 
-  filter(!is.na(pathway) & !is.na(superclass) & is.na(class))
-
-# Same thing for the class column
-
-df_col_np_class = df_col_np %>% 
-  filter(!is.na(pathway) & !is.na(superclass) & !is.na(class))
-
-# We now merge the 3 dataframes
-
-df_col_np_long = rbind(df_col_np_pathway, df_col_np_superclass, df_col_np_class)
-
-# Using the df_col_np_long df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. We use dplyr.
-
-col_np_class = df_col_np_class %>% 
-  filter(class %in% selected_variable_meta_NPC_simple$NPC.class_canopus) %>% 
-  select(HCL.color) %>% 
-  unlist()
-
-# Same thing for the superclass column
-
-col_np_superclass = df_col_np_superclass %>% 
-  filter(superclass %in% selected_variable_meta_NPC_simple$NPC.superclass_canopus) %>% 
-  select(HCL.color) %>% 
-  unlist()
-
-# Same thing for the pathway column
-
-col_np_pathway = df_col_np_pathway %>% 
-  filter(pathway %in% selected_variable_meta_NPC_simple$NPC.pathway_canopus) %>% 
-  select(HCL.color) %>% 
-  unlist()
-
-# Using the df_col_np_class df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. For this we merge both df using the NPC.superclass_canopus on one side and the superclass column on the other. We use dplyr. We proceed using merge and not filter because we want to keep the order of the rows in the selected_variable_meta_NPC_simple df.
-
-
-col_np_superclass = merge(
-  selected_variable_meta_NPC_simple,
-  df_col_np_superclass,
-  by.x = "NPC.superclass_canopus",
-  by.y = "superclass",
-  all.x = FALSE
-) %>% 
-  select(HCL.color) %>% 
-  unlist()
-
-
-unique(col_np_superclass$HCL.color)
-
-
-show_col(col_np_superclass$HCL.color, cex_label = 0.5)
-
-unique(col_np_superclass$HCL.color)
-
-unique(col_np_superclass$superclass)
-unique(selected_variable_meta_NPC_simple$NPC.superclass_canopus)
 
 library(scales)
 pal <- rgb(ddf$r, ddf$g, ddf$b)
+
 show_col(df_col_np$HCL.color, cex_label = 0.5)
+
+minibits <- c(
+  "#817",
+  "#a35",
+  "#c66",
+  "#e94",
+  "#ed0",
+  "#9d5",
+  "#4d8",
+  "#2cb",
+  "#0bc",
+  "#09c",
+  "#36b",
+  "#639"
+)
+paired <- c(
+  "#a6cee3",
+  "#1f78b4",
+  "#b2df8a",
+  "#33a02c",
+  "#fb9a99",
+  "#e31a1c",
+  "#fdbf6f",
+  "#ff7f00",
+  "#cab2d6",
+  "#6a3d9a",
+  "#ffff99",
+  "#b15928"
+)
+
+show_col(paired, cex_label = 0.5)
 
 
 library("treemap")
