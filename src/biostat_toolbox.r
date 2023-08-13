@@ -1888,6 +1888,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   npclassifier_newpath_simple <- npclassifier_origin %>%
     distinct(class, .keep_all	= TRUE) %>%
     rename(NPC.class_canopus = class, NPC.superclass_canopus = superclass, NPC.pathway_canopus = pathway) %>%
+    na.omit() %>% 
     data.frame() 
 
 
@@ -3730,9 +3731,15 @@ fixed_custom_create_color_dfs <- function(mdf,
     mdf[taxa_names_mdf, col_name_group] <-
         as.character(mdf[taxa_names_mdf, group_level])
 
+    if ("Other" %in% selected_groups) {
+    # Create factor for the group level column
+    mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
+                                    levels = c(selected_groups))
+    } else {
     # Create factor for the group level column
     mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
                                     levels = c("Other", selected_groups))
+    }
 
     # Check to make sure the selected_groups specified all exist in the dataset
     if(sum (selected_groups %in% as.character(unique(mdf[[col_name_group]]))) != length(selected_groups))
@@ -3832,7 +3839,6 @@ fixed_custom_create_color_dfs <- function(mdf,
     #   start = start + 1
     # }
     # 1 is micro_cvd_gray 
-   
 
     # Define a function to create a pathway tibble
     create_pathway_tibble <- function(pathway_name, hex_column_name) {
@@ -3859,7 +3865,6 @@ fixed_custom_create_color_dfs <- function(mdf,
       "Carbohydrates" = "micro_purple",
       "Other" = "micro_cvd_gray"
     )
-
     # Subset pathway_data to match the levels in cdf$Top_NPC.pathway_canopus
     valid_pathway_names <- levels(cdf$Top_NPC.pathway_canopus)
     valid_pathway_data <- pathway_data[names(pathway_data) %in% valid_pathway_names]
@@ -3885,7 +3890,7 @@ fixed_custom_create_color_dfs <- function(mdf,
         tidyr::unnest(data) %>%
         select(!!sym(col_name_group),
                !!sym(col_name_subgroup),
-               group, hex) %>%
+               group, hex, order) %>%
         mutate_all(as.character)  # Remove factor from hex codes
 
     cdf <- cdf %>% filter( !is.na(hex))
@@ -3909,14 +3914,14 @@ fixed_custom_create_color_dfs <- function(mdf,
     )
 }
 
-# mdf = selected_variable_meta_NPC_simple_resolved
-# # selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
-# selected_groups = selected_NPC_pathways
-# group_level = "NPC.pathway_canopus"
-# subgroup_level = "NPC.superclass_canopus"
-# cvd = TRUE
-# top_n_subgroups = 4
-# top_orientation = FALSE
+mdf = selected_variable_meta_NPC_simple_resolved
+# selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
+selected_groups = selected_variable_meta_NPC_simple_resolved_count
+group_level = "NPC.pathway_canopus"
+subgroup_level = "NPC.superclass_canopus"
+cvd = TRUE
+top_n_subgroups = 4
+top_orientation = FALSE
 
 
 
@@ -3926,7 +3931,10 @@ selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
   rownames_to_column('index') %>%
   left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
   column_to_rownames('index') %>%
-  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus) %>% 
+  # We convert NA in the NPC.pathway_canopus column to "Other"
+  mutate(NPC.pathway_canopus = ifelse(is.na(NPC.pathway_canopus), "Other", NPC.pathway_canopus))
+
 
 # variable_meta_NPC_simple_resolved = DE$variable_meta %>%
 #   select(NPC.class_canopus) %>%
@@ -4055,31 +4063,72 @@ cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta
 # unlist()
 
 col_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
-distinct(group, .keep_all = TRUE) %>% 
-arrange(group)  %>% 
+distinct(group, .keep_all = TRUE) %>%
+# We temporarily change group from factor to character
+mutate(group = as.character(group)) %>%
+# # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
+# # and we order by group
+arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
+# # we switch back group from character to factor
+mutate(group = as.factor(group)) %>%
 # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
 # with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
 left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
+arrange(NPC.pathway_canopus, order)  %>% 
 # left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
 select(hex) %>% 
 as.vector() %>%
 unlist()
 
+order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
+distinct(group, .keep_all = TRUE) %>%
+# We temporarily change group from factor to character
+mutate(group = as.character(group)) %>%
+# # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
+# # and we order by group
+arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
+# # we switch back group from character to factor
+mutate(group = as.factor(group)) %>%
+# we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
+# with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
+left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
+arrange(NPC.pathway_canopus, order)  %>% 
+# left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
+select(group) %>% 
+as.vector() %>%
+unlist()
 
-grid_params <- setup_colorbar_grid(nrows = 5, 
-                                   y_length = 0.3, 
+mdf_selected_variable_ordered = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
+# We temporarily change group from factor to character
+mutate(group = as.character(group)) %>%
+# We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
+# and we order by group
+arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
+# we switch back group from character to factor
+mutate(group = as.factor(group)) 
+
+mdf_selected_variable_ordered$group
+
+mdf_selected_variable_ordered$group <- factor(mdf_selected_variable_ordered$group, levels = order_np_pathway)
+
+
+
+str(mdf_selected_variable_meta_NPC_simple_resolved_colored)
+
+grid_params <- setup_colorbar_grid(nrows = 2, 
+                                   y_length = 0.4, 
                                    x_spacing = 0.3,
-                                   y_spacing = 0.3, 
+                                   y_spacing = 0.5, 
                                    x_start = 1.2, 
-                                   y_start = 1)
+                                   y_start = 0.8)
 
 # ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
 iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   name = "Intensity",
-  layout = list(margin = list(b = 120)),
+  layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
-  colors = "RdBu"
+  colors = "GnBu"
 ) %>%
   add_row_labels(
     tickvals = NULL,
@@ -4087,7 +4136,8 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
     side = "left",
     buffer = 0.005,
     textangle = 0,
-    size = 1
+    size = 0.45,
+    font = list(size = 7)
   ) %>%
   # add_row_annotation(selected_variable_meta_NPC_simple,
   #   side = "right",
@@ -4103,10 +4153,10 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   #   buffer = 0.005,
   #   colors = list("NPC_SuperClass" = col_np_superclass)
   # ) %>%
-  add_row_annotation(data.frame("NPC_Pathway" = mdf_selected_variable_meta_NPC_simple_resolved_colored$group),
+  add_row_annotation(data.frame("Classification" = mdf_selected_variable_ordered$group),
     side = "right",
     buffer = 0.05,
-    colors = list("NPC_Pathway" = col_np_pathway)
+    colors = list("Classification" = col_np_pathway)
   ) %>%
   # add_row_annotation(selected_variable_meta_NPC_simple$NPC.superclass_canopus,
   #   side = "right",
@@ -4117,18 +4167,20 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   #   buffer = 0.005
   # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
-  add_col_annotation(data.frame("Condition" = target_metadata)) %>%
+  add_col_annotation(data.frame("Condition" = target_metadata),
+  colors = list("Condition" = c("#0966e0", "#c80707"))) %>%
   add_col_clustering() %>%
   add_col_labels(
     tickvals = NULL,
     ticktext = my_sample_col,
     textangle = -90,
-    size = 0.2
+    size = 0.2,
+    font = list(size = 7)
   )
 
 iheatmap
 
-iheatmap %>% save_iheatmap("iheatmap_myplot.html") # Save interactive HTML
+iheatmap %>% save_iheatmap("iheatmap_myplot_boh.html") # Save interactive HTML
 iheatmap %>% save_iheatmap("iheatmap_myplot.pdf") # Save static plot (pdf, png, or jpeg)
 
 
