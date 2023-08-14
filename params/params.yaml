@@ -23,7 +23,7 @@ actions:
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : FALSE
+  filter_variable_metadata_annotated : TRUE
   filter_features : TRUE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -36,9 +36,9 @@ filter_sample_type :
   levels : 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'include'
+  mode : 'exclude'
   factor_name : 'period'
-  levels : 'night'
+  levels : 'inter'
 
 filter_sample_metadata_two :
   mode : 'include'
@@ -62,12 +62,14 @@ filter_variable_metadata_annotated :
 
 iheatmapr:
   colors:
-   - "#0966e0"
-   - "#c80707"
+   - "#a89639"
+   - "#b1bd7e"
+   - "#dd6665"
+   - "#dd4341"
 
 
 target:
-  sample_metadata_header: "genotype" # This variable will be used throughout the whole script
+  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 

@@ -905,7 +905,7 @@ title_heatmap_pval = paste(
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
   paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
   paste("Scaling Status:", scaling_status),
-  sep = "\n"
+  sep = "<br>"
 )
 
 
@@ -3212,20 +3212,6 @@ features_of_importance = DE_foldchange_pvalues %>%
   # we output the data as a vector
   pull()
 
-
-# data_subset_for_Pval = DE$data %>%
-#   select(all_of(as.character(features_of_importance))) %>% 
-#   rename_all(~ paste0("X", .))  %>% 
-#   # here we join the data with the associated sample metadata using the row.names as index
-#   merge(DE$sample_meta, ., by = "row.names")  %>% 
-#   # We keep the row.names columnn as row.names
-#   transform(row.names = Row.names)  %>%
-#   # We keep the params$target$sample_metadata_header column and the columns that start with X
-#   select(params$target$sample_metadata_header, starts_with("X"))  %>% 
-#   # We set the params$target$sample_metadata_header column as a factor
-#   mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))
-
-
 data_subset_for_pval_hm = DE$data %>%
   select(all_of(as.character(features_of_importance))) %>% 
   rename_all(~ paste0("X", .))  %>% 
@@ -3243,22 +3229,6 @@ data_subset_for_pval_hm = DE$data %>%
 data_subset_for_pval_hm_sel = data_subset_for_pval_hm %>%
   select(params$target$sample_metadata_header)
 
-# imp_filter2X = row.names(imp_table_rf)
-# imp_filter2 = gsub("X", "", imp_filter2X)
-
-
-# features_of_importance_heatmap = DE_foldchange_pvalues %>%
-#   # we keep only the features that have a p-value lower than the threshold
-#   # filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
-#   # We keep only the lowest top n = params$boxplot$topN in the p_value_column
-#   top_n(-params$heatmap$topN, !!as.symbol(p_value_column))  %>%
-#   # we order the features by increasing p-value
-#   arrange(!!as.symbol(p_value_column))  %>%
-#   select(feature_id) %>%
-#   # we output the data as a vector
-#   pull()
-
-
 
 data_subset_for_pval_hm = data_subset_for_pval_hm[, colnames(data_subset_for_pval_hm) %in% features_of_importance]
 # my_sample_col = DE$sample_meta$sample_id
@@ -3268,12 +3238,6 @@ data_subset_for_pval_hm = data_subset_for_pval_hm[, colnames(data_subset_for_pva
 
 my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
-# annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
-
-# colnames(annot_col) = c("Superclass", "Pathway")
-
-# rownames(annot_col) = DE$variable_meta$feature_id
-# annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
 
 # We filter the annotation table (DE$variable_meta) to keep only the features of interest identified in the (features_of_importance). We use dplyr
 
@@ -3306,18 +3270,10 @@ selected_variable_meta_NPC_simple = DE$variable_meta %>%
 
 
 
-      mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
-
-
-rownames(selected_variable_meta_NPC_simple)
-
-
-npclassifier_newpath_simple
-
 npclassifier_origin_ordered = npclassifier_origin  %>% 
 select(pathway, superclass, class)
 
-ByPal = colorRampPalette(c(wes_palette("Zissou1")))
+# ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
 # data_subset_for_Pval = apply(data_subset_for_Pval, 2, as.numeric)
 # # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
@@ -3329,149 +3285,67 @@ data_subset_for_pval_hm_mat <- data_subset_for_pval_hm
 data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 
 
-heatmap_filtered_pval = heatmaply(
-  percentize(data_subset_for_pval_hm),
-  seriate = "none", # none , GW , mean, OLO
-  col_side_colors = data.frame(selected_variable_meta_NPC, check.names = FALSE),
-  col_side_palette = ByPal,
-  row_side_colors = data_subset_for_pval_hm_sel,
-  # row_side_palette = ByPal,
-  labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
-  labCol = selected_variable_meta$feature_id_full_annotated,
-  subplot_margin = 0.01,
-  scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-    low = "lightsteelblue2",
-    # mid = "goldenrod1",
-    high = "firebrick3",
-    midpoint = 0.5,
-    limits = c(0, 1),
-    position = "left"
-  ),
-  hide_colorbar = TRUE,
-  branches_lwd = 0.3,
-  k_row = 4,
-  distfun_row = "pearson",
-  distfun_col = "pearson",
-  fontsize_row = 9,
-  fontsize_col = 9,
-  Rowv = FALSE,
-  side_color_colorbar_len = 1
-  # # # # # Colv = NULL,
-  # plot_method = "plotly"
-)  %>% layout(
-  title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
-  margin = list(t = 150, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
-)
-
-heatmap_filtered_pval
-
-# https://docs.ropensci.org/iheatmapr/articles/full_vignettes/iheatmapr.html
-
-
-# x  <- as.matrix(datasets::mtcars)
-# rc <- colorspace::rainbow_hcl(nrow(x))
-
-
-# heatmaply(
-#   x[, -c(8, 9)],
-#   seriate = "mean",
-#   col_side_colors = c(rep(0, 5), rep(1, 4)),
-#   row_side_colors = x[, 8:9]
+# heatmap_filtered_pval = heatmaply(
+#   percentize(data_subset_for_pval_hm),
+#   seriate = "none", # none , GW , mean, OLO
+#   col_side_colors = data.frame(selected_variable_meta_NPC, check.names = FALSE),
+#   col_side_palette = ByPal,
+#   row_side_colors = data_subset_for_pval_hm_sel,
+#   # row_side_palette = ByPal,
+#   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
+#   labCol = selected_variable_meta$feature_id_full_annotated,
+#   subplot_margin = 0.01,
+#   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+#     low = "lightsteelblue2",
+#     # mid = "goldenrod1",
+#     high = "firebrick3",
+#     midpoint = 0.5,
+#     limits = c(0, 1),
+#     position = "left"
+#   ),
+#   hide_colorbar = TRUE,
+#   branches_lwd = 0.3,
+#   k_row = 4,
+#   distfun_row = "pearson",
+#   distfun_col = "pearson",
+#   fontsize_row = 9,
+#   fontsize_col = 9,
+#   Rowv = FALSE,
+#   side_color_colorbar_len = 1
+#   # # # # # Colv = NULL,
+#   # plot_method = "plotly"
+# )  %>% layout(
+#   title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
+#   margin = list(t = 150, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
 # )
 
-# c(rep(0, 8), rep(1, 8))
-
-# as.character(data_subset_for_pval_hm_sel[[1]])
-
-# The file is exported
+# heatmap_filtered_pval
 
 
-if (params$operating_system$system == "unix") {
-### linux version
 
-heatmap_filtered_pval %>%
-    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE) 
-}
-
-if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-heatmap_filtered_pval %>%
-    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
-}
-
-# library(iheatmapr)
-# data(measles, package = "iheatmapr")
-
-# main_heatmap(measles, name = "Measles<br>Cases", x_categorical = FALSE,
-#              layout = list(font = list(size = 8))) %>%
-#   add_col_groups(ifelse(1930:2001 < 1961,"No","Yes"),
-#                   side = "bottom", name = "Vaccine<br>Introduced?",
-#                   title = "Vaccine?",
-#                   colors = c("lightgray","blue")) %>%
-#   add_col_labels(ticktext = seq(1930,2000,10),font = list(size = 8)) %>%
-#   add_row_labels(size = 0.3,font = list(size = 6), textangle = 20) %>% 
-#   add_col_summary(layout = list(title = "Average<br>across<br>states"),
-#                   yname = "summary")  %>%                 
-#   add_col_title("Measles Cases from 1930 to 2001", side= "top") %>%
-#   add_row_summary(groups = TRUE, 
-#                   type = "bar",
-#                   layout = list(title = "Average<br>per<br>year",
-#                                 font = list(size = 8)))
-                                
+# # The file is exported
 
 
-# data_subset_for_pval_hm_mat = as.matrix(data_subset_for_pval_hm_mat)
+# if (params$operating_system$system == "unix") {
+# ### linux version
 
-# main_heatmap(data_subset_for_pval_hm_mat, name = "Intensity")
+# heatmap_filtered_pval %>%
+#     htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE) 
+# }
 
-# rownames(data_subset_for_pval_hm_mat)
+# if (params$operating_system$system == "windows") {
+# ### windows version
+# Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+# heatmap_filtered_pval %>%
+#     htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
+# unlink("lib", recursive = FALSE)
 
-# my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
+# }
+
+#### Iheatmapr
 
 
 target_metadata = DE$sample_meta[[params$target$sample_metadata_header]]
-
-
-
-
-# # We split the pathway column to get the first word of the pathway and save it as a new column "top_level_pathway"
-
-# npclassifier_newpath$top_level_pathway = strsplit(npclassifier_newpath$NPC.pathway_canopus, " ") %>% 
-#   sapply(function(x) x[1]) %>% 
-#   as.factor() %>% 
-#   as.data.frame() %>% 
-#   rename(top_level_pathway = ".")
-
-
-
-# df_col_np_newpath <- treepalette(
-#   npclassifier_newpath,
-#   index = c("top_level_pathway", "NPC.pathway_canopus", "NPC.superclass_canopus"),
-#   method = "HCL",
-#   palette = NULL,
-#   palette.HCL.options = list(
-#   hue_start = 30,
-#   hue_end = 390,
-#   hue_perm = TRUE,
-#   hue_rev = FALSE,
-#   hue_fraction = 0.5,
-#   chroma = 60,
-#   luminance = 70,
-#   chroma_slope = 5,
-#   luminance_slope = -10),
-#   return.parameters = TRUE,
-#   prepare.dat = TRUE
-# )
-
-# show_col(df_col_np_newpath$HCL.color, cex_label = 0.5)
-
-# treecolors()
-
-# microshades_palette()
-
 
 
 # Define the vector of colors
@@ -3482,7 +3356,7 @@ micro_cvd_orange   = rev(c(microshades_palette("micro_cvd_orange")))
 micro_cvd_green    = rev(c(microshades_palette("micro_cvd_green")))
 micro_cvd_turquoise= rev(c(microshades_palette("micro_cvd_turquoise")))
 micro_orange       = rev(c(microshades_palette("micro_orange")))
-micro_purple       = rev(c(microshades_palette("micro_purple"))
+micro_purple       = rev(c(microshades_palette("micro_purple")))
 
 # Choose the column to which you want to assign the vector of colors (e.g., "column4")
 
@@ -3498,179 +3372,6 @@ hex_custom = data.frame(
 )
 
 # Custom function adapted from https://github.com/KarstensLab/microshades
-
-# custom_create_color_dfs <- function(mdf,
-#                              selected_groups = c("Proteobacteria",
-#                                                  "Actinobacteria",
-#                                                  "Bacteroidetes",
-#                                                  "Firmicutes"),
-#                              top_n_subgroups = 4,
-#                              group_level = "Phylum",
-#                              subgroup_level = "Genus",
-#                              cvd = FALSE,
-#                              top_orientation = FALSE)
-#     {
-#     # Throws error if too many subgroups
-#     if (top_n_subgroups > 4) {
-#         stop("'top_n_subgroups' exceeds MAX value 4")
-#     }
-
-#    if (class(mdf) != "data.frame")
-#    {
-#        stop("mdf argument must be a data frame")
-#    }
-#     if (!is.null(mdf$group)) {
-#         stop("'group' column name already exists; consider renaming or removing")
-#     }
-
-#     if (is.null(mdf[[group_level]])) {
-#        stop("'group_level' does not exist")
-#     }
-
-#     if (is.null(mdf[[subgroup_level]])) {
-#        stop("'subgroup_level' does not exist")
-#     }
-
-
-#     # Create new column for group level -----
-#     # Add "Other" category immediately
-#     col_name_group <- paste0("Top_", group_level)
-#     mdf[[col_name_group]] <- "Other"
-
-#     # Index and find rows containing the selected groups
-#     rows_to_change <- mdf[[group_level]] %in% selected_groups
-#     taxa_names_mdf <- row.names(mdf[rows_to_change, ])
-#     mdf[taxa_names_mdf, col_name_group] <-
-#         as.character(mdf[taxa_names_mdf, group_level])
-
-#     # Create factor for the group level column
-#     mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
-#                                     levels = c("Other", selected_groups))
-
-#     # Check to make sure the selected_groups specified all exist in the dataset
-#     if(sum (selected_groups %in% as.character(unique(mdf[[col_name_group]]))) != length(selected_groups))
-#     {
-#       stop("some 'selected_groups' do not exist in the dataset. Consider SILVA 138 c('Proteobacteria', 'Actinobacteriota', 'Bacteroidota', 'Firmicutes')")
-#     }
-
-#     # Rename missing genera
-#     mdf_unknown_subgroup <- mdf %>%
-#         mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown"))
-
-#     # Rank group-subgroup categories by ranked abundance and add order
-#     # Ranked abundance aggregated using sum() function
-#     col_name_subgroup <- paste0("Top_", subgroup_level)
-#     subgroup_ranks <- mdf_unknown_subgroup %>%
-#         group_by_at(c(paste(subgroup_level), paste(col_name_group))) %>%
-#         summarise(rank_abundance = sum(Abundance)) %>%
-#         arrange(desc(rank_abundance)) %>%
-#         group_by_at(c(paste(col_name_group))) %>%
-#         mutate(order = row_number()) %>%
-#         ungroup()
-
-#     # Correctly keep "Other" for lower abundant genera
-#     # Pseudocode:
-#     # - set all (top) subgroups to "Other"
-#     # - change subgroups back to actual subgroups (e.g., Genus) if it is in the
-#     #   top N number of subgroups passed into `top_n_subgroups` (e.g., 4)
-#     subgroup_ranks[[col_name_subgroup]] <- "Other"
-#     rows_to_change <- subgroup_ranks$order <= top_n_subgroups
-#     subgroup_ranks[rows_to_change, col_name_subgroup] <-
-#         as.vector(subgroup_ranks[rows_to_change, subgroup_level])
-
-#     # Generate group-subgroup categories -----
-#     # There are `top_n_subgroups` additional groups because each group level has
-#     # an additional subgroup of "Other"
-#     # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
-#     group_info <- subgroup_ranks %>%
-#         mutate(group = paste(!!sym(col_name_group),
-#                              !!sym(col_name_subgroup),
-#                              sep = "-"))
-
-#     # Ensure that the "Other" subgroup is always the lightest shade
-#     group_info$order[group_info[[col_name_subgroup]] == "Other"] <- top_n_subgroups +1
-
-#     # Merge group info back to df -----
-#     # Get relevant columns from data frame with group info
-#     group_info_to_merge <-
-#         group_info[, c(col_name_group, subgroup_level,
-#                        col_name_subgroup, "group")]
-#     mdf_group <- mdf_unknown_subgroup %>%
-#         left_join(group_info_to_merge, by = c(col_name_group, subgroup_level))
-
-#     # Get beginning of color data frame with top groups/subgroups
-#     # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
-#     prep_cdf <- group_info %>%
-#         select(all_of(c("group", "order", col_name_group, col_name_subgroup))) %>%
-#         filter(order <= top_n_subgroups + 1) %>%  # "+ 1" for other subgroup
-#         arrange(!!sym(col_name_group), order)
-
-#     # Prepare hex colors -----
-
-#     # Generates default 5 row x 6 cols of 5 colors for 6 phylum categories
-#     # Parameter for number of selected phylum
-#     # "+ 1" is for "Other" group
-#     num_group_colors <- length(selected_groups) + 1
-
-#     # hex_df <- default_hex(num_group_colors, cvd)
-
-#       hex_df = hex_custom
-#     # Add hex codes in ranked way
-#     # creates nested data frame
-#     # https://tidyr.tidyverse.org/articles/nest.html
-#     # https://tidyr.tidyverse.org/reference/nest.html
-#     cdf <- prep_cdf %>%
-#         group_by_at(c(paste(col_name_group))) %>%
-#         tidyr::nest() %>%
-#         arrange(!!sym(col_name_group))
-
-#     # Loop through top group and add colors by nested data frame
-#     # Higher row number = less abundant = lighter color
-
-#     if ("Other" %in% mdf[[col_name_group]])
-#     {
-#       start <- 1
-#     } else
-#     {
-#       start <- 2
-#       num_group_colors <- num_group_colors -1
-#     }
-
-#     for (i in 1:num_group_colors) {
-#       cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
-#       start = start + 1
-#     }
-
-#     # Unnest colors and groups and polish for output
-#     cdf <- cdf %>%
-#         ungroup() %>%
-#         arrange(desc(row_number())) %>%
-#         tidyr::unnest(data) %>%
-#         select(!!sym(col_name_group),
-#                !!sym(col_name_subgroup),
-#                group, hex) %>%
-#         mutate_all(as.character)  # Remove factor from hex codes
-
-#     cdf <- cdf %>% filter( !is.na(hex))
-
-#     if (top_orientation)
-#     {
-#       level_assign = unique(cdf$group)
-#     }
-#     else
-#     {
-#       level_assign = unique(rev(cdf$group))
-#     }
-
-#     mdf_group$group <- factor(mdf_group$group, levels = level_assign)
-
-#     # Return final objects -----
-#     list(
-#         mdf = mdf_group,
-#         cdf = cdf
-#     )
-# }
-
 
 # We create a fixed color scale function
 
@@ -3915,14 +3616,14 @@ fixed_custom_create_color_dfs <- function(mdf,
     )
 }
 
-mdf = selected_variable_meta_NPC_simple_resolved
-# selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
-selected_groups = selected_variable_meta_NPC_simple_resolved_count
-group_level = "NPC.pathway_canopus"
-subgroup_level = "NPC.superclass_canopus"
-cvd = TRUE
-top_n_subgroups = 4
-top_orientation = FALSE
+# mdf = selected_variable_meta_NPC_simple_resolved
+# # selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
+# selected_groups = selected_variable_meta_NPC_simple_resolved_count
+# group_level = "NPC.pathway_canopus"
+# subgroup_level = "NPC.superclass_canopus"
+# cvd = TRUE
+# top_n_subgroups = 4
+# top_orientation = FALSE
 
 
 
@@ -3937,39 +3638,7 @@ selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
   mutate(NPC.pathway_canopus = ifelse(is.na(NPC.pathway_canopus), "Other", NPC.pathway_canopus))
 
 
-# variable_meta_NPC_simple_resolved = DE$variable_meta %>%
-#   select(NPC.class_canopus) %>%
-#   rownames_to_column('index') %>%
-#   left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
-#   column_to_rownames('index') %>%
-#   select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
-
-
-
-# npclassifier_newpath_simple$Abundance = 1
-
-# variable_meta_NPC_simple_resolved$Abundance = 1
-
 selected_variable_meta_NPC_simple_resolved$Abundance = 1
-
-### Full NPC
-
-# npclassifier_newpath_colored <- fixed_custom_create_color_dfs(npclassifier_newpath_simple, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
-
-# # Extract
-# mdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$mdf
-# cdf_npclassifier_newpath_colored <- npclassifier_newpath_colored$cdf
-
-# library(scales)
-# show_col(cdf_npclassifier_newpath_colored$hex, cex_label = 0.5)
-
-### Full dataset
-
-# variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(variable_meta_NPC_simple_resolved, selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates"), group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
-
-# # Extract
-# mdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$mdf
-# cdf_variable_meta_NPC_simple_resolved_colored <- variable_meta_NPC_simple_resolved_colored$cdf
 
 
 # show_col(cdf_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 0.5)
@@ -3983,11 +3652,6 @@ selected_variable_meta_NPC_simple_resolved_count = selected_variable_meta_NPC_si
   select(NPC.pathway_canopus) %>%
   pull()
 
-# selected_NPC_pathways = selected_variable_meta_NPC_simple_resolved_count %>%
-#   top_n(7, count) %>%
-#   filter(!is.na(NPC.pathway_canopus)) %>%
-#   select(NPC.pathway_canopus) %>%
-#   pull()
 
 selected_variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_variable_meta_NPC_simple_resolved_count, group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
 
@@ -3996,82 +3660,9 @@ mdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta
 cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$cdf
 
 
-# show_col(cdf_selected_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 1)
-
-
-
-# We count the total numbers of rows for each values in the NPC.pathway_canopus column. We order by descending count.
-# We use dplyr. 
-
-
-# npclassifier_newpath_count = npclassifier_newpath %>%
-#   group_by(NPC.pathway_canopus) %>%
-#   summarise(count = n()) %>%
-#   arrange(desc(count))
-
-
-# treeplot()
-
-# We now subset the df to keep only rows with a value in the 'pathway' column and NAs in the superclass and class columns. We use dplyr.
-
-# df_col_np_pathway = df_col_np_newpath %>% 
-#   filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
-
-# df_col_np_pathway = df_col_np_newpath %>% 
-#   filter(!is.na(NPC.pathway_canopus) & is.na(NPC.superclass_canopus))
-
-# # Same thing for the superclass column
-
-# df_col_np_superclass = df_col_np_newpath %>% 
-#   filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & is.na(NPC.class_canopus))
-
-# df_col_np_superclass = df_col_np_newpath %>% 
-#   filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus))
-
-
-# # Same thing for the class column
-
-# df_col_np_class = df_col_np_newpath %>% 
-#   filter(!is.na(NPC.pathway_canopus) & !is.na(NPC.superclass_canopus) & !is.na(NPC.class_canopus))
-
-
-# # Using the df_col_np_long df we return a vector of the colors present in HCL.color columns, when the values in selected_variable_meta_NPC_simple$NPC.class_canopus match the values in df_col_np_long$class column. We use dplyr.
-
-
-# col_np_class = selected_variable_meta_NPC_simple_resolved %>% 
-# distinct(NPC.class_canopus) %>% 
-# arrange(NPC.class_canopus)  %>% 
-# left_join(df_col_np_class, by = "NPC.class_canopus")  %>% 
-# select(HCL.color) %>% 
-# as.vector() %>% 
-# unlist()
-
-# col_np_superclass = selected_variable_meta_NPC_simple_resolved %>% 
-# distinct(NPC.superclass_canopus) %>% 
-# arrange(NPC.superclass_canopus)  %>% 
-# left_join(df_col_np_superclass, by = "NPC.superclass_canopus") %>% 
-# select(HCL.color) %>% 
-# as.vector() %>% 
-# unlist()
-
-
-# col_np_pathway = selected_variable_meta_NPC_simple_resolved %>% 
-# distinct(NPC.pathway_canopus) %>% 
-# arrange(NPC.pathway_canopus)  %>% 
-# left_join(df_col_np_pathway, by = "NPC.pathway_canopus") %>% 
-# select(HCL.color) %>% 
-# as.vector() %>%
-# unlist()
 
 col_order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 distinct(group, .keep_all = TRUE) %>%
-# We temporarily change group from factor to character
-# mutate(group = as.character(group)) %>%
-# # # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
-# # # and we order by group
-# arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
-# # # we switch back group from character to factor
-# mutate(group = as.factor(group)) %>%
 # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
 # with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
 left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
@@ -4093,24 +3684,6 @@ order_np_pathway = col_order_np_pathway %>%
   unlist() %>% 
   rev()
 
-# order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
-# distinct(group, .keep_all = TRUE) %>%
-# # We temporarily change group from factor to character
-# mutate(group = as.character(group)) %>%
-# # # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
-# # # and we order by group
-# arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
-# # # we switch back group from character to factor
-# mutate(group = as.factor(group)) %>%
-# # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
-# # with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
-# left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
-# arrange(NPC.pathway_canopus, order)  %>% 
-# # left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
-# select(group) %>% 
-# as.vector() %>%
-# unlist()
-
 mdf_selected_variable_ordered = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 # We temporarily change group from factor to character
 mutate(group = as.character(group)) %>%
@@ -4124,33 +3697,94 @@ mutate(group = as.factor(group))
 mdf_selected_variable_ordered$group <- factor(mdf_selected_variable_ordered$group, levels = order_np_pathway)
 
 
-
-str(mdf_selected_variable_meta_NPC_simple_resolved_colored)
-
 grid_params <- setup_colorbar_grid(nrows = 2, 
                                    y_length = 0.4, 
                                    x_spacing = 0.3,
                                    y_spacing = 0.5, 
-                                   x_start = 1.2, 
+                                   x_start = 1.1, 
                                    y_start = 0.8)
 
 # ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
-iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
+data_subset_for_pval_hm_mat 
+
+# we replace all values in the matrix that by 1s
+
+data_subset_for_pval_hm_mat1 = data_subset_for_pval_hm_mat
+
+data_subset_for_pval_hm_mat1[data_subset_for_pval_hm_mat1 > 0] <- '<br> shgshgshgssg <br> 
+<html>
+ <body>
+  <iframe src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CCC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
+   width="800" height="600" frameborder="0" allowfullscreen></iframe>
+ </body>
+</html>'
+
+typeof(data_subset_for_pval_hm_mat1)
+typeof(data_subset_for_pval_hm_mat)
+
+DE$variable_meta[DE$variable_meta$feature_id == '1103',]
+
+
+values_text = DE$variable_meta  %>% 
+select(feature_id, chebiasciiname_sirius)
+
+
+
+dt = as.data.frame(t(data_subset_for_pval_hm_mat))
+
+
+# Sample data
+matrix_data <- matrix(0, nrow = 10, ncol = 7)  # Create a 10x7 matrix filled with zeros
+data_frame <- data.frame(
+  V1 = c(954, 956, 965, 968, 97, 972, 977, 984, 988, 99),
+  V2 = c("Value1", "Value2", "Value3", "Value4", "Value5", "Value6", "Value7", "Value8", "Value9", "Value10")
+)
+
+# Fill the first column of the matrix with the values from the second column of the dataframe
+matrix_data[, 1] <- data_frame$V2
+
+# Print the resulting matrix
+print(matrix_data)
+
+paste()
+
+# I want to fill a matrix 
+
+values_mat = dt  %>% 
+rownames_to_column('feature_id') %>%
+select(feature_id) %>%
+mutate(feature_id = as.numeric(feature_id)) %>%
+left_join(DE$variable_meta, by = 'feature_id') %>%
+select(feature_id, chebiasciiname_sirius) %>%
+mutate(hover_text = paste0(feature_id, '<br>', chebiasciiname_sirius)) %>%
+select(feature_id, hover_text) %>%
+pivot_wider(names_from = feature_id, values_from = hover_text)  %>% 
+# we now repeat the hover_text for each row of the matrix. We use dplyr to do that
+mutate(count = nrow(data_subset_for_pval_hm_mat)) %>%
+uncount(count) %>% 
+as.matrix()
+
+iheatmap <- main_heatmap(as.matrix(percentize(data_subset_for_pval_hm_mat)),
   name = "Intensity",
-  layout = list(margin = list(b = 80)),
+  # layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
   colors = "GnBu",
-  show_colorbar = TRUE
+  show_colorbar = TRUE,
+  text = values_mat,
+  layout = list(
+    title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
+    margin = list(t = 160, r = 80, b = 80, l = 80)
+  )
 ) %>%
   add_row_labels(
     tickvals = NULL,
     ticktext = selected_variable_meta$feature_id_full_annotated,
     side = "left",
-    buffer = 0.005,
+    buffer = 0.01,
     textangle = 0,
     size = 0.45,
-    font = list(size = 7)
+    font = list(size = 9)
   ) %>%
   # add_row_annotation(selected_variable_meta_NPC_simple,
   #   side = "right",
@@ -4181,15 +3815,39 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
   add_col_annotation(data.frame("Condition" = target_metadata),
-  colors = list("Condition" = c(params$iheatmapr$colors))) %>%
+    colors = list("Condition" = c(params$iheatmapr$colors)),
+    buffer = 0.01
+  ) %>%
   add_col_clustering() %>%
   add_col_labels(
     tickvals = NULL,
     ticktext = my_sample_col,
     textangle = -90,
     size = 0.2,
-    font = list(size = 7)
+    font = list(size = 10)
   )
+
+iheatmap
+
+# library(iheatmapr)
+# data(measles, package = "iheatmapr")
+
+# main_heatmap(measles, name = "Measles<br>Cases", x_categorical = FALSE,
+#              layout = list(font = list(size = 8))) %>%
+#   add_col_groups(ifelse(1930:2001 < 1961,"No","Yes"),
+#                   side = "bottom", name = "Vaccine<br>Introduced?",
+#                   title = "Vaccine?",
+#                   colors = c("lightgray","blue")) %>%
+#   add_col_labels(ticktext = seq(1930,2000,10),font = list(size = 8)) %>%
+#   add_row_labels(size = 0.3,font = list(size = 6)) %>% 
+#   add_col_summary(layout = list(title = "Average<br>across<br>states"),
+#                   yname = "summary")  %>%                 
+#   add_col_title("Measles Cases from 1930 to 2001", side= "top") %>%
+#   add_row_summary(groups = TRUE, 
+#                   type = "bar",
+#                   layout = list(title = "Average<br>per<br>year",
+#                                 font = list(size = 8)))
+              
 
 
 # The file is exported
