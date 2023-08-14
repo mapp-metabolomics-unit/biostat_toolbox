@@ -38,6 +38,7 @@ rm(r)
 
 # To organize alphabetically
 
+
 usePackage("ape")
 usePackage("base")
 usePackage("BiocFileCache")
@@ -64,6 +65,7 @@ usePackage("here")
 usePackage("igraph")
 usePackage("iheatmapr")
 usePackage("manhattanly")
+usePackage("microshades")
 usePackage("openxlsx")
 usePackage("plotly")
 usePackage("pls")
@@ -92,7 +94,6 @@ usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
 
-usePackage("microshades")
 
 
 
@@ -3474,14 +3475,14 @@ target_metadata = DE$sample_meta[[params$target$sample_metadata_header]]
 
 
 # Define the vector of colors
-micro_cvd_gray = c(microshades_palette("micro_cvd_gray"))
-micro_cvd_purple = c(microshades_palette("micro_cvd_purple"))
-micro_cvd_blue = c(microshades_palette("micro_cvd_blue"))
-micro_cvd_orange = c(microshades_palette("micro_cvd_orange"))
-micro_cvd_green = c(microshades_palette("micro_cvd_green"))
-micro_cvd_turquoise = c(microshades_palette("micro_cvd_turquoise"))
-micro_orange = c(microshades_palette("micro_orange"))
-micro_purple = c(microshades_palette("micro_purple"))
+micro_cvd_gray     = rev(c(microshades_palette("micro_cvd_gray")))
+micro_cvd_purple   = rev(c(microshades_palette("micro_cvd_purple")))
+micro_cvd_blue     = rev(c(microshades_palette("micro_cvd_blue")))
+micro_cvd_orange   = rev(c(microshades_palette("micro_cvd_orange")))
+micro_cvd_green    = rev(c(microshades_palette("micro_cvd_green")))
+micro_cvd_turquoise= rev(c(microshades_palette("micro_cvd_turquoise")))
+micro_orange       = rev(c(microshades_palette("micro_orange")))
+micro_purple       = rev(c(microshades_palette("micro_purple"))
 
 # Choose the column to which you want to assign the vector of colors (e.g., "column4")
 
@@ -4062,41 +4063,53 @@ cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta
 # as.vector() %>%
 # unlist()
 
-col_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
+col_order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 distinct(group, .keep_all = TRUE) %>%
 # We temporarily change group from factor to character
-mutate(group = as.character(group)) %>%
-# # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
-# # and we order by group
-arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
-# # we switch back group from character to factor
-mutate(group = as.factor(group)) %>%
+# mutate(group = as.character(group)) %>%
+# # # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
+# # # and we order by group
+# arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
+# # # we switch back group from character to factor
+# mutate(group = as.factor(group)) %>%
 # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
 # with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
 left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
-arrange(NPC.pathway_canopus, order)  %>% 
+# arrange(NPC.pathway_canopus, order)  %>% 
+arrange(ifelse(NPC.pathway_canopus == "Other", 2, 1), NPC.pathway_canopus, order) %>% 
 # left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
-select(hex) %>% 
-as.vector() %>%
-unlist()
+select(hex, group)
 
-order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
-distinct(group, .keep_all = TRUE) %>%
-# We temporarily change group from factor to character
-mutate(group = as.character(group)) %>%
-# # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
-# # and we order by group
-arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
-# # we switch back group from character to factor
-mutate(group = as.factor(group)) %>%
-# we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
-# with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
-left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
-arrange(NPC.pathway_canopus, order)  %>% 
-# left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
-select(group) %>% 
-as.vector() %>%
-unlist()
+
+col_np_pathway = col_order_np_pathway %>%
+  select(hex) %>%
+  as.vector() %>%
+  unlist() %>% 
+  rev()
+
+order_np_pathway = col_order_np_pathway %>%
+  select(group) %>%
+  as.vector() %>%
+  unlist() %>% 
+  rev()
+
+# order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
+# distinct(group, .keep_all = TRUE) %>%
+# # We temporarily change group from factor to character
+# mutate(group = as.character(group)) %>%
+# # # We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
+# # # and we order by group
+# arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
+# # # we switch back group from character to factor
+# mutate(group = as.factor(group)) %>%
+# # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
+# # with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
+# left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
+# arrange(NPC.pathway_canopus, order)  %>% 
+# # left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
+# select(group) %>% 
+# as.vector() %>%
+# unlist()
 
 mdf_selected_variable_ordered = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 # We temporarily change group from factor to character
@@ -4107,7 +4120,6 @@ arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>%
 # we switch back group from character to factor
 mutate(group = as.factor(group)) 
 
-mdf_selected_variable_ordered$group
 
 mdf_selected_variable_ordered$group <- factor(mdf_selected_variable_ordered$group, levels = order_np_pathway)
 
@@ -4128,7 +4140,8 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   name = "Intensity",
   layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
-  colors = "GnBu"
+  colors = "GnBu",
+  show_colorbar = TRUE
 ) %>%
   add_row_labels(
     tickvals = NULL,
@@ -4168,7 +4181,7 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
   # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
   add_col_annotation(data.frame("Condition" = target_metadata),
-  colors = list("Condition" = c("#0966e0", "#c80707"))) %>%
+  colors = list("Condition" = c(params$iheatmapr$colors))) %>%
   add_col_clustering() %>%
   add_col_labels(
     tickvals = NULL,
@@ -4178,12 +4191,25 @@ iheatmap = main_heatmap(t(percentize(data_subset_for_pval_hm_mat)),
     font = list(size = 7)
   )
 
-iheatmap
 
-iheatmap %>% save_iheatmap("iheatmap_myplot_boh.html") # Save interactive HTML
-iheatmap %>% save_iheatmap("iheatmap_myplot.pdf") # Save static plot (pdf, png, or jpeg)
+# The file is exported
 
 
+if (params$operating_system$system == "unix") {
+### linux version
+
+iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
+
+}
+
+if (params$operating_system$system == "windows") {
+### windows version
+Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+iheatmap %>%
+    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
+unlink("lib", recursive = FALSE)
+
+}
 
 
 # unique(selected_variable_meta_NPC_simple_resolved$NPC.superclass_canopus)
@@ -4224,12 +4250,6 @@ iheatmap %>% save_iheatmap("iheatmap_myplot.pdf") # Save static plot (pdf, png, 
 # )
 
 # show_col(df_col_np$HCL.color, cex_label = 0.5)
-
-
-
-
-
-
 
 
 # npclassifier_origin_ordered
@@ -4281,73 +4301,73 @@ iheatmap %>% save_iheatmap("iheatmap_myplot.pdf") # Save static plot (pdf, png, 
 #############################################################################
 #############################################################################
 
-message("Preparing Random Forest filtered Heatmap ...")
+# message("Preparing Random Forest filtered Heatmap ...")
 
-imp_table_rf_order = imp_table_rf[order(imp_table_rf$MeanDecreaseGini, decreasing = TRUE), ] # imp_table_rf[order(imp_table_rf$MeanDecreaseGini,decreasing=TRUE),]
+# imp_table_rf_order = imp_table_rf[order(imp_table_rf$MeanDecreaseGini, decreasing = TRUE), ] # imp_table_rf[order(imp_table_rf$MeanDecreaseGini,decreasing=TRUE),]
 
-imp_filter2X = row.names(imp_table_rf_order)[1:params$heatmap$topN]
-imp_filter2 = gsub("X", "", imp_filter2X)
+# imp_filter2X = row.names(imp_table_rf_order)[1:params$heatmap$topN]
+# imp_filter2 = gsub("X", "", imp_filter2X)
 
-data_subset_for_RF = data_subset_for_RF[, colnames(data_subset_for_RF) %in% imp_filter2X]
-# my_sample_col = DE$sample_meta$sample_id
+# data_subset_for_RF = data_subset_for_RF[, colnames(data_subset_for_RF) %in% imp_filter2X]
+# # my_sample_col = DE$sample_meta$sample_id
 
-my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
+# my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
-annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
+# annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
 
-colnames(annot_col) = c("Superclass", "Pathway")
+# colnames(annot_col) = c("Superclass", "Pathway")
 
-rownames(annot_col) = DE$variable_meta$feature_id
-annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
-
-
-ByPal = colorRampPalette(c(wes_palette("Zissou1")))
-
-data_subset_for_RF = apply(data_subset_for_RF, 2, as.numeric)
-# heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
+# rownames(annot_col) = DE$variable_meta$feature_id
+# annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
 
 
-heatmap_filtered_rf = heatmaply(
-  percentize(data_subset_for_RF),
-  seriate = "mean", # none , GW , mean, OLO
-  col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
-  col_side_palette = ByPal,
-  labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
-  subplot_margin = 0.01,
-  scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-    low = "lightsteelblue2",
-    # mid = "goldenrod1",
-    high = "firebrick3",
-    midpoint = 0.5,
-    limits = c(0, 1)
-  ),
-  fontsize_col = 5,
-  branches_lwd = 0.3,
-  k_row = 4,
-  distfun_row = "pearson",
-  distfun_col = "pearson"
-)
+# ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
-heatmap_filtered_rf = heatmap_filtered_rf %>% layout(title = list(text = title_heatmap_rf, y = 0.05))
-
-# The file is exported
+# data_subset_for_RF = apply(data_subset_for_RF, 2, as.numeric)
+# # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
-if (params$operating_system$system == "unix") {
-### linux version
+# heatmap_filtered_rf = heatmaply(
+#   percentize(data_subset_for_RF),
+#   seriate = "mean", # none , GW , mean, OLO
+#   col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
+#   col_side_palette = ByPal,
+#   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
+#   subplot_margin = 0.01,
+#   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+#     low = "lightsteelblue2",
+#     # mid = "goldenrod1",
+#     high = "firebrick3",
+#     midpoint = 0.5,
+#     limits = c(0, 1)
+#   ),
+#   fontsize_col = 5,
+#   branches_lwd = 0.3,
+#   k_row = 4,
+#   distfun_row = "pearson",
+#   distfun_col = "pearson"
+# )
 
-heatmap_filtered_rf %>%
-    htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE)
-}
+# heatmap_filtered_rf = heatmap_filtered_rf %>% layout(title = list(text = title_heatmap_rf, y = 0.05))
 
-if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-heatmap_filtered_rf %>%
-    htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
+# # The file is exported
 
-}
+
+# if (params$operating_system$system == "unix") {
+# ### linux version
+
+# heatmap_filtered_rf %>%
+#     htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE)
+# }
+
+# if (params$operating_system$system == "windows") {
+# ### windows version
+# Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+# heatmap_filtered_rf %>%
+#     htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE,libdir = "lib")
+# unlink("lib", recursive = FALSE)
+
+# }
 
 #############################################################################
 #############################################################################

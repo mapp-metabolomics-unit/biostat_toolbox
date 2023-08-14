@@ -60,6 +60,11 @@ filter_variable_metadata_annotated :
   factor_name : 'chebiasciiname_sirius'
   levels : 'NA'
 
+iheatmapr:
+  colors:
+   - "#0966e0"
+   - "#c80707"
+
 
 target:
   sample_metadata_header: "genotype" # This variable will be used throughout the whole script
