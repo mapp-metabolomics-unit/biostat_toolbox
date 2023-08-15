@@ -97,6 +97,11 @@ usePackage("yaml")
 usePackage("janitor")
 
 usePackage("hciR")
+usePackage("scatterD3")
+usePackage("flexdashboard")
+
+# devtools::install_github("jcheng5/d3scatter")
+
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
@@ -1871,12 +1876,24 @@ download.file("https://raw.githubusercontent.com/biocorecrg/CRG_RIntroduction/ma
 # Extract that object in the current session:
 tmp <- readRDS("de_df_for_volcano.rds")
 
-# remove rows that contain NA values
-de <- tmp[complete.cases(tmp), ]
+tmp <- DE_foldchange_pvalues
+
+de <- filter(DE_foldchange_pvalues, !is.na(day_vs_night_p_value))
+
+
+# # remove rows that contain NA values
+# de <- tmp[complete.cases(tmp), ]
 
 # We sample 1000 rows
 
 de <- de[sample(nrow(de), 1000), ]
+
+
+de = de  %>% 
+# we rename the day_vs_night_p_value_minus_log10 column to pvalue
+rename(pvalue = day_vs_night_p_value) %>%
+# we rename the day_vs_night_fold_change_log2 column to log2FoldChange
+rename(log2FoldChange = day_vs_night_fold_change_log2)
 
 # The basic scatter plot: x is "log2FoldChange", y is "pvalue"
 ggplot(data=de, aes(x=log2FoldChange, y=pvalue)) + geom_point()
@@ -1897,15 +1914,15 @@ p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
 # add a column of NAs
 de$diffexpressed <- "NO"
 # if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
-de$diffexpressed[de$log2FoldChange > 0.3 & de$pvalue < 0.05] <- "UP"
+de$diffexpressed[de$log2FoldChange > 0.25 & de$pvalue < 0.05] <- "UP"
 # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-de$diffexpressed[de$log2FoldChange < -0.3 & de$pvalue < 0.05] <- "DOWN"
+de$diffexpressed[de$log2FoldChange < -0.25 & de$pvalue < 0.05] <- "DOWN"
 
 # Re-plot but this time color the points with "diffexpressed"
 p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed)) + geom_point() + theme_minimal()
 
 # Add lines as before...
-p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
+p2 <- p + geom_vline(xintercept=c(-0.25, 0.25), col="red") +
         geom_hline(yintercept=-log10(0.05), col="red")
 
 ## Change point color 
@@ -1921,7 +1938,7 @@ p3 <- p2 + scale_colour_manual(values = mycolors)
 # Now write down the name of genes beside the points...
 # Create a new column "delabel" to de, that will contain the name of genes differentially expressed (NA in case they are not)
 de$delabel <- NA
-de$delabel[de$diffexpressed != "NO"] <- de$gene_symbol[de$diffexpressed != "NO"]
+de$delabel[de$diffexpressed != "NO"] <- de$chebiasciiname_sirius[de$diffexpressed != "NO"]
 
 gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) + 
     geom_point() + 
@@ -1936,13 +1953,342 @@ library(ggrepel)
 gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
         geom_point() + 
         theme_minimal() +
-        geom_text_repel() +
+        geom_label_repel() +
         # geom_text() +
         scale_color_manual(values=c("blue", "black", "red")) +
-        geom_vline(xintercept=c(-0.3, 0.3), col="red", linewidth = 0.2) +
+        geom_vline(xintercept=c(-0.25, 0.25), col="red", linewidth = 0.2) +
         geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
 
-ggplotly(gg)
+gg_for_plotly <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
+        geom_point() + 
+        theme_minimal() +
+        # geom_text_repel() +
+        geom_text() +
+        scale_color_manual(values=c("blue", "black", "red")) +
+        geom_vline(xintercept=c(-0.25, 0.25), col="red", linewidth = 0.2) +
+        geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
+
+ggplotly(gg_for_plotly)
+
+
+recent_turnout <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/european_turnout.csv",stringsAsFactors = FALSE)
+recent_turnout$region <- factor(recent_turnout$region, levels=c("British","Northern","Western","Mediterranean","Central/Eastern"))
+
+library(plotly)
+p <- recent_turnout %>%
+  ggplot(aes(x=nat_turnout,y=euro_turnout)) + 
+  geom_point(aes(size=population, colour=region, text=paste("country:", country)), alpha=0.4) +
+  geom_text(aes(size=population/3.5, label=abbreviation), colour="gray20", alpha=1) +
+  labs(title = "Recent turnout in European Union countries",
+       x = "Latest legislative or presidential election (whichever had higher turnout)",
+       y = "May 2019 European Parliament election")
+fig <- ggplotly(p)
+
+fig
+
+recent_turnout <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/european_turnout.csv",stringsAsFactors = FALSE)
+recent_turnout$region <- factor(recent_turnout$region, levels=c("British","Northern","Western","Mediterranean","Central/Eastern"))
+
+library(plotly)
+library(LaCroixColoR)
+p <- recent_turnout %>%
+  ggplot(aes(x=nat_turnout,y=euro_turnout)) + 
+  geom_point(aes(size=population, colour=region, text=paste("country:", country)), alpha=0.4) +
+  geom_text(aes(size=population/3.5, label=abbreviation), colour="gray20", alpha=1) +
+  scale_colour_manual(values=lacroix_palette(n=6, name="PeachPear")) +
+  scale_size_continuous(range = c(3, 8)) +
+  labs(title = "Recent turnout in European Union countries",
+       x = "Latest legislative or presidential election (whichever had higher turnout)",
+       y = "May 2019 European Parliament election")
+fig <- ggplotly(p)
+
+fig
+
+recent_turnout <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/european_turnout.csv",stringsAsFactors = FALSE)
+recent_turnout$region <- factor(recent_turnout$region, levels=c("British","Northern","Western","Mediterranean","Central/Eastern"))
+m <- lm(euro_turnout ~ nat_turnout, data = recent_turnout)
+
+library(plotly)
+library(LaCroixColoR)
+p <- recent_turnout %>%
+  ggplot(aes(x=nat_turnout,y=euro_turnout)) + 
+  stat_smooth(geom="line", method="lm", alpha=0.3, se=FALSE) + 
+  geom_point(aes(size=population, colour=region, text=paste("country:", country)), alpha=0.4) +
+  geom_text(aes(size=population/3.5, label=abbreviation), colour="gray20", alpha=1, family="Fira Sans") +
+  scale_colour_manual(values=lacroix_palette(n=6, name="PeachPear")) +
+  scale_size_continuous(range = c(3, 8)) +
+  labs(title = "Recent turnout in European Union countries",
+       x = "Latest legislative or presidential election (whichever had higher turnout)",
+       y = "May 2019 European Parliament election",
+       size = "") +
+  annotate(geom="text", x=60, y=80, label = paste("European turnout = \n",
+                                                  round(unname(coef(m)[2]),2),
+                                                  "x national turnout",
+                                                  round(unname(coef(m)[1]),1))) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(size=guide_legend(""), fill = FALSE) +
+  theme(text = element_text(family = 'Fira Sans'))
+fig <- ggplotly(p)
+
+fig
+
+
+
+library(crosstalk)
+library(d3scatter)
+library(DT)
+
+library(scatterD3)
+
+
+de_min <- de  %>% 
+select(log2FoldChange, pvalue, feature_id, feature_id_full, chebiasciiname_sirius)
+
+x <- de %>% 
+filter(!is.na(pvalue)) %>% 
+select(feature_id, log2FoldChange, pvalue, feature_id_full, chebiasciiname_sirius, diffexpressed, delabel)
+
+sd <- SharedData$new(x, key = ~feature_id)
+
+bo <- bscols(
+d3scatter(sd, x = ~log2FoldChange, y = ~ -log10(pvalue), color= "blue", width = "99%", height = 700,
+    x_label = "log2 Fold change", y_label = "-log10 p-value", x_lim= c(-1,1) ),
+datatable(sd, rownames = FALSE, width = "99%", height = "99%", fillContainer = TRUE, class='compact cell-border hover', extensions = c('Scroller', 'Buttons'),
+   options = list(scrollY = 600,  scroller = TRUE,  dom = "Bfrtip",
+     buttons = c('copy', 'csv', 'pdf'))) %>%
+   formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
+)
+
+# We save the plot in a html file
+htmltools::save_html(bo, "result.html")
+
+
+de$delabel
+
+
+x <- de %>% 
+filter(!is.na(pvalue)) %>% 
+select(feature_id, log2FoldChange, pvalue, feature_id_full, chebiasciiname_sirius, diffexpressed, delabel)
+
+sd <- SharedData$new(x, key = ~feature_id)
+
+
+gg_for_plotly <- ggplot(data=sd, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
+        geom_point() + 
+        theme_minimal() +
+        # geom_text_repel() +
+        geom_text() +
+        scale_color_manual(values=c("blue", "black", "red")) +
+        geom_vline(xintercept=c(-0.25, 0.25), col="red", linewidth = 0.2) +
+        geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
+
+
+gg_for_plotly <- ggplotly(gg_for_plotly) %>% 
+#   ## Tell plotly do highlight on selection rather on click
+  # highlight(on = "plotly_click",
+  #           off = "plotly_relayout")
+    highlight(color = "green", on = "plotly_click")
+
+
+ggouf <- bscols(
+ggplotly(gg_for_plotly),
+datatable(sd) %>%
+   formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
+)
+
+# We save the plot in a html file
+htmltools::save_html(ggouf, "result.html")
+
+
+style="bootstrap", class="compact", width="100%",
+            options=list(deferRender=FALSE, dom='t'))
+
+
+
+
+
+rownames=FALSE, width="100%", 
+    class='compact cell-border hover', extensions='Buttons',
+    options=list(dom='Bfrtip',buttons=c('copy','csv','excel')))
+
+
+shared_mtcars <- SharedData$new(mtcars)
+bscols(widths = c(3,NA,NA),
+  list(
+    filter_checkbox("cyl", "Cylinders", shared_mtcars, ~cyl, inline = TRUE),
+    filter_slider("hp", "Horsepower", shared_mtcars, ~hp, width = "100%"),
+    filter_select("auto", "Automatic", shared_mtcars, ~ifelse(am == 0, "Yes", "No"))
+  ),
+  d3scatter(shared_mtcars, ~wt, ~mpg, ~factor(cyl), width="100%", height=500),
+  d3scatter(shared_mtcars, ~hp, ~qsec, ~factor(cyl), width="100%", height=500)
+)
+
+
+
+
+
+---
+title: "Crosstalk"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(plotly)
+library(crosstalk)
+library(DT)
+library(dplyr)
+```
+
+```{r crosstalk-setup}
+## Add an id to not rely only on rownumbers
+my_iris <- iris %>% 
+  mutate(id = paste("id", 1:n()))
+shared_iris <- SharedData$new(my_iris, key = ~ id)
+```
+
+
+## Row
+
+### Plot
+
+```{r plot}
+plotly_shared_iris <- shared_iris %>% 
+  plot_ly(
+    type = "scatter",
+    mode = "markers",
+    x = ~ Sepal.Length,
+    y = ~ Petal.Length,
+    color = ~ Species,
+    marker = list(size = 5),
+    hoverinfo = "text",
+    text = ~ id
+  ) %>%
+  ## Tell plotly do highlight on selection rather on click
+  highlight(on = "plotly_selected",
+            off = "plotly_deselect")
+```
+
+
+### Table
+
+```{r}
+datatable(shared_iris)
+
+
+bo <- bscols(plotly_shared_iris,
+datatable(shared_iris)) %>%
+   formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
+)
+
+
+
+
+
+d <- data.frame(x=1:10,y=1:10,f=gl(2,5,labels = letters[1:2]))
+sd <- SharedData$new(d)
+
+options(persistent = FALSE)
+
+p <- ggplot(sd, aes(x, y)) +
+  geom_text(aes(label=f)) +
+  theme_void() 
+
+bscols(
+  ggplotly(p) %>%
+    highlight(color = "red",on = "plotly_click"),
+  datatable(sd, style="bootstrap", class="compact", width="100%",
+            options=list(deferRender=FALSE, dom='t')))
+
+
+
+
+
+m <- SharedData$new(mtcars)
+bscols(
+  plot_ly(m, x = ~wt, y = ~mpg) %>%
+    add_markers(text  = row.names(mtcars)) %>%
+    config(displayModeBar = TRUE) %>%
+    layout(
+      title = "Hold shift while clicking \n markers for persistent selection",
+      margin = list(t = 60)
+    )  %>% 
+      highlight(color = "green", on = "plotly_selected",
+            off = "plotly_deselect"),
+  datatable(m)
+)
+
+
+
+x <- de %>% 
+filter(!is.na(pvalue)) %>% 
+select(feature_id, log2FoldChange, pvalue, day_vs_night_p_value_minus_log10, feature_id_full, chebiasciiname_sirius, diffexpressed, delabel)
+
+# m <- SharedData$new(x, key = ~feature_id)
+
+m <- SharedData$new(x)
+
+
+export <- bscols(
+  plot_ly(m, x = ~log2FoldChange, y = ~day_vs_night_p_value_minus_log10) %>%
+    add_markers(text  = row.names(m)) %>%
+    # config(displayModeBar = FALSE) %>%
+    layout(
+      title = "Hold shift while clicking \n markers for persistent selection",
+      margin = list(t = 60)
+    ) %>% 
+      highlight(color = "green",on = "plotly_selected",
+            off = "plotly_deselect"),
+  datatable(m, rownames = FALSE,
+  extensions = c("Buttons", "Select"),
+  selection = "none",
+  options = 
+    list(
+      select = TRUE,
+      searching = TRUE, 
+      scrollX = TRUE,
+      scrollY = TRUE,
+      dom = "BRSpfrti",
+      buttons = list(
+        list(
+          extend = "copy",
+          text = 'Copy'
+          # ,
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "csv",
+          text = 'CSV'
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "excel",
+          text = 'Excel'
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "pdf",
+          text = 'PDF'
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "print",
+          text = 'Print'
+          # exportOptions = list(modifier = list(selected = TRUE))
+        )
+      ),
+    lengthMenu = list(c(10,25,50,-1),
+    c(10,25,50,"All"))
+    )
+    ) %>%
+   formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
+)
+
+# We save the plot in a html file
+htmltools::save_html(export, "result.html")
+
 
 
 # DE_foldchange_pvalues
