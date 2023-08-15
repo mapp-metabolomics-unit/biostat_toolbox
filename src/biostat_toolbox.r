@@ -96,8 +96,7 @@ usePackage("yaml")
 
 usePackage("janitor")
 
-
-
+usePackage("hciR")
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
@@ -1099,7 +1098,7 @@ fig_PLSDA_VIP = vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$titl
 # The files are exported
 
 ggsave(plot = fig_PLSDA, filename = filename_PLSDA , width = 10, height = 10)
-ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 10, height = 10)
+ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 15, height = 10)
 
 }
 
@@ -1649,15 +1648,303 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 # # Using this datatable we prepare a Volcano plot using the volcano_plot function from the plotly package. We use the p_value_log10 and the fold_change_log2_FC columns as x and y axis respectively. We use the row_ID column as the label of the points.
 
-# vp <- EnhancedVolcano(DE_foldchange_pvalues,
-#     lab = row_ID,
-#     x = 'old_young_fold_change_log2',
-#     y = 'old_young_p_value',
-#     title = 'Old versus Young',
-#     pCutoff = 10e-2,
-#     FCcutoff = 0.5,
-#     pointSize = 3.0,
-#     labSize = 6.0)
+vp <- EnhancedVolcano(DE_foldchange_pvalues,
+    lab = DE_foldchange_pvalues$row_id,
+    x = 'day_vs_night_fold_change_log2',
+    y = 'day_vs_night_p_value',
+    # title = 'Old versus Young',
+    pCutoff = 10e-2,
+    FCcutoff = 0.1,
+    pointSize = 3.0,
+    labSize = 6.0)
+
+ggplotly(vp)
+
+typeof(vp)
+
+# make the Plot.ly plot
+p <- plot_ly(data = DE_foldchange_pvalues, x = ~day_vs_night_fold_change_log2, y = ~day_vs_night_p_value_minus_log10, text = ~row_id, mode = "markers") %>% 
+  layout(title ="Volcano Plot") %>%
+  layout(annotations = a)
+p
+
+
+# add a grouping column; default value is "not significant"
+DE_foldchange_pvalues_nona["group"] <- "NotSignificant"
+
+# for our plot, we want to highlight 
+# FDR < 0.05 (significance level)
+# Fold Change > 1.5
+
+# change the grouping for the entries with significance but not a large enough Fold change
+DE_foldchange_pvalues_nona[which(DE_foldchange_pvalues_nona['day_vs_night_p_value'] < 0.05 & abs(DE_foldchange_pvalues_nona['day_vs_night_fold_change_log2']) < 0.2 ),"group"] <- "Significant"
+
+# change the grouping for the entries a large enough Fold change but not a low enough p value
+DE_foldchange_pvalues_nona[which(DE_foldchange_pvalues_nona['day_vs_night_p_value'] > 0.05 & abs(DE_foldchange_pvalues_nona['day_vs_night_fold_change_log2']) > 0.2 ),"group"] <- "FoldChange"
+
+# change the grouping for the entries with both significance and large enough fold change
+DE_foldchange_pvalues_nona[which(DE_foldchange_pvalues_nona['day_vs_night_p_value'] < 0.05 & abs(DE_foldchange_pvalues_nona['day_vs_night_fold_change_log2']) > 0.2 ),"group"] <- "Significant&FoldChange"
+
+
+# # Find and label the top peaks..
+# top_peaks <- DE_foldchange_pvalues_nona[with(DE_foldchange_pvalues_nona, order(day_vs_night_fold_change_log2, day_vs_night_p_value)),][1:5,]
+# top_peaks <- rbind(DE_foldchange_pvalues_nona, DE_foldchange_pvalues_nona[with(DE_foldchange_pvalues_nona, order(day_vs_night_fold_change_log2, day_vs_night_p_value)),][1:5,])
+
+top_peaks <- DE_foldchange_pvalues_nona  %>% 
+filter(group == "Significant&FoldChange") %>%
+
+a <- list()
+for (i in seq_len(nrow(top_peaks))) {
+  m <- top_peaks[i, ]
+  a[[i]] <- list(
+    x = m[["day_vs_night_fold_change_log2"]],
+    y = -log10(m[["day_vs_night_p_value"]]),
+    text = m[["feature_id"]],
+    xref = "x",
+    yref = "y",
+    showarrow = TRUE,
+    arrowhead = 0.5,
+    ax = 20,
+    ay = -40
+  )
+}
+
+
+v = volcanor(
+  DE_foldchange_pvalues_nona,
+  p = "day_vs_night_p_value",
+  effect_size = "day_vs_night_fold_change_log2",
+  gene = "row_id",
+  snp = "feature_id_full"
+)
+
+
+
+volcanoly(v,
+  col = c("#000000"),
+  point_size = 5,
+  effect_size_line = c(-0.2, 0.2),
+  effect_size_line_color = "grey",
+  effect_size_line_width = 0.5,
+  effect_size_line_type = "dash",
+  genomewideline = -log10(0.05),
+  genomewideline_color = "grey",
+  genomewideline_width = 0.5,
+  genomewideline_type = "dash",
+  highlight = NULL,
+  highlight_color = "red",
+  xlab = NULL,
+  ylab = "-log10(p)",
+  title = "Volcano Plot",
+  text = feature_id_full, mode = "markers", color = group) %>%
+  layout(annotations = a)
+
+
+# We filter for day_vs_night_p_value which are not Invalid number
+
+DE_foldchange_pvalues_nona = filter(DE_foldchange_pvalues, !is.na(day_vs_night_p_value))
+
+
+library(hciR)
+data(pasilla)
+res <- pasilla$results
+
+
+
+library(ggplot2)
+x <- filter( res, !is.na(padj))
+p <- ggplot(data=x, aes(x=log2FoldChange, y= -log10(padj), text=gene_name )) +
+     geom_point(alpha=0.3, size=1.5, color="blue") +
+     xlab("Log2 fold change") + ylab("-Log10 p-value") +xlim(-6,6)
+y <- filter(x, padj < 1e-100)
+p + geom_text( data=y, aes(x=log2FoldChange, y= -log10(padj), label=gene_name),
+       hjust="left", nudge_x=.1)
+
+ggplotly(p)
+
+x <- filter( res, !is.na(padj))
+x$gene_name <- ifelse(is.na(x$gene_name), x$id, x$gene_name )
+x$gene_name[x$padj > 1e-10 & abs(x$log2FoldChange) < 1] <- NA
+
+# We downsample the data to 1000 points to make the plot more readable
+y <-  bind_rows(
+ filter(x, !is.na(gene_name)),
+ filter(x, is.na(gene_name))  %>% sample_n(1000)
+)
+
+
+plot_ly(data = x, x = ~ log2FoldChange , y = ~ -log10(padj),
+       type="scatter", mode="markers", hoverinfo="text", text = ~ gene_name,
+        marker = list(size = 10, color = 'rgba(0, 0, 255, .3)')) %>%
+  layout( yaxis = list(title = "-Log10 p-value", zeroline = FALSE),
+         xaxis = list(title = "Log2 fold change", zeroline = FALSE, range=c(-6,6)))
+
+
+
+# Download the data we will use for plotting
+download.file("https://raw.githubusercontent.com/biocorecrg/CRG_RIntroduction/master/de_df_for_volcano.rds", "de_df_for_volcano.rds", method="curl")
+
+# The RDS format is used to save a single R object to a file, and to restore it.
+# Extract that object in the current session:
+tmp <- readRDS("de_df_for_volcano.rds")
+
+# remove rows that contain NA values
+de <- tmp[complete.cases(tmp), ]
+
+# We sample 1000 rows
+
+de <- de[sample(nrow(de), 1000), ]
+
+# The basic scatter plot: x is "log2FoldChange", y is "pvalue"
+ggplot(data=de, aes(x=log2FoldChange, y=pvalue)) + geom_point()
+
+# Convert directly in the aes()
+p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point()
+
+# Add more simple "theme"
+p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point() + theme_minimal()
+
+# Add vertical lines for log2FoldChange thresholds, and one horizontal line for the p-value threshold 
+p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
+    geom_hline(yintercept=-log10(0.05), col="red")
+
+# The significantly differentially expressed genes are the ones found in the upper-left and upper-right corners.
+# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2FoldChange respectively positive or negative)
+
+# add a column of NAs
+de$diffexpressed <- "NO"
+# if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
+de$diffexpressed[de$log2FoldChange > 0.3 & de$pvalue < 0.05] <- "UP"
+# if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
+de$diffexpressed[de$log2FoldChange < -0.3 & de$pvalue < 0.05] <- "DOWN"
+
+# Re-plot but this time color the points with "diffexpressed"
+p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed)) + geom_point() + theme_minimal()
+
+# Add lines as before...
+p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
+        geom_hline(yintercept=-log10(0.05), col="red")
+
+## Change point color 
+
+# 1. by default, it is assigned to the categories in an alphabetical order):
+p3 <- p2 + scale_color_manual(values=c("blue", "black", "red"))
+
+# 2. to automate a bit: ceate a named vector: the values are the colors to be used, the names are the categories they will be assigned to:
+mycolors <- c("blue", "red", "black")
+names(mycolors) <- c("DOWN", "UP", "NO")
+p3 <- p2 + scale_colour_manual(values = mycolors)
+
+# Now write down the name of genes beside the points...
+# Create a new column "delabel" to de, that will contain the name of genes differentially expressed (NA in case they are not)
+de$delabel <- NA
+de$delabel[de$diffexpressed != "NO"] <- de$gene_symbol[de$diffexpressed != "NO"]
+
+gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) + 
+    geom_point() + 
+    theme_minimal() +
+    geom_text()
+
+
+# Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
+# load library
+library(ggrepel)
+# plot adding up all layers we have seen so far
+gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
+        geom_point() + 
+        theme_minimal() +
+        geom_text_repel() +
+        # geom_text() +
+        scale_color_manual(values=c("blue", "black", "red")) +
+        geom_vline(xintercept=c(-0.3, 0.3), col="red", linewidth = 0.2) +
+        geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
+
+ggplotly(gg)
+
+
+
+
+# Download the data we will use for plotting
+download.file("https://raw.githubusercontent.com/biocorecrg/CRG_RIntroduction/master/de_df_for_volcano.rds", "de_df_for_volcano.rds", method="curl")
+
+# The RDS format is used to save a single R object to a file, and to restore it.
+# Extract that object in the current session:
+tmp <- readRDS("de_df_for_volcano.rds")
+
+# remove rows that contain NA values
+de <- tmp[complete.cases(tmp), ]
+
+# We sample 1000 rows
+
+de <- de[sample(nrow(de), 1000), ]
+
+# The basic scatter plot: x is "log2FoldChange", y is "pvalue"
+ggplot(data=de, aes(x=log2FoldChange, y=pvalue)) + geom_point()
+
+# Convert directly in the aes()
+p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point()
+
+# Add more simple "theme"
+p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point() + theme_minimal()
+
+# Add vertical lines for log2FoldChange thresholds, and one horizontal line for the p-value threshold 
+p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
+    geom_hline(yintercept=-log10(0.05), col="red")
+
+# The significantly differentially expressed genes are the ones found in the upper-left and upper-right corners.
+# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2FoldChange respectively positive or negative)
+
+# add a column of NAs
+de$diffexpressed <- "NO"
+# if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
+de$diffexpressed[de$log2FoldChange > 0.3 & de$pvalue < 0.05] <- "UP"
+# if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
+de$diffexpressed[de$log2FoldChange < -0.3 & de$pvalue < 0.05] <- "DOWN"
+
+# Re-plot but this time color the points with "diffexpressed"
+p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed)) + geom_point() + theme_minimal()
+
+# Add lines as before...
+p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
+        geom_hline(yintercept=-log10(0.05), col="red")
+
+## Change point color 
+
+# 1. by default, it is assigned to the categories in an alphabetical order):
+p3 <- p2 + scale_color_manual(values=c("blue", "black", "red"))
+
+# 2. to automate a bit: ceate a named vector: the values are the colors to be used, the names are the categories they will be assigned to:
+mycolors <- c("blue", "red", "black")
+names(mycolors) <- c("DOWN", "UP", "NO")
+p3 <- p2 + scale_colour_manual(values = mycolors)
+
+# Now write down the name of genes beside the points...
+# Create a new column "delabel" to de, that will contain the name of genes differentially expressed (NA in case they are not)
+de$delabel <- NA
+de$delabel[de$diffexpressed != "NO"] <- de$gene_symbol[de$diffexpressed != "NO"]
+
+gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) + 
+    geom_point() + 
+    theme_minimal() +
+    geom_text()
+
+
+# Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
+# load library
+library(ggrepel)
+# plot adding up all layers we have seen so far
+gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
+        geom_point() + 
+        theme_minimal() +
+        geom_text_repel() +
+        # geom_text() +
+        scale_color_manual(values=c("blue", "black", "red")) +
+        geom_vline(xintercept=c(-0.3, 0.3), col="red", linewidth = 0.2) +
+        geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
+
+ggplotly(gg)
+
+
 # DE_foldchange_pvalues
 
 # x <- filter( DE_foldchange_pvalues, !is.na(old_young_p_value))
@@ -1772,6 +2059,13 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 # fig_volcano_interactive %>%
 #     htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
+##############################################################################
+##############################################################################
+############ Volcano Plot #################################################
+
+
+
+
 ##############################################################################
 ##############################################################################
 ############ treemap fold 
