@@ -23,7 +23,8 @@ actions:
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : TRUE
+  filter_variable_metadata_annotated : FALSE
+  filter_variable_metadata_num : FALSE
   filter_features : TRUE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -55,13 +56,21 @@ filter_variable_metadata_two :
   factor_name : 'NPC.pathway_canopus'
   levels : 'Fatty acids' 
 
+
 filter_variable_metadata_annotated :
   mode : 'exclude'
   factor_name : 'chebiasciiname_sirius'
   levels : 'NA'
 
+filter_variable_metadata_num :
+  mode : 'above'
+  factor_name : 'npc_superclass_probability_canopus'
+  level : 0.5 
+
 iheatmapr:
   colors:
+   - "#fff400" # bright yellow
+   - "#0040b6" # dark blue
    - "#a89639"
    - "#b1bd7e"
    - "#dd6665"
@@ -69,7 +78,7 @@ iheatmapr:
 
 
 target:
-  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
+  sample_metadata_header: "period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 

@@ -94,6 +94,8 @@ usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
 
+usePackage("janitor")
+
 
 
 
@@ -145,6 +147,8 @@ if (params$actions$scale_data == "TRUE") {
 scaling_status = "scaled"
 } else { scaling_status = "raw" }
 
+
+
 if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
 filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
 params$filter_sample_metadata_one$factor_name,
@@ -161,25 +165,33 @@ sep = "_")
 } else { filter_sample_metadata_status = "" }
 
 
-if (params$actions$filter_variable_metadata_one == "TRUE" & params$actions$filter_variable_metadata_two == "TRUE") {
-filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
-params$filter_variable_metadata_one$factor_name,
-paste(params$filter_variable_metadata_one$levels, collapse = "_"),
-params$filter_variable_metadata_two$mode,
-params$filter_variable_metadata_two$factor_name,
-paste(params$filter_variable_metadata_two$levels, collapse = "_"),
-sep = "_")
-} else if (params$actions$filter_variable_metadata_one == "TRUE") {
-filter_variable_metadata_status = paste(params$filter_variable_metadata_one$mode,
-params$filter_variable_metadata_one$factor_name,
-paste(params$filter_variable_metadata_one$levels, collapse = "_"),
-sep = "_") 
-} else { filter_variable_metadata_status = "" }
 
 
-if (params$actions$filter_variable_metadata_annotated == "TRUE") {
-filter_variable_metadata_status = paste0(filter_variable_metadata_status, "_only_chebi_annotated")
-}
+if (params$actions$filter_variable_metadata_one == "TRUE" ) { 
+filter_variable_metadata_one_status = paste(params$filter_variable_metadata_one$mode,
+paste(params$filter_variable_metadata_one$levels, sep = "_"),
+params$filter_variable_metadata_one$factor_name, sep = "_")
+} else { filter_variable_metadata_one_status = "" }
+
+if (params$actions$filter_variable_metadata_two == "TRUE" ) {
+filter_variable_metadata_two_status = paste(params$filter_variable_metadata_two$mode,
+paste(params$filter_variable_metadata_two$levels, sep = "_"),
+params$filter_variable_metadata_two$factor_name, sep = "_")
+} else { filter_variable_metadata_two_status = "" }
+
+if (params$actions$filter_variable_metadata_annotated == "TRUE" ) {
+filter_variable_metadata_annotated_status = paste(params$filter_variable_metadata_annotated$mode,
+paste(params$filter_variable_metadata_annotated$levels, sep = "_"),
+params$filter_variable_metadata_annotated$factor_name, sep = "_")
+} else { filter_variable_metadata_annotated_status = "" }
+
+if (params$actions$filter_variable_metadata_num == "TRUE" ) {
+filter_variable_metadata_num_status = paste(params$filter_variable_metadata_num$mode,
+paste(params$filter_variable_metadata_num$level, sep = "_"),
+params$filter_variable_metadata_num$factor_name, sep = "_")
+} else { filter_variable_metadata_num_status = "" }
+
+filter_variable_metadata_status = paste(filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, sep = "")
 
 
 
@@ -413,6 +425,18 @@ data_gnps$feature_id = as.numeric(data_gnps$feature_id)
 list_df = list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
 VM = list_df %>% reduce(full_join, by='feature_id')
 
+# We add a sanitizing function. first we lowercase all colnames
+
+colnames(VM) = tolower(colnames(VM))
+
+# We then take care of the # chracter and change it to _
+
+colnames(VM) = gsub("#", "_", colnames(VM))
+
+
+VM = VM %>%
+clean_names(case = "snake")
+
 
 # The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full_annotated`
 VM$"feature_id_full_annotated" = paste0(
@@ -423,7 +447,7 @@ VM$"feature_id_full_annotated" = paste0(
   sep = ""
 )
 
-# We now convert the VM tibble into a dataframe and set the `feature_id_full` column as the rownames
+# We now convert the VM tibble into a dataframe and set the `feature_id` column as the rownames
 
 VM = as.data.frame(VM)
 row.names(VM) = VM$feature_id
@@ -693,6 +717,22 @@ DE_filtered = filter_vmeta_result@filtered
 }
 
 
+if (params$actions$filter_variable_metadata_num == "TRUE") {
+
+
+filter_vmeta_model <- filter_vmeta_num(mode = params$filter_variable_metadata_num$mode,
+                          factor_name = params$filter_variable_metadata_num$factor_name,
+                          level = params$filter_variable_metadata_num$level
+                          )
+
+# apply model sequence
+filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
+
+DE_filtered = filter_vmeta_result@filtered
+
+}
+
+
 if (params$actions$scale_data == "FALSE") {
 
 DE = DE_filtered
@@ -736,9 +776,9 @@ formatted_peak_table <- DE_filtered$data
 formatted_variable_metadata <- DE_filtered$variable_meta ### need to be filter with only usefull output
 
 
-# col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","InChIkey2D_sirius","InChI_sirius",
-# "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "NPC.pathway_canopus","NPC.pathway.Probability_canopus",
-# "NPC.superclass_canopus", "NPC.class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
+# col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","inchikey2d_sirius","InChI_sirius",
+# "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "npc_pathway_canopus","NPC.pathway.Probability_canopus",
+# "npc_superclass_canopus", "npc_class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
 # "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
 # "structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
 # "short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
@@ -751,7 +791,7 @@ formatted_variable_metadata <- DE_filtered$variable_meta ### need to be filter w
 # "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
 
 
-col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularFormula_sirius","freq_structure_taxonomy_npclassifier_03class_metannot")
+col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","freq_structure_taxonomy_npclassifier_03class_metannot")
 
 formatted_variable_metadata_filtered = formatted_variable_metadata[col_filter]
 
@@ -1018,8 +1058,24 @@ plsda_seq_model = # autoscale() +
 
 plsda_seq_result = model_apply(plsda_seq_model,DE)
 
+
+
+
 # Fetching the PLSDA data object
 plsda_object = plsda_seq_result[length(plsda_seq_result)]
+
+# We merge the plsda_object$vip object with the DE$variable_meta object. We use dplyr syntax and keep a new object called variable_meta_plsda. We keep the rownames of the plsda_object$vip.
+
+plsda_object_vip = plsda_object$vip  %>%
+rownames_to_column(var = "feature_id") %>%
+mutate(feature_id = as.numeric(feature_id))
+
+vip_variable_meta = plsda_object_vip  %>% 
+  left_join(DE$variable_meta, by = "feature_id")  %>% 
+  select(feature_id, feature_id_full_annotated)
+
+rownames(plsda_object$vip) = vip_variable_meta$feature_id_full
+
 
 C = pls_scores_plot(factor_name = params$target$sample_metadata_header)
 
@@ -1034,7 +1090,11 @@ C = plsda_feature_importance_plot(n_features=30, metric='vip')
 
 vip_plot <- chart_plot(C,plsda_object)
 
+
+
 fig_PLSDA_VIP = vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA_VIP)
+
+
 
 # The files are exported
 
@@ -1647,21 +1707,21 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 # sizes = c("up" = 2, "down" = 2, "ns" = 1)
 # alphas = c("up" = 1, "down" = 1, "ns" = 0.5)
 
-# volc_annot = data_RF$variable_meta[c("row_ID", "NPC.superclass_canopus", "NPC.pathway_canopus")]
+# volc_annot = data_RF$variable_meta[c("row_ID", "npc_superclass_canopus", "npc_pathway_canopus")]
 
 
 # matt_volcano_tot$mol = gsub("X", "", matt_volcano_tot$mol)
 # matt_volcano_plot = merge(matt_volcano_tot, volc_annot, by.x = "mol", by.y = "row_ID")
 
 
-# matt_volcano_plot$lab_plotly = matt_volcano_plot$NPC.superclass_canopus
+# matt_volcano_plot$lab_plotly = matt_volcano_plot$npc_superclass_canopus
 # matt_volcano_plot$lab_plotly[matt_volcano_plot$p.value > 0.05] = NA
 # matt_volcano_plot$col_points = rep("darkred", nrow(matt_volcano_plot))
 # matt_volcano_plot$col_points[matt_volcano_plot$p.value < 0.05] = "darkgreen"
 
 
 
-# fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
+# fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = npc_superclass_canopus)) +
 #   geom_point() + # color = matt_volcano_plot$col_points
 #   theme_minimal() +
 #   geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
@@ -1679,7 +1739,7 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 
 
-# fig_volcano = ggplot(data = DE_foldchange_pvalues, aes(x = lo, y = -log10(p.value), color = X1, label = NPC.superclass_canopus)) +
+# fig_volcano = ggplot(data = DE_foldchange_pvalues, aes(x = lo, y = -log10(p.value), color = X1, label = npc_superclass_canopus)) +
 #   geom_point() + # color = matt_volcano_plot$col_points
 #   theme_minimal() +
 #   geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
@@ -1881,27 +1941,27 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
   # Aggregate rows by concatenating values in superclass and path columns
   npclassifier_newpath <- aggregate(cbind(superclass, pathway) ~ class, data = npclassifier_origin, FUN = function(x) paste(unique(unlist(strsplit(x, " x "))), collapse = " x "))
-  colnames(npclassifier_newpath) <-  c("NPC.class_canopus","NPC.superclass_canopus","NPC.pathway_canopus")
-  npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)] <- paste(npclassifier_newpath$NPC.superclass_canopus[grep(" x ",npclassifier_newpath$NPC.pathway_canopus)],"x")
+  colnames(npclassifier_newpath) <-  c("npc_class_canopus","npc_superclass_canopus","npc_pathway_canopus")
+  npclassifier_newpath$npc_superclass_canopus[grep(" x ",npclassifier_newpath$npc_pathway_canopus)] <- paste(npclassifier_newpath$npc_superclass_canopus[grep(" x ",npclassifier_newpath$npc_pathway_canopus)],"x")
 
-  # Alternatively we generate a new df where all class-superclass pairs are distinct and we add a column with the corresponding pathway (we keep the first occurence). We rename the columns (NPC.class_canopus = class, NPC.superclass_canopus = superclass, NPC.pathway_canopus = pathway).We return a data.frame.
+  # Alternatively we generate a new df where all class-superclass pairs are distinct and we add a column with the corresponding pathway (we keep the first occurence). We rename the columns (npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway).We return a data.frame.
 
   npclassifier_newpath_simple <- npclassifier_origin %>%
     distinct(class, .keep_all	= TRUE) %>%
-    rename(NPC.class_canopus = class, NPC.superclass_canopus = superclass, NPC.pathway_canopus = pathway) %>%
+    rename(npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway) %>%
     na.omit() %>% 
     data.frame() 
 
 
 
-  # Here we list the distinct values in the npclassifier_newpath$NPC.pathway_canopus and order them alphabetically
+  # Here we list the distinct values in the npclassifier_newpath$npc_pathway_canopus and order them alphabetically
 
   # npclassifier_newpath  %>%  
-  # distinct(NPC.pathway_canopus)  %>% 
-  # arrange(NPC.pathway_canopus)
+  # distinct(npc_pathway_canopus)  %>% 
+  # arrange(npc_pathway_canopus)
 
 # Check wether this line is used or not ?
-  index <- sort(unique(paste(npclassifier_newpath$NPC.superclass_canopus,npclassifier_newpath$NPC.pathway_canopus)))
+  index <- sort(unique(paste(npclassifier_newpath$npc_superclass_canopus,npclassifier_newpath$npc_pathway_canopus)))
 
 
   # DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
@@ -1931,20 +1991,20 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     second_part <- condition_parts[2]
 
 
-    mydata_meta <- select(DE_foldchange_pvalues_signi, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
-    "cluster.index_gnps","feature_rt","feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius", "molecularFormula_sirius", "componentindex_gnps", "GNPSLinkout_Cluster_gnps", "LibraryID_gnps")
+    mydata_meta <- select(DE_foldchange_pvalues_signi, "inchikey2d_sirius", "row_id","name_sirius","smiles_sirius",
+    "cluster_index_gnps","feature_rt","feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius", "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "libraryid_gnps")
     mydata_meta$name_comp <- "unknown"
-    mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
+    mydata_meta$name_comp[!is.na(mydata_meta$inchikey2d_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$inchikey2d_sirius)]
 
 
 
     mydata1 <- select(DE_foldchange_pvalues_signi,
     !!sym(paste0(condition, "_fold_change_log2")), "name_sirius", "row_id",
-    "NPC.class_canopus")  %>% 
-    # this line remove rows with NA in the NPC.class_canopus column using the filter function
-    filter(!is.na(NPC.class_canopus))
+    "npc_class_canopus")  %>% 
+    # this line remove rows with NA in the npc_class_canopus column using the filter function
+    filter(!is.na(npc_class_canopus))
 
-    mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
+    mydata1 <- merge(mydata1,npclassifier_newpath,by="npc_class_canopus")
 
 
     # mydata1 <- mydata1 %>% 
@@ -1984,17 +2044,17 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     #### 
     # We protect the code with a tryCatch to avoid errors if the data is empty. This can hapen when no classified features are returned fopr a specific condition. This should return an empty treemap. Beware !!!!
 
-    mydata1 <- mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
+    mydata1 <- mydata1[!is.na(mydata1$npc_pathway_canopus), ]
     mydata1$counter <- 1
 
     # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-    mydata1_neg <- mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
+    mydata1_neg <- mydata1_neg[!is.na(mydata1_neg$npc_pathway_canopus), ]
     mydata1_neg$counter <- 1
-    mydata1_neg$fold_dir <- paste("neg", mydata1_neg$NPC.superclass_canopus, sep = "_")
+    mydata1_neg$fold_dir <- paste("neg", mydata1_neg$npc_superclass_canopus, sep = "_")
     # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-    mydata1_pos <- mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
+    mydata1_pos <- mydata1_pos[!is.na(mydata1_pos$npc_superclass_canopus), ]
     mydata1_pos$counter <- 1
-    mydata1_pos$fold_dir <- paste("pos", mydata1_pos$NPC.superclass_canopus, sep = "_")
+    mydata1_pos$fold_dir <- paste("pos", mydata1_pos$npc_superclass_canopus, sep = "_")
 
     #####################################################################
     #####################################################################
@@ -2002,16 +2062,16 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
     dt_se_prop_prep_count_tot = dt_for_treemap(
       datatable = mydata1,
-      parent_value = NPC.pathway_canopus,
-      value = NPC.superclass_canopus,
+      parent_value = npc_pathway_canopus,
+      value = npc_superclass_canopus,
       count = counter
     )
 
 
     dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
       datatable = mydata1,
-      parent_value = NPC.pathway_canopus,
-      value = NPC.superclass_canopus,
+      parent_value = npc_pathway_canopus,
+      value = npc_superclass_canopus,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
 
@@ -2026,14 +2086,14 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
     dt_se_prop_prep_count_pos = dt_for_treemap(
       datatable = mydata1_pos,
-      parent_value = NPC.superclass_canopus,
+      parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = counter
     )
 
     dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
       datatable = mydata1_pos,
-      parent_value = NPC.superclass_canopus,
+      parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
@@ -2051,14 +2111,14 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
     dt_se_prop_prep_count_neg = dt_for_treemap(
       datatable = mydata1_neg,
-      parent_value = NPC.superclass_canopus,
+      parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = counter
     )
 
     dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
       datatable = mydata1_neg,
-      parent_value = NPC.superclass_canopus,
+      parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
@@ -2160,7 +2220,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
     # )
 
-    # matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
+    # matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$inchikey2d_sirius, "&sort=annothitcnt")
 
     # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
     # matttree$full_hl <- paste0(
@@ -2172,9 +2232,9 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
     )
 
-      # Generate hl URL only if InChIkey2D_sirius is not NA
-    matttree$hl <- ifelse(!is.na(matttree$InChIkey2D_sirius),
-                          paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt"),
+      # Generate hl URL only if inchikey2d_sirius is not NA
+    matttree$hl <- ifelse(!is.na(matttree$inchikey2d_sirius),
+                          paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$inchikey2d_sirius, "&sort=annothitcnt"),
                           NA)
 
     # Generate full_hl hyperlink only if hl is not NA
@@ -2182,7 +2242,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
     )
 
-      # Generate hl URL only if InChIkey2D_sirius is not NA
+      # Generate hl URL only if inchikey2d_sirius is not NA
     matttree$chebi_hl <- ifelse(!is.na(matttree$chebiid_sirius),
                           paste0("https://www.ebi.ac.uk/chebi/searchId.do?chebiId=", matttree$chebiid_sirius),
                           NA)
@@ -2194,9 +2254,9 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     ), "")
 
     # Generate full_hl hyperlink only if hl is not NA
-    matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$cluster.index_gnps),
+    matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$cluster_index_gnps),
     paste0(
-      "<a href='", matttree$GNPSLinkout_Cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster.index_gnps, "</a>"
+      "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster_index_gnps, "</a>"
     ), "")
 
     # Generate smiles_url only if smiles_sirius is not NA
@@ -2209,7 +2269,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
                                   NA)
 
 
-        # "molecularFormula_sirius", "componentindex_gnps", "GNPSLinkout_Cluster_gnps", "LibraryID_GNPS"
+        # "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "LibraryID_GNPS"
     # mattree$smiles_clickable_url <- paste0("<a href=", matttree$smiles_url, " target='_blank' rel='noopener noreferrer'>", matttree$smiles_sirius, "</a>")
 
 
@@ -2218,7 +2278,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     matttree$smiles_clickable_url[is.na(matttree$smiles_clickable_url)] <- ""
     matttree$chebiid_sirius[is.na(matttree$chebiid_sirius)] <- ""
     matttree$chebiasciiname_sirius[is.na(matttree$chebiasciiname_sirius)] <- ""
-    matttree$LibraryID_gnps[is.na(matttree$LibraryID_gnps)] <- ""
+    matttree$libraryid_gnps[is.na(matttree$libraryid_gnps)] <- ""
 
 
       # Create a new column in the data frame to store the colors for each value
@@ -2247,12 +2307,12 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     #########################################################
 
     txt <- as.character(paste0
-    ("feature id: ", matttree$cluster.index_gnps,"<br>",
+    ("feature id: ", matttree$cluster_index_gnps,"<br>",
     "component id: ", matttree$componentindex_gnps,"<br>",
     "name: ", matttree$labels_adjusted,"<br>",
     "m/z: ", round(matttree$feature_mz,4),"<br>",
     "RT: ", round(matttree$feature_rt,2),"<br>",
-    "MF: ", matttree$molecularFormula_sirius,"<br>",
+    "MF: ", matttree$molecularformula_sirius,"<br>",
     "adduct: ", matttree$adduct_sirius,"<br>",
     "FC (log 2): ", round(matttree$foldchange_log2,2),
     "<extra></extra>"
@@ -2267,7 +2327,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$LibraryID_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -2291,7 +2351,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$LibraryID_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -2356,23 +2416,23 @@ if (params$operating_system$system == "windows") {
   }
 
 
-# mydata_meta <- select(DE_foldchange_pvalues, "InChIkey2D_sirius", "row_id","name_sirius","smiles_sirius",
-# "cluster.index_gnps","feature_rt","feature_mz")  
+# mydata_meta <- select(DE_foldchange_pvalues, "inchikey2d_sirius", "row_id","name_sirius","smiles_sirius",
+# "cluster_index_gnps","feature_rt","feature_mz")  
 # mydata_meta$name_comp<- "unknown"
-# mydata_meta$name_comp[!is.na(mydata_meta$InChIkey2D_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$InChIkey2D_sirius)]
+# mydata_meta$name_comp[!is.na(mydata_meta$inchikey2d_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$inchikey2d_sirius)]
 
 
 
 
 # mydata1 <- select(DE_foldchange_pvalues,
 # "C_WT_fold_change_log2","name_sirius", "row_id",
-# "NPC.class_canopus")  %>% 
-# # this line remove rows with NA in the NPC.class_canopus column using the filter function
-# filter(!is.na(NPC.class_canopus))  %>% 
+# "npc_class_canopus")  %>% 
+# # this line remove rows with NA in the npc_class_canopus column using the filter function
+# filter(!is.na(npc_class_canopus))  %>% 
 # filter(!is.na(C_WT_fold_change_log2))
 
 
-# mydata1 <- merge(mydata1,npclassifier_newpath,by="NPC.class_canopus")
+# mydata1 <- merge(mydata1,npclassifier_newpath,by="npc_class_canopus")
 
 
 
@@ -2387,33 +2447,33 @@ if (params$operating_system$system == "windows") {
 
 # # Aggregate the data
 # ####
-# mydata1 = mydata1[!is.na(mydata1$NPC.pathway_canopus), ]
+# mydata1 = mydata1[!is.na(mydata1$npc_pathway_canopus), ]
 # mydata1$counter = 1
 
 # # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-# mydata1_neg = mydata1_neg[!is.na(mydata1_neg$NPC.pathway_canopus), ]
+# mydata1_neg = mydata1_neg[!is.na(mydata1_neg$npc_pathway_canopus), ]
 # mydata1_neg$counter = 1
-# mydata1_neg$fold_dir <- paste("neg",mydata1_neg$NPC.superclass_canopus,sep="_")
+# mydata1_neg$fold_dir <- paste("neg",mydata1_neg$npc_superclass_canopus,sep="_")
 # # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-# mydata1_pos = mydata1_pos[!is.na(mydata1_pos$NPC.superclass_canopus), ]
+# mydata1_pos = mydata1_pos[!is.na(mydata1_pos$npc_superclass_canopus), ]
 # mydata1_pos$counter = 1
-# mydata1_pos$fold_dir <- paste("pos",mydata1_pos$NPC.superclass_canopus,sep="_")
+# mydata1_pos$fold_dir <- paste("pos",mydata1_pos$npc_superclass_canopus,sep="_")
 
 # #####################################################################
 # #####################################################################
 
 # dt_se_prop_prep_count_tot = dt_for_treemap(
 #   datatable = mydata1,
-#   parent_value = NPC.pathway_canopus,
-#   value = NPC.superclass_canopus,
+#   parent_value = npc_pathway_canopus,
+#   value = npc_superclass_canopus,
 #   count = counter
 # )
 
 
 # dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
 #   datatable = mydata1,
-#   parent_value = NPC.pathway_canopus,
-#   value = NPC.superclass_canopus,
+#   parent_value = npc_pathway_canopus,
+#   value = npc_superclass_canopus,
 #   count = C_WT_fold_change_log2
 # )
 
@@ -2428,14 +2488,14 @@ if (params$operating_system$system == "windows") {
 
 # dt_se_prop_prep_count_pos = dt_for_treemap(
 #   datatable = mydata1_pos,
-#   parent_value = NPC.superclass_canopus,
+#   parent_value = npc_superclass_canopus,
 #   value = fold_dir,
 #   count = counter
 # )
 
 # dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
 #   datatable = mydata1_pos,
-#   parent_value = NPC.superclass_canopus,
+#   parent_value = npc_superclass_canopus,
 #   value = fold_dir,
 #   count = C_WT_fold_change_log2
 # )
@@ -2452,14 +2512,14 @@ if (params$operating_system$system == "windows") {
 
 # dt_se_prop_prep_count_neg = dt_for_treemap(
 #   datatable = mydata1_neg,
-#   parent_value = NPC.superclass_canopus,
+#   parent_value = npc_superclass_canopus,
 #   value = fold_dir,
 #   count = counter
 # )
 
 # dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
 #   datatable = mydata1_neg,
-#   parent_value = NPC.superclass_canopus,
+#   parent_value = npc_superclass_canopus,
 #   value = fold_dir,
 #   count = C_WT_fold_change_log2
 # )
@@ -2552,7 +2612,7 @@ if (params$operating_system$system == "windows") {
 # #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
 # # )
 
-# matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$InChIkey2D_sirius, "&sort=annothitcnt")
+# matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$inchikey2d_sirius, "&sort=annothitcnt")
 
 # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
 # matttree$full_hl <- paste0(
@@ -2587,7 +2647,7 @@ if (params$operating_system$system == "windows") {
 # #########################################################
 
 # txt <- as.character(paste0
-# ("feature id: ",matttree$cluster.index_gnps,"<br>",
+# ("feature id: ",matttree$cluster_index_gnps,"<br>",
 #  "RT: ", round(matttree$feature_rt,2),"<br>",
 #  "m/z: ", round(matttree$feature_mz,4),
 #  "<extra></extra>"
@@ -2839,7 +2899,7 @@ matt_donust = DE_foldchange_pvalues %>%
   filter(if_any(ends_with('_p_value'), ~ .x < params$posthoc$p_value))
 
 # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-matt_donust2 = matt_donust[!is.na(matt_donust$NPC.superclass_canopus), ]
+matt_donust2 = matt_donust[!is.na(matt_donust$npc_superclass_canopus), ]
 matt_donust2$counter = 1
 
  
@@ -2877,8 +2937,8 @@ dt_for_treemap = function(datatable, parent_value, value, count) {
 
 dt_se_prop_prep_tm = dt_for_treemap(
   datatable = matt_donust2,
-  parent_value = NPC.superclass_canopus,
-  value = NPC.class_canopus,
+  parent_value = npc_superclass_canopus,
+  value = npc_class_canopus,
   count = counter
 )
 
@@ -3226,11 +3286,28 @@ data_subset_for_pval_hm = DE$data %>%
   # Finally we remove the X from the columns names
   rename_all(~ gsub("X", "", .))
 
-data_subset_for_pval_hm_sel = data_subset_for_pval_hm %>%
-  select(params$target$sample_metadata_header)
+data_subset_for_pval_hm_peak_height = DE_original$data %>%
+  select(all_of(as.character(features_of_importance))) %>% 
+  rename_all(~ paste0("X", .))  %>% 
+  # here we join the data with the associated sample metadata using the row.names as index
+  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  # We keep the row.names columnn as row.names
+  transform(row.names = Row.names)  %>%
+  # We keep the params$target$sample_metadata_header column and the columns that start with X
+  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  # We set the params$target$sample_metadata_header column as a factor
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))  %>% 
+  # Finally we remove the X from the columns names
+  rename_all(~ gsub("X", "", .))
 
+
+# data_subset_for_pval_hm_sel = data_subset_for_pval_hm %>%
+#   select(params$target$sample_metadata_header)
 
 data_subset_for_pval_hm = data_subset_for_pval_hm[, colnames(data_subset_for_pval_hm) %in% features_of_importance]
+
+data_subset_for_pval_hm_peak_height = data_subset_for_pval_hm_peak_height[, colnames(data_subset_for_pval_hm_peak_height) %in% features_of_importance]
+
 # my_sample_col = DE$sample_meta$sample_id
 
 # data_subset_for_Pval = data_subset_for_Pval[, colnames(data_subset_for_Pval) %in% imp_filter2X]
@@ -3244,29 +3321,29 @@ my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sa
 selected_variable_meta = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance) 
   # %>%
-  # select(feature_id, NPC.pathway_canopus, NPC.superclass_canopus) %>%
-  # mutate(NPC.pathway_canopus = paste(NPC.pathway_canopus, NPC.superclass_canopus, sep = "_")) %>%
-  # select(feature_id, NPC.pathway_canopus) %>%
+  # select(feature_id, npc_pathway_canopus, npc_superclass_canopus) %>%
+  # mutate(npc_pathway_canopus = paste(npc_pathway_canopus, npc_superclass_canopus, sep = "_")) %>%
+  # select(feature_id, npc_pathway_canopus) %>%
   # column_to_rownames("feature_id")
 
 selected_variable_meta_NPC = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
-  select(feature_id, NPC.superclass_canopus, NPC.pathway_canopus, NPC.class_canopus) %>%
-  mutate(NPC.superclass_merged_canopus = paste(NPC.pathway_canopus, NPC.superclass_canopus, sep = "_")) %>%
-  mutate(NPC.class_merged_canopus = paste(NPC.superclass_merged_canopus, NPC.class_canopus, sep = "_")) %>%
-  select(NPC.class_merged_canopus, NPC.superclass_merged_canopus, NPC.pathway_canopus)
+  select(feature_id, npc_superclass_canopus, npc_pathway_canopus, npc_class_canopus) %>%
+  mutate(NPC.superclass_merged_canopus = paste(npc_pathway_canopus, npc_superclass_canopus, sep = "_")) %>%
+  mutate(NPC.class_merged_canopus = paste(NPC.superclass_merged_canopus, npc_class_canopus, sep = "_")) %>%
+  select(NPC.class_merged_canopus, NPC.superclass_merged_canopus, npc_pathway_canopus)
 
 selected_variable_meta_NPC_simple = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
-  select(NPC.class_canopus, NPC.superclass_canopus, NPC.pathway_canopus)
+  select(npc_class_canopus, npc_superclass_canopus, npc_pathway_canopus)
 
 selected_variable_meta_NPC_simple_ordered = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
-  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus)
+  select(npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus)
 
 selected_variable_meta_NPC_simple = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
-  select(NPC.class_canopus, NPC.superclass_canopus, NPC.pathway_canopus)
+  select(npc_class_canopus, npc_superclass_canopus, npc_pathway_canopus)
 
 
 
@@ -3414,9 +3491,9 @@ fixed_custom_create_color_dfs <- function(mdf,
       print("Other is present in the dataframe")
     } else {
       print("Other is not present in the dataframe. We add it directly to the dataframe")
-      row_to_insert = data.frame(NPC.pathway_canopus = "Other",
-      NPC.superclass_canopus = "Other",
-      NPC.class_canopus = "Other",
+      row_to_insert = data.frame(npc_pathway_canopus = "Other",
+      npc_superclass_canopus = "Other",
+      npc_class_canopus = "Other",
       Abundance = 1)
       mdf <- mdf %>% 
       rows_insert(row_to_insert)
@@ -3545,11 +3622,11 @@ fixed_custom_create_color_dfs <- function(mdf,
     # Define a function to create a pathway tibble
     create_pathway_tibble <- function(pathway_name, hex_column_name) {
       cdf %>%
-        filter(Top_NPC.pathway_canopus == pathway_name) %>%
+        filter(Top_npc_pathway_canopus == pathway_name) %>%
         pull(data) %>%
         as.data.frame() %>% 
         left_join(hex_df, by = "order") %>%
-        select(group, order, Top_NPC.superclass_canopus, !!hex_column_name := !!sym(hex_column_name)) %>%
+        select(group, order, Top_npc_superclass_canopus, !!hex_column_name := !!sym(hex_column_name)) %>%
         rename(hex = !!sym(hex_column_name)) %>%
         as_tibble()  %>% 
         distinct()
@@ -3567,8 +3644,8 @@ fixed_custom_create_color_dfs <- function(mdf,
       "Carbohydrates" = "micro_purple",
       "Other" = "micro_cvd_gray"
     )
-    # Subset pathway_data to match the levels in cdf$Top_NPC.pathway_canopus
-    valid_pathway_names <- levels(cdf$Top_NPC.pathway_canopus)
+    # Subset pathway_data to match the levels in cdf$Top_npc_pathway_canopus
+    valid_pathway_names <- levels(cdf$Top_npc_pathway_canopus)
     valid_pathway_data <- pathway_data[names(pathway_data) %in% valid_pathway_names]
 
 
@@ -3581,7 +3658,7 @@ fixed_custom_create_color_dfs <- function(mdf,
 
     # Convert the list of tibbles to a tibble
     cdf <- tibble(
-      Top_NPC.pathway_canopus = names(pathway_tibbles),
+      Top_npc_pathway_canopus = names(pathway_tibbles),
       data = map(pathway_tibbles, as_tibble)
     )
 
@@ -3619,8 +3696,8 @@ fixed_custom_create_color_dfs <- function(mdf,
 # mdf = selected_variable_meta_NPC_simple_resolved
 # # selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
 # selected_groups = selected_variable_meta_NPC_simple_resolved_count
-# group_level = "NPC.pathway_canopus"
-# subgroup_level = "NPC.superclass_canopus"
+# group_level = "npc_pathway_canopus"
+# subgroup_level = "npc_superclass_canopus"
 # cvd = TRUE
 # top_n_subgroups = 4
 # top_orientation = FALSE
@@ -3629,13 +3706,13 @@ fixed_custom_create_color_dfs <- function(mdf,
 
 selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
   filter(feature_id %in% features_of_importance)  %>% 
-  select(NPC.class_canopus) %>%
+  select(npc_class_canopus) %>%
   rownames_to_column('index') %>%
-  left_join(npclassifier_newpath_simple,by="NPC.class_canopus") %>% 
+  left_join(npclassifier_newpath_simple,by="npc_class_canopus") %>% 
   column_to_rownames('index') %>%
-  select(NPC.pathway_canopus, NPC.superclass_canopus, NPC.class_canopus) %>% 
-  # We convert NA in the NPC.pathway_canopus column to "Other"
-  mutate(NPC.pathway_canopus = ifelse(is.na(NPC.pathway_canopus), "Other", NPC.pathway_canopus))
+  select(npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>% 
+  # We convert NA in the npc_pathway_canopus column to "Other"
+  mutate(npc_pathway_canopus = ifelse(is.na(npc_pathway_canopus), "Other", npc_pathway_canopus))
 
 
 selected_variable_meta_NPC_simple_resolved$Abundance = 1
@@ -3646,29 +3723,28 @@ selected_variable_meta_NPC_simple_resolved$Abundance = 1
 ### Selected dataset
 
 selected_variable_meta_NPC_simple_resolved_count = selected_variable_meta_NPC_simple_resolved %>%
-  group_by(NPC.pathway_canopus) %>%
+  group_by(npc_pathway_canopus) %>%
   summarise(count = n()) %>%
   arrange(desc(count)) %>% 
-  select(NPC.pathway_canopus) %>%
+  select(npc_pathway_canopus) %>%
   pull()
 
 
-selected_variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_variable_meta_NPC_simple_resolved_count, group_level = "NPC.pathway_canopus" , subgroup_level = "NPC.superclass_canopus", cvd = TRUE)
+selected_variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_variable_meta_NPC_simple_resolved_count, group_level = "npc_pathway_canopus" , subgroup_level = "npc_superclass_canopus", cvd = TRUE)
 
 # Extract
 mdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$mdf
 cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$cdf
 
 
-
 col_order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
 distinct(group, .keep_all = TRUE) %>%
 # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
-# with the Top_NPC.pathway_canopus column on the left and the NPC.pathway_canopus column on the right 
+# with the Top_npc_pathway_canopus column on the left and the npc_pathway_canopus column on the right 
 left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
-# arrange(NPC.pathway_canopus, order)  %>% 
-arrange(ifelse(NPC.pathway_canopus == "Other", 2, 1), NPC.pathway_canopus, order) %>% 
-# left_join(df_col_np_pathway, by.x = "Top_NPC.pathway_canopus", by.x = "NPC.pathway_canopus") %>% 
+# arrange(npc_pathway_canopus, order)  %>% 
+arrange(ifelse(npc_pathway_canopus == "Other", 2, 1), npc_pathway_canopus, order) %>% 
+# left_join(df_col_np_pathway, by.x = "Top_npc_pathway_canopus", by.x = "npc_pathway_canopus") %>% 
 select(hex, group)
 
 
@@ -3684,18 +3760,10 @@ order_np_pathway = col_order_np_pathway %>%
   unlist() %>% 
   rev()
 
-mdf_selected_variable_ordered = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
-# We temporarily change group from factor to character
-mutate(group = as.character(group)) %>%
-# We make sure to place the row with NPC.pathway_canopus value = "Other" at the end of the df
-# and we order by group
-arrange(ifelse(NPC.pathway_canopus == "Other", 1, 2), desc(group)) %>% 
-# we switch back group from character to factor
-mutate(group = as.factor(group)) 
 
+mdf_selected_variable_meta_NPC_simple_resolved_colored$group <- factor(mdf_selected_variable_meta_NPC_simple_resolved_colored$group, levels = order_np_pathway)
 
-mdf_selected_variable_ordered$group <- factor(mdf_selected_variable_ordered$group, levels = order_np_pathway)
-
+# The grid parameters are defined
 
 grid_params <- setup_colorbar_grid(nrows = 2, 
                                    y_length = 0.4, 
@@ -3704,60 +3772,24 @@ grid_params <- setup_colorbar_grid(nrows = 2,
                                    x_start = 1.1, 
                                    y_start = 0.8)
 
-# ByPal = colorRampPalette(c(wes_palette("Zissou1")))
-
-data_subset_for_pval_hm_mat 
-
-# we replace all values in the matrix that by 1s
-
-data_subset_for_pval_hm_mat1 = data_subset_for_pval_hm_mat
-
-data_subset_for_pval_hm_mat1[data_subset_for_pval_hm_mat1 > 0] <- '<br> shgshgshgssg <br> 
-<html>
- <body>
-  <iframe src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CCC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
-   width="800" height="600" frameborder="0" allowfullscreen></iframe>
- </body>
-</html>'
-
-typeof(data_subset_for_pval_hm_mat1)
-typeof(data_subset_for_pval_hm_mat)
-
-DE$variable_meta[DE$variable_meta$feature_id == '1103',]
-
-
-values_text = DE$variable_meta  %>% 
-select(feature_id, chebiasciiname_sirius)
-
-
+# We create the hover text for the heatmap
 
 dt = as.data.frame(t(data_subset_for_pval_hm_mat))
-
-
-# Sample data
-matrix_data <- matrix(0, nrow = 10, ncol = 7)  # Create a 10x7 matrix filled with zeros
-data_frame <- data.frame(
-  V1 = c(954, 956, 965, 968, 97, 972, 977, 984, 988, 99),
-  V2 = c("Value1", "Value2", "Value3", "Value4", "Value5", "Value6", "Value7", "Value8", "Value9", "Value10")
-)
-
-# Fill the first column of the matrix with the values from the second column of the dataframe
-matrix_data[, 1] <- data_frame$V2
-
-# Print the resulting matrix
-print(matrix_data)
-
-paste()
-
-# I want to fill a matrix 
 
 values_mat = dt  %>% 
 rownames_to_column('feature_id') %>%
 select(feature_id) %>%
 mutate(feature_id = as.numeric(feature_id)) %>%
 left_join(DE$variable_meta, by = 'feature_id') %>%
-select(feature_id, chebiasciiname_sirius) %>%
-mutate(hover_text = paste0(feature_id, '<br>', chebiasciiname_sirius)) %>%
+select(feature_id, componentindex_gnps, adduct_sirius, chebiasciiname_sirius, name_sirius, npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>%
+mutate(hover_text = paste0('<br>' , 'feature_id: ', feature_id,
+                           '<br>' , 'componentindex_gnps: ', componentindex_gnps,
+                           '<br>' , 'Adduct sirius: ', adduct_sirius,
+                           '<br>' , 'CheBI name: ', chebiasciiname_sirius,
+                           '<br>' , 'Sirius name: ', name_sirius,
+                           '<br>' , 'Pathway: ', npc_pathway_canopus,
+                           '<br>' , 'Superclass: ', npc_superclass_canopus,
+                           '<br>' , 'Class: ', npc_class_canopus)) %>%
 select(feature_id, hover_text) %>%
 pivot_wider(names_from = feature_id, values_from = hover_text)  %>% 
 # we now repeat the hover_text for each row of the matrix. We use dplyr to do that
@@ -3765,13 +3797,24 @@ mutate(count = nrow(data_subset_for_pval_hm_mat)) %>%
 uncount(count) %>% 
 as.matrix()
 
-iheatmap <- main_heatmap(as.matrix(percentize(data_subset_for_pval_hm_mat)),
+
+# We change the numeric into E-notation and we round the values to 2 decimals.
+
+
+data_subset_for_pval_hm_peak_height = format(data_subset_for_pval_hm_peak_height, digits = 2, scientific = TRUE)
+
+
+combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), values_mat, sep = "<br>"), nrow = nrow(data_subset_for_pval_hm_peak_height), ncol = ncol(data_subset_for_pval_hm_peak_height))
+
+
+
+iheatmap <- main_heatmap(as.matrix(t(percentize(data_subset_for_pval_hm_mat))),
   name = "Intensity",
   # layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
   colors = "GnBu",
   show_colorbar = TRUE,
-  text = values_mat,
+  text = t(combined_matrix),
   layout = list(
     title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
     margin = list(t = 160, r = 80, b = 80, l = 80)
@@ -3790,26 +3833,26 @@ iheatmap <- main_heatmap(as.matrix(percentize(data_subset_for_pval_hm_mat)),
   #   side = "right",
   #   buffer = 0.005
   # colors = list(ByPal, ByPal, ByPal) %>%
-  # add_row_annotation(data.frame("NPC_Class" = selected_variable_meta_NPC_simple_resolved$NPC.class_canopus),
+  # add_row_annotation(data.frame("NPC_Class" = selected_variable_meta_NPC_simple_resolved$npc_class_canopus),
   #   side = "right",
   #   buffer = 0.005,
   #   colors = list("NPC_Class" = col_np_class)
   # ) %>%
-  # add_row_annotation(data.frame("NPC_SuperClass" = selected_variable_meta_NPC_simple_resolved$NPC.superclass_canopus),
+  # add_row_annotation(data.frame("NPC_SuperClass" = selected_variable_meta_NPC_simple_resolved$npc_superclass_canopus),
   #   side = "right",
   #   buffer = 0.005,
   #   colors = list("NPC_SuperClass" = col_np_superclass)
   # ) %>%
-  add_row_annotation(data.frame("Classification" = mdf_selected_variable_ordered$group),
+  add_row_annotation(data.frame("Classification" = mdf_selected_variable_meta_NPC_simple_resolved_colored$group),
     side = "right",
     buffer = 0.05,
     colors = list("Classification" = col_np_pathway)
   ) %>%
-  # add_row_annotation(selected_variable_meta_NPC_simple$NPC.superclass_canopus,
+  # add_row_annotation(selected_variable_meta_NPC_simple$npc_superclass_canopus,
   #   side = "right",
   #   buffer = 0.005
   # colors = list(ByPal, ByPal, ByPal) %>%
-  # add_row_annotation(selected_variable_meta_NPC_simple$NPC.pathway_canopus,
+  # add_row_annotation(selected_variable_meta_NPC_simple$npc_pathway_canopus,
   #   side = "right",
   #   buffer = 0.005
   # colors = list(ByPal, ByPal, ByPal) %>%
@@ -3870,7 +3913,7 @@ unlink("lib", recursive = FALSE)
 }
 
 
-# unique(selected_variable_meta_NPC_simple_resolved$NPC.superclass_canopus)
+# unique(selected_variable_meta_NPC_simple_resolved$npc_superclass_canopus)
 
 # col_np_superclass
 
@@ -3971,7 +4014,7 @@ unlink("lib", recursive = FALSE)
 
 # my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
-# annot_col = data.frame(paste(DE$variable_meta$NPC.pathway_canopus, DE$variable_meta$NPC.superclass_canopus, sep = "_"), DE$variable_meta$NPC.pathway_canopus)
+# annot_col = data.frame(paste(DE$variable_meta$npc_pathway_canopus, DE$variable_meta$npc_superclass_canopus, sep = "_"), DE$variable_meta$npc_pathway_canopus)
 
 # colnames(annot_col) = c("Superclass", "Pathway")
 
@@ -4043,9 +4086,9 @@ message("Outputing Summary Table ...")
 # name_sirius = DE$variable_meta$name_sirius
 # smiles_sirius = DE$variable_meta$smiles_sirius
 # InChI_sirius = DE$variable_meta$InChI_sirius
-# NPC.pathway_canopus = DE$variable_meta$NPC.pathway_canopus
-# NPC.superclass_canopus = DE$variable_meta$NPC.superclass_canopus
-# Annotation_merge = data.frame(feature_id, sample_raw_id, name_sirius, smiles_sirius, InChI_sirius, NPC.pathway_canopus, NPC.superclass_canopus)
+# npc_pathway_canopus = DE$variable_meta$npc_pathway_canopus
+# npc_superclass_canopus = DE$variable_meta$npc_superclass_canopus
+# Annotation_merge = data.frame(feature_id, sample_raw_id, name_sirius, smiles_sirius, InChI_sirius, npc_pathway_canopus, npc_superclass_canopus)
 
 # RF_importance = imp_table_rf$MeanDecreaseGini
 # sample_raw_id = row.names(imp_table_rf)
@@ -4081,11 +4124,11 @@ summary_stat_output_selected = DE_foldchange_pvalues %>%
   feature_rt,
   contains("p_value"), 
   contains("fold"), 
-  NPC.pathway_canopus,
-  NPC.superclass_canopus,
-  NPC.class_canopus,
+  npc_pathway_canopus,
+  npc_superclass_canopus,
+  npc_class_canopus,
   name_sirius,
-  LibraryID_gnps, 
+  libraryid_gnps, 
   contains("smiles", ignore.case = TRUE), 
   contains("inchi_", ignore.case = TRUE),
   contains("inchikey", ignore.case = TRUE)
@@ -4103,25 +4146,25 @@ summary_stat_output_selected_cytoscape = DE_foldchange_pvalues %>%
     name_sirius,
     chebiasciiname_sirius,
     chebiid_sirius,
-    ConfidenceScore_sirius,
-    CSI.FingerIDScore_sirius,
-    SiriusScore_sirius,
-    ZodiacScore_sirius,
-    InChI_sirius,
-    InChIkey2D_sirius,
-    molecularFormula_sirius,
+    confidencescore_sirius,
+    csi_fingeridscore_sirius,
+    siriusscore_sirius,
+    zodiacscore_sirius,
+    inchi_sirius,
+    inchikey2d_sirius,
+    molecularformula_sirius,
     adduct_sirius,
     smiles_sirius,
-    NPC.pathway_canopus,
-    NPC.class_canopus,
-    NPC.superclass_canopus,
+    npc_pathway_canopus,
+    npc_class_canopus,
+    npc_superclass_canopus,
     structure_exact_mass_metannot,
     structure_inchi_metannot,
     structure_inchikey_metannot,
     short_inchikey_metannot,
     structure_smiles_metannot,
     structure_molecular_formula_metannot,
-    structure_nameTraditional_metannot,
+    structure_nametraditional_metannot,
     structure_wikidata_metannot,
     structure_taxonomy_npclassifier_01pathway_metannot,
     structure_taxonomy_npclassifier_02superclass_metannot,
@@ -4212,9 +4255,9 @@ summary_stat_output_selected_simple = DE_foldchange_pvalues %>%
   feature_id,
   feature_id_full,
   contains("p_value"), 
-  NPC.pathway_canopus,
-  NPC.superclass_canopus,
-  NPC.class_canopus,
+  npc_pathway_canopus,
+  npc_superclass_canopus,
+  npc_class_canopus,
   name_sirius,
   smiles_sirius
   )
