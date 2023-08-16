@@ -37,9 +37,9 @@ filter_sample_type :
   levels : 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'exclude'
+  mode : 'include'
   factor_name : 'period'
-  levels : 'inter'
+  levels : 'night'
 
 filter_sample_metadata_two :
   mode : 'include'
@@ -48,12 +48,12 @@ filter_sample_metadata_two :
 
 filter_variable_metadata_one :
   mode : 'exclude'
-  factor_name : 'NPC.pathway_canopus'
+  factor_name : 'npc_pathway_canopus'
   levels : 'Fatty acids' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
 
 filter_variable_metadata_two :
   mode : 'include'
-  factor_name : 'NPC.pathway_canopus'
+  factor_name : 'npc_pathway_canopus'
   levels : 'Fatty acids' 
 
 
@@ -65,7 +65,7 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.5 
+  level : 0.5
 
 iheatmapr:
   colors:
@@ -78,7 +78,7 @@ iheatmapr:
 
 
 target:
-  sample_metadata_header: "period" # This variable will be used throughout the whole script
+  sample_metadata_header: "genotype" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
