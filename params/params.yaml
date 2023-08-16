@@ -65,7 +65,7 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.5
+  level : 0.7
 
 
 target:

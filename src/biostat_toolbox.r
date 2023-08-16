@@ -1066,6 +1066,7 @@ pca_plot = chart_plot(pca_scores_plot, pca_object)
 
 fig_PCA = pca_plot + 
 theme_classic() + 
+# scale_colour_manual(name = "Groups", values=cols) +
 facet_wrap(~ pca_plot$labels$title) +
 ggtitle(title_PCA)
 
