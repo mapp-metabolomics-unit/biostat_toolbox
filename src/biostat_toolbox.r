@@ -2220,76 +2220,195 @@ bscols(
   datatable(m)
 )
 
+###### CrossTalk DT / Plotly - Volcano Plot
+
+# Extract prefixes of columns with "_p_value" suffix
+conditions <- sub("_p_value$", "", grep("_p_value$", names(DE_foldchange_pvalues), value = TRUE))
+
+# Print message before iterating over conditions
+cat("Iterating over the following conditions for the Volcano plots generation:\n")
 
 
-x <- de %>% 
-filter(!is.na(pvalue)) %>% 
-select(feature_id, log2FoldChange, pvalue, day_vs_night_p_value_minus_log10, feature_id_full, chebiasciiname_sirius, diffexpressed, delabel)
+# Iterate over the prefixes
+for (condition in conditions) {
 
-# m <- SharedData$new(x, key = ~feature_id)
-
-m <- SharedData$new(x)
+  cat("Generating Volcano plot for condition: ", condition, '\n')
 
 
-export <- bscols(
-  plot_ly(m, x = ~log2FoldChange, y = ~day_vs_night_p_value_minus_log10) %>%
-    add_markers(text  = row.names(m)) %>%
+  # Perform filtering using the prefix as a condition
+  de <- DE_foldchange_pvalues %>%
+    filter(!!sym(paste0(condition, "_p_value_minus_log10")) > 0)
+  
+  # Print the filtered data
+  cat("Filtered data for condition", condition, "\n")
+  # print(head(DE_foldchange_pvalues_signi))
+  cat("\n")
+
+  condition_parts <- strsplit(condition, "_vs_")[[1]]
+  first_part <- condition_parts[1]
+  second_part <- condition_parts[2]
+
+
+  de = de  %>% 
+  # we rename the day_vs_night_p_value_minus_log10 column to pvalue
+  rename(pvalue_minus_log10 = !!sym(paste0(condition, "_p_value_minus_log10"))) %>%
+  # we rename the day_vs_night_fold_change_log2 column to log2FoldChange
+  rename(log2_fold_change = !!sym(paste0(condition, "_fold_change_log2")))
+
+  x <- de %>% 
+  select(feature_id, log2_fold_change, pvalue_minus_log10, feature_id_full, chebiasciiname_sirius)
+
+  # m <- SharedData$new(x, key = ~feature_id)
+
+  m <- SharedData$new(x)
+
+  ### Defining the plotly object 
+
+fig <- plot_ly()
+# Add traces
+fig <- fig %>% add_trace(x = ~1:3, y = ~10*(4:6), name = "yaxis data", mode = "lines+markers", type = "scatter")
+
+ay <- list(
+  tickfont = list(color = "red"),
+  overlaying = "y",
+  side = "right",
+  title = "<b>secondary</b> yaxis title")
+
+fig <- fig %>% add_trace(x = ~2:4, y = ~4:6, name = "yaxis 2 data", yaxis = "y2", mode = "lines+markers", type = "scatter")
+
+# Set figure title, x and y-axes titles
+fig <- fig %>% layout(
+  title = "Double Y Axis Example", yaxis2 = ay,
+  xaxis = list(title="xaxis title "),
+  yaxis = list(title="<b>primary</b> yaxis title")
+)%>%
+  layout(plot_bgcolor='#e5ecf6',
+          xaxis = list(
+            zerolinecolor = '#ffff',
+            zerolinewidth = 2,
+            gridcolor = 'ffff'),
+          yaxis = list(
+            zerolinecolor = '#ffff',
+            zerolinewidth = 2,
+            gridcolor = 'ffff')
+          )
+
+fig
+
+  ay <- list(
+  tickfont = list(color = "red"),
+  overlaying = "y",
+  side = "right",
+  title = "<b>secondary</b> yaxis title")
+
+  plotly_volcano <- plot_ly(m, x = ~log2_fold_change, y = ~pvalue_minus_log10) %>%
+    add_markers(text = row.names(m)) %>%
+    add_markers(text = row.names(m),yaxis='y2') %>%
     # config(displayModeBar = FALSE) %>%
     layout(
       title = "Hold shift while clicking \n markers for persistent selection",
       margin = list(t = 60)
-    ) %>% 
-      highlight(color = "green",on = "plotly_selected",
-            off = "plotly_deselect"),
-  datatable(m, rownames = FALSE,
-  extensions = c("Buttons", "Select"),
-  selection = "none",
-  options = 
-    list(
-      select = TRUE,
-      searching = TRUE, 
-      scrollX = TRUE,
-      scrollY = TRUE,
-      dom = "BRSpfrti",
-      buttons = list(
-        list(
-          extend = "copy",
-          text = 'Copy'
-          # ,
-          # exportOptions = list(modifier = list(selected = TRUE))
-        ), 
-        list(
-          extend = "csv",
-          text = 'CSV'
-          # exportOptions = list(modifier = list(selected = TRUE))
-        ), 
-        list(
-          extend = "excel",
-          text = 'Excel'
-          # exportOptions = list(modifier = list(selected = TRUE))
-        ), 
-        list(
-          extend = "pdf",
-          text = 'PDF'
-          # exportOptions = list(modifier = list(selected = TRUE))
-        ), 
-        list(
-          extend = "print",
-          text = 'Print'
-          # exportOptions = list(modifier = list(selected = TRUE))
-        )
-      ),
-    lengthMenu = list(c(10,25,50,-1),
-    c(10,25,50,"All"))
-    )
     ) %>%
-   formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
-)
+    layout(
+      title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"),
+      margin = list(
+        l = 100, # Left margin in pixels, adjust as needed
+        r = 100, # Right margin in pixels, adjust as needed
+        t = 100, # Top margin in pixels, adjust as needed
+        b = 100 # Bottom margin in pixels, adjust as needed
+      )
+    )  %>%
+  layout(
+    title = "Manually Specified Labels", plot_bgcolor = "#e5ecf6",
+    xaxis = list(title = "Sepal Length (cm)"),
+    yaxis = list(title = "Sepal Width (cm)", side = "left"),
+    yaxis2 = list(title = "Sepal Width (cm)", side = "right")
+  )  %>% 
+  layout(showlegend = FALSE)
 
-# We save the plot in a html file
-htmltools::save_html(export, "result.html")
+
+  ### Defining the DT object
+
+  DT_volcano <- datatable(m,
+    rownames = FALSE,
+    extensions = c("Buttons", "Select"),
+    selection = "none",
+    options =
+      list(
+        #       initComplete = JS(
+        #   "function(settings, json) {",
+        #   "$('body').css({'font-family': 'Calibri'});",
+        #   "}"
+        # ),
+        select = TRUE,
+        searching = TRUE,
+        scrollX = TRUE,
+        scrollY = TRUE,
+        dom = "BRSpfrti",
+        buttons = list(
+          list(
+            extend = "copy",
+            text = "Copy"
+            # ,
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "csv",
+            text = "CSV"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "excel",
+            text = "Excel"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "pdf",
+            text = "PDF"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "print",
+            text = "Print"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          )
+        ),
+        lengthMenu = list(
+          c(10, 25, 50, -1),
+          c(10, 25, 50, "All")
+        )
+      )
+  ) %>%
+    formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
+    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)
+
+  ### Defining the crosstalked object
+
+  plotly_DT_crosstalked <- bscols(
+    plotly_volcano %>%
+      highlight(
+        color = "green", on = "plotly_selected",
+        off = "plotly_deselect"
+      ),
+    DT_volcano
+  )
+
+  ### Saving the plotly_DT_crosstalked object
+  
+  if (params$operating_system$system == "unix") {
+    ###linux version
+    htmltools::save_html(plotly_DT_crosstalked, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"))
+  }
 
 
+
+if (params$operating_system$system == "windows") {
+    ###windows version
+    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+    htmltools::save_html(plotly_DT_crosstalked, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"),libdir = "lib")
+    unlink("lib", recursive = FALSE)
+    }
+  }
 
 # DE_foldchange_pvalues
 
@@ -2611,11 +2730,13 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   conditions <- sub("_p_value$", "", grep("_p_value$", names(DE_foldchange_pvalues), value = TRUE))
 
   # Print message before iterating over conditions
-  cat("Iterating over the following conditions:\n")
+  cat("Iterating over the following conditions for the treemaps generation:\n")
 
 
   # Iterate over the prefixes
   for (condition in conditions) {
+
+    cat("Generating treemaps for condition: ", condition)
 
     # Perform filtering using the prefix as a condition
     DE_foldchange_pvalues_signi <- DE_foldchange_pvalues %>%
