@@ -37,9 +37,9 @@ filter_sample_type :
   levels : 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'include'
+  mode : 'exclude'
   factor_name : 'period'
-  levels : 'night'
+  levels : 'inter'
 
 filter_sample_metadata_two :
   mode : 'include'
@@ -67,19 +67,44 @@ filter_variable_metadata_num :
   factor_name : 'npc_superclass_probability_canopus'
   level : 0.5
 
-iheatmapr:
-  colors:
-   - "#fff400" # bright yellow
-   - "#0040b6" # dark blue
-   - "#a89639"
-   - "#b1bd7e"
-   - "#dd6665"
-   - "#dd4341"
-
 
 target:
-  sample_metadata_header: "genotype" # This variable will be used throughout the whole script
+  sample_metadata_header: "period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
+
+
+colors:
+  heatmap:
+   - "#fff400" # bright yellow
+   - "#0040b6" # dark blue
+  #  - "#a89639"
+  #  - "#b1bd7e"
+  #  - "#dd6665"
+  #  - "#dd4341"
+  volcano:
+   - "orange"
+   - "blueviolet"
+
+# "aliceblue", "antiquewhite", "aquamarine", "azure", "beige", "bisque", "blanchedalmond",
+# "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
+# "cornflowerblue", "cornsilk", "crimson", "darkblue", "darkcyan", "darkgoldenrod",
+# "darkgray", "darkgreen", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange",
+# "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategray",
+# "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray", "dodgerblue",
+# "firebrick", "floralwhite", "forestgreen", "gainsboro", "ghostwhite", "gold", "goldenrod",
+# "greenyellow", "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender",
+# "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan",
+# "lightgoldenrodyellow", "lightgray", "lightgreen", "lightpink", "lightsalmon",
+# "lightseagreen", "lightskyblue", "lightslategray", "lightsteelblue", "lightyellow",
+# "limegreen", "linen", "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid",
+# "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+# "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin", "navajowhite",
+# "navy", "oldlace", "olivedrab", "orange", "orangered", "orchid", "palegoldenrod",
+# "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", "pink",
+# "plum", "powderblue", "purple", "rosybrown", "royalblue", "saddlebrown", "salmon",
+# "sandybrown", "seagreen", "seashell", "sienna", "skyblue", "slateblue", "slategray",
+# "snow", "springgreen", "steelblue", "tan", "thistle", "tomato", "turquoise", "violet",
+# "wheat", "whitesmoke", "yellowgreen"
 
 
 colnames:

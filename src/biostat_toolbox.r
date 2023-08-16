@@ -999,7 +999,7 @@ title_PCoA3D = paste(
   sep = "\n"
 )
 
-title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+# title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_treemap = paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_random_forest = paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
@@ -1015,6 +1015,16 @@ title_heatmap_pval = paste(
   paste("Scaling Status:", scaling_status),
   sep = "<br>"
 )
+
+title_volcano = paste(
+  paste("Volcano plot of significant feature for dataset", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
 
 
 #################################################################################################
@@ -1058,6 +1068,8 @@ fig_PCA = pca_plot +
 theme_classic() + 
 facet_wrap(~ pca_plot$labels$title) +
 ggtitle(title_PCA)
+
+
 #   theme(plot.title = element_text(hjust = 0.2, vjust = -2)) +
 
 
@@ -1174,7 +1186,7 @@ ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 15, height 
 #################################################################################################
 #################################################################################################
 #################################################################################################
-##### HClustering
+##### HClustering ###############################################################################
 #################################################################################################
 
 # # prepare model sequence
@@ -1258,7 +1270,8 @@ ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 15, height 
 #################################################################################################
 #################################################################################################
 #################################################################################################
-##### PCoA  
+##### PCoA ##########################################################################
+
 
 message("Launching PCoA calculations ...")
 
@@ -1278,7 +1291,6 @@ message("Launching PCoA calculations ...")
 ######################################################
 
 # @Manu explain what is done below filters etc ....
-
 
 
 data_RF = DE# DE_filtered
@@ -1340,12 +1352,12 @@ unlink("lib", recursive = FALSE)
 
 }
 
+#################################################################################################
+#################################################################################################
+#################################################################################################
+##### group detection with DBSCAN 3D ############################################################
+#################################################################################################
 
-
-#################################################################################################
-#################################################################################################
-#################################################################################################
-##### group detection
 
 # df = data_PCOA_merge[, 1:2]
 
@@ -1394,73 +1406,12 @@ unlink("lib", recursive = FALSE)
 #################################################################################################
 #################################################################################################
 #################################################################################################
-##### Volcano plot and Heatmap filtered by Random Forest
+##### Fold Changes and Tukey’s Honest Significant Difference calculations #######################
+#################################################################################################
+#################################################################################################
+
 
 message("Launching Fold Changes and Tukey’s Honest Significant Difference calculations ...")
-
-
-# # prepare model sequence
-
-# MS_heatmap = filter_smeta(mode = "include", levels = params$filters$to_include, factor_name = "sample_type") +
-#  #log_transform(base = 10) +
-#   filter_by_name(mode = "include", dimension = "variable", names = names_var)
-
-
-# # apply model sequence
-
-# DE_MS_heat = model_apply(MS_heatmap, DE)
-
-# DE_MS_heat = DE_MS_heat[length(DE_MS_heat)]
-
-######################################################
-######################################################
-################# heat filter
-
-# data_RF = DE
-# sample_name = paste(data_RF$sample_meta$sample_id, data_RF$sample_meta[[params$target$sample_metadata_header]], sep = "_")
-
-# data_subset_norm_rf = data_RF$data
-# data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
-# data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
-# # data_subset_norm_rf = normalize(data_subset_norm_rf)
-# # data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
-
-#############################################################################
-#############################################################################
-############## Volcano Plot #################################################
-#############################################################################
-#############################################################################
-
-
-# matt_trait = data_RF$sample_meta[params$target$sample_metadata_header]
-# vec_trait = matt_trait[, 1]
-# data_subset_norm_rf$treatment = as.factor(vec_trait) ### select the variable
-# data_subset_norm_rf = data.frame(data_subset_norm_rf)
-
-# matt_volcano_posthoc = NULL
-# matt_volcano_lm_sum = NULL
-# for (i in c(1:(ncol(data_subset_norm_rf) - 1))) {
-#   peak = data_subset_norm_rf[, i]
-#   if (sum(peak, na.rm = T) == 0) {
-#     next
-#   }
-#   treatment = data_subset_norm_rf$treatment
-#   dat = data.frame(peak, treatment)
-#   model = lm(peak ~ treatment, data = dat)
-#   em = emmeans(model, list(pairwise ~ treatment), adjust = "tukey")
-
-#   # Summary of the analysis posthoc
-#   xx = data.frame(em$`pairwise differences of treatment`)
-#   xx$mol = rep(colnames(data_subset_norm_rf)[i], nrow(xx))
-#   matt_volcano_posthoc = rbind(matt_volcano_posthoc, xx)
-# }
-
-# matt_volcano_posthoc$log10P = 1 - (log10(matt_volcano_posthoc$p.value))
-
-# matt_volcano_tot = matt_volcano_posthoc
-
-# head(DE$sample_meta)
-
 
 
 ### Here we wil work on outputting pvalues and fc for time series.
@@ -1713,576 +1664,13 @@ DE_foldchange_pvalues = merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "r
 write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ",")
 
 
-# glimpse(DE_foldchange_pvalues)
 
-# # Using this datatable we prepare a Volcano plot using the volcano_plot function from the plotly package. We use the p_value_log10 and the fold_change_log2_FC columns as x and y axis respectively. We use the row_ID column as the label of the points.
+##############################################################################
+##############################################################################
+############ Volcano Plots   #################################################
+##############################################################################
+##############################################################################
 
-# vp <- EnhancedVolcano(DE_foldchange_pvalues,
-#     lab = DE_foldchange_pvalues$row_id,
-#     x = 'day_vs_night_fold_change_log2',
-#     y = 'day_vs_night_p_value',
-#     # title = 'Old versus Young',
-#     pCutoff = 10e-2,
-#     FCcutoff = 0.1,
-#     pointSize = 3.0,
-#     labSize = 6.0)
-
-# ggplotly(vp)
-
-# typeof(vp)
-
-# # make the Plot.ly plot
-# p <- plot_ly(data = DE_foldchange_pvalues, x = ~day_vs_night_fold_change_log2, y = ~day_vs_night_p_value_minus_log10, text = ~row_id, mode = "markers") %>% 
-#   layout(title ="Volcano Plot") %>%
-#   layout(annotations = a)
-# p
-
-
-# # add a grouping column; default value is "not significant"
-# DE_foldchange_pvalues_nona["group"] <- "NotSignificant"
-
-# # for our plot, we want to highlight 
-# # FDR < 0.05 (significance level)
-# # Fold Change > 1.5
-
-# # change the grouping for the entries with significance but not a large enough Fold change
-# DE_foldchange_pvalues_nona[which(DE_foldchange_pvalues_nona['day_vs_night_p_value'] < 0.05 & abs(DE_foldchange_pvalues_nona['day_vs_night_fold_change_log2']) < 0.2 ),"group"] <- "Significant"
-
-# # change the grouping for the entries a large enough Fold change but not a low enough p value
-# DE_foldchange_pvalues_nona[which(DE_foldchange_pvalues_nona['day_vs_night_p_value'] > 0.05 & abs(DE_foldchange_pvalues_nona['day_vs_night_fold_change_log2']) > 0.2 ),"group"] <- "FoldChange"
-
-# # change the grouping for the entries with both significance and large enough fold change
-# DE_foldchange_pvalues_nona[which(DE_foldchange_pvalues_nona['day_vs_night_p_value'] < 0.05 & abs(DE_foldchange_pvalues_nona['day_vs_night_fold_change_log2']) > 0.2 ),"group"] <- "Significant&FoldChange"
-
-
-# # # Find and label the top peaks..
-# # top_peaks <- DE_foldchange_pvalues_nona[with(DE_foldchange_pvalues_nona, order(day_vs_night_fold_change_log2, day_vs_night_p_value)),][1:5,]
-# # top_peaks <- rbind(DE_foldchange_pvalues_nona, DE_foldchange_pvalues_nona[with(DE_foldchange_pvalues_nona, order(day_vs_night_fold_change_log2, day_vs_night_p_value)),][1:5,])
-
-# top_peaks <- DE_foldchange_pvalues_nona  %>% 
-# filter(group == "Significant&FoldChange") %>%
-
-# a <- list()
-# for (i in seq_len(nrow(top_peaks))) {
-#   m <- top_peaks[i, ]
-#   a[[i]] <- list(
-#     x = m[["day_vs_night_fold_change_log2"]],
-#     y = -log10(m[["day_vs_night_p_value"]]),
-#     text = m[["feature_id"]],
-#     xref = "x",
-#     yref = "y",
-#     showarrow = TRUE,
-#     arrowhead = 0.5,
-#     ax = 20,
-#     ay = -40
-#   )
-# }
-
-
-# v = volcanor(
-#   DE_foldchange_pvalues_nona,
-#   p = "day_vs_night_p_value",
-#   effect_size = "day_vs_night_fold_change_log2",
-#   gene = "row_id",
-#   snp = "feature_id_full"
-# )
-
-
-
-# volcanoly(v,
-#   col = c("#000000"),
-#   point_size = 5,
-#   effect_size_line = c(-0.2, 0.2),
-#   effect_size_line_color = "grey",
-#   effect_size_line_width = 0.5,
-#   effect_size_line_type = "dash",
-#   genomewideline = -log10(0.05),
-#   genomewideline_color = "grey",
-#   genomewideline_width = 0.5,
-#   genomewideline_type = "dash",
-#   highlight = NULL,
-#   highlight_color = "red",
-#   xlab = NULL,
-#   ylab = "-log10(p)",
-#   title = "Volcano Plot",
-#   text = feature_id_full, mode = "markers", color = group) %>%
-#   layout(annotations = a)
-
-
-# # We filter for day_vs_night_p_value which are not Invalid number
-
-# DE_foldchange_pvalues_nona = filter(DE_foldchange_pvalues, !is.na(day_vs_night_p_value))
-
-
-# library(hciR)
-# data(pasilla)
-# res <- pasilla$results
-
-
-
-# library(ggplot2)
-# x <- filter( res, !is.na(padj))
-# p <- ggplot(data=x, aes(x=log2FoldChange, y= -log10(padj), text=gene_name )) +
-#      geom_point(alpha=0.3, size=1.5, color="blue") +
-#      xlab("Log2 fold change") + ylab("-Log10 p-value") +xlim(-6,6)
-# y <- filter(x, padj < 1e-100)
-# p + geom_text( data=y, aes(x=log2FoldChange, y= -log10(padj), label=gene_name),
-#        hjust="left", nudge_x=.1)
-
-# ggplotly(p)
-
-# x <- filter( res, !is.na(padj))
-# x$gene_name <- ifelse(is.na(x$gene_name), x$id, x$gene_name )
-# x$gene_name[x$padj > 1e-10 & abs(x$log2FoldChange) < 1] <- NA
-
-# # We downsample the data to 1000 points to make the plot more readable
-# y <-  bind_rows(
-#  filter(x, !is.na(gene_name)),
-#  filter(x, is.na(gene_name))  %>% sample_n(1000)
-# )
-
-
-# plot_ly(data = x, x = ~ log2FoldChange , y = ~ -log10(padj),
-#        type="scatter", mode="markers", hoverinfo="text", text = ~ gene_name,
-#         marker = list(size = 10, color = 'rgba(0, 0, 255, .3)')) %>%
-#   layout( yaxis = list(title = "-Log10 p-value", zeroline = FALSE),
-#          xaxis = list(title = "Log2 fold change", zeroline = FALSE, range=c(-6,6)))
-
-
-
-# # Download the data we will use for plotting
-# download.file("https://raw.githubusercontent.com/biocorecrg/CRG_RIntroduction/master/de_df_for_volcano.rds", "de_df_for_volcano.rds", method="curl")
-
-# # The RDS format is used to save a single R object to a file, and to restore it.
-# # Extract that object in the current session:
-# tmp <- readRDS("de_df_for_volcano.rds")
-
-# # remove rows that contain NA values
-# de <- tmp[complete.cases(tmp), ]
-
-# # We sample 1000 rows
-
-# de <- de[sample(nrow(de), 1000), ]
-
-# # The basic scatter plot: x is "log2FoldChange", y is "pvalue"
-# ggplot(data=de, aes(x=log2FoldChange, y=pvalue)) + geom_point()
-
-# # Convert directly in the aes()
-# p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point()
-
-# # Add more simple "theme"
-# p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point() + theme_minimal()
-
-# # Add vertical lines for log2FoldChange thresholds, and one horizontal line for the p-value threshold 
-# p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
-#     geom_hline(yintercept=-log10(0.05), col="red")
-
-# # The significantly differentially expressed genes are the ones found in the upper-left and upper-right corners.
-# # Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2FoldChange respectively positive or negative)
-
-# # add a column of NAs
-# de$diffexpressed <- "NO"
-# # if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
-# de$diffexpressed[de$log2FoldChange > 0.3 & de$pvalue < 0.05] <- "UP"
-# # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-# de$diffexpressed[de$log2FoldChange < -0.3 & de$pvalue < 0.05] <- "DOWN"
-
-# # Re-plot but this time color the points with "diffexpressed"
-# p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed)) + geom_point() + theme_minimal()
-
-# # Add lines as before...
-# p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
-#         geom_hline(yintercept=-log10(0.05), col="red")
-
-# ## Change point color 
-
-# # 1. by default, it is assigned to the categories in an alphabetical order):
-# p3 <- p2 + scale_color_manual(values=c("blue", "black", "red"))
-
-# # 2. to automate a bit: ceate a named vector: the values are the colors to be used, the names are the categories they will be assigned to:
-# mycolors <- c("blue", "red", "black")
-# names(mycolors) <- c("DOWN", "UP", "NO")
-# p3 <- p2 + scale_colour_manual(values = mycolors)
-
-# # Now write down the name of genes beside the points...
-# # Create a new column "delabel" to de, that will contain the name of genes differentially expressed (NA in case they are not)
-# de$delabel <- NA
-# de$delabel[de$diffexpressed != "NO"] <- de$gene_symbol[de$diffexpressed != "NO"]
-
-# gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) + 
-#     geom_point() + 
-#     theme_minimal() +
-#     geom_text()
-
-
-# # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
-# # load library
-# library(ggrepel)
-# # plot adding up all layers we have seen so far
-# gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
-#         geom_point() + 
-#         theme_minimal() +
-#         geom_text_repel() +
-#         # geom_text() +
-#         scale_color_manual(values=c("blue", "black", "red")) +
-#         geom_vline(xintercept=c(-0.3, 0.3), col="red", linewidth = 0.2) +
-#         geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
-
-# ggplotly(gg)
-
-
-
-
-# # Download the data we will use for plotting
-# download.file("https://raw.githubusercontent.com/biocorecrg/CRG_RIntroduction/master/de_df_for_volcano.rds", "de_df_for_volcano.rds", method="curl")
-
-# # The RDS format is used to save a single R object to a file, and to restore it.
-# # Extract that object in the current session:
-# tmp <- readRDS("de_df_for_volcano.rds")
-
-# tmp <- DE_foldchange_pvalues
-
-# de <- filter(DE_foldchange_pvalues, !is.na(day_vs_night_p_value))
-
-
-# # # remove rows that contain NA values
-# # de <- tmp[complete.cases(tmp), ]
-
-# # We sample 1000 rows
-
-# de <- de[sample(nrow(de), 1000), ]
-
-
-# de = de  %>% 
-# # we rename the day_vs_night_p_value_minus_log10 column to pvalue
-# rename(pvalue = day_vs_night_p_value) %>%
-# # we rename the day_vs_night_fold_change_log2 column to log2FoldChange
-# rename(log2FoldChange = day_vs_night_fold_change_log2)
-
-# # The basic scatter plot: x is "log2FoldChange", y is "pvalue"
-# ggplot(data=de, aes(x=log2FoldChange, y=pvalue)) + geom_point()
-
-# # Convert directly in the aes()
-# p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point()
-
-# # Add more simple "theme"
-# p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue))) + geom_point() + theme_minimal()
-
-# # Add vertical lines for log2FoldChange thresholds, and one horizontal line for the p-value threshold 
-# p2 <- p + geom_vline(xintercept=c(-0.3, 0.3), col="red") +
-#     geom_hline(yintercept=-log10(0.05), col="red")
-
-# # The significantly differentially expressed genes are the ones found in the upper-left and upper-right corners.
-# # Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2FoldChange respectively positive or negative)
-
-# # add a column of NAs
-# de$diffexpressed <- "NO"
-# # if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
-# de$diffexpressed[de$log2FoldChange > 0.25 & de$pvalue < 0.05] <- "UP"
-# # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-# de$diffexpressed[de$log2FoldChange < -0.25 & de$pvalue < 0.05] <- "DOWN"
-
-# # Re-plot but this time color the points with "diffexpressed"
-# p <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed)) + geom_point() + theme_minimal()
-
-# # Add lines as before...
-# p2 <- p + geom_vline(xintercept=c(-0.25, 0.25), col="red") +
-#         geom_hline(yintercept=-log10(0.05), col="red")
-
-# ## Change point color 
-
-# # 1. by default, it is assigned to the categories in an alphabetical order):
-# p3 <- p2 + scale_color_manual(values=c("blue", "black", "red"))
-
-# # 2. to automate a bit: ceate a named vector: the values are the colors to be used, the names are the categories they will be assigned to:
-# mycolors <- c("blue", "red", "black")
-# names(mycolors) <- c("DOWN", "UP", "NO")
-# p3 <- p2 + scale_colour_manual(values = mycolors)
-
-# # Now write down the name of genes beside the points...
-# # Create a new column "delabel" to de, that will contain the name of genes differentially expressed (NA in case they are not)
-# de$delabel <- NA
-# de$delabel[de$diffexpressed != "NO"] <- de$chebiasciiname_sirius[de$diffexpressed != "NO"]
-
-# gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) + 
-#     geom_point() + 
-#     theme_minimal() +
-#     geom_text()
-
-
-# # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
-# # load library
-# library(ggrepel)
-# # plot adding up all layers we have seen so far
-# gg <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
-#         geom_point() + 
-#         theme_minimal() +
-#         geom_label_repel() +
-#         # geom_text() +
-#         scale_color_manual(values=c("blue", "black", "red")) +
-#         geom_vline(xintercept=c(-0.25, 0.25), col="red", linewidth = 0.2) +
-#         geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
-
-# gg_for_plotly <- ggplot(data=de, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
-#         geom_point() + 
-#         theme_minimal() +
-#         # geom_text_repel() +
-#         geom_text() +
-#         scale_color_manual(values=c("blue", "black", "red")) +
-#         geom_vline(xintercept=c(-0.25, 0.25), col="red", linewidth = 0.2) +
-#         geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
-
-# ggplotly(gg_for_plotly)
-
-
-# recent_turnout <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/european_turnout.csv",stringsAsFactors = FALSE)
-# recent_turnout$region <- factor(recent_turnout$region, levels=c("British","Northern","Western","Mediterranean","Central/Eastern"))
-
-# library(plotly)
-# p <- recent_turnout %>%
-#   ggplot(aes(x=nat_turnout,y=euro_turnout)) + 
-#   geom_point(aes(size=population, colour=region, text=paste("country:", country)), alpha=0.4) +
-#   geom_text(aes(size=population/3.5, label=abbreviation), colour="gray20", alpha=1) +
-#   labs(title = "Recent turnout in European Union countries",
-#        x = "Latest legislative or presidential election (whichever had higher turnout)",
-#        y = "May 2019 European Parliament election")
-# fig <- ggplotly(p)
-
-# fig
-
-# recent_turnout <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/european_turnout.csv",stringsAsFactors = FALSE)
-# recent_turnout$region <- factor(recent_turnout$region, levels=c("British","Northern","Western","Mediterranean","Central/Eastern"))
-
-# library(plotly)
-# library(LaCroixColoR)
-# p <- recent_turnout %>%
-#   ggplot(aes(x=nat_turnout,y=euro_turnout)) + 
-#   geom_point(aes(size=population, colour=region, text=paste("country:", country)), alpha=0.4) +
-#   geom_text(aes(size=population/3.5, label=abbreviation), colour="gray20", alpha=1) +
-#   scale_colour_manual(values=lacroix_palette(n=6, name="PeachPear")) +
-#   scale_size_continuous(range = c(3, 8)) +
-#   labs(title = "Recent turnout in European Union countries",
-#        x = "Latest legislative or presidential election (whichever had higher turnout)",
-#        y = "May 2019 European Parliament election")
-# fig <- ggplotly(p)
-
-# fig
-
-# recent_turnout <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/european_turnout.csv",stringsAsFactors = FALSE)
-# recent_turnout$region <- factor(recent_turnout$region, levels=c("British","Northern","Western","Mediterranean","Central/Eastern"))
-# m <- lm(euro_turnout ~ nat_turnout, data = recent_turnout)
-
-# library(plotly)
-# library(LaCroixColoR)
-# p <- recent_turnout %>%
-#   ggplot(aes(x=nat_turnout,y=euro_turnout)) + 
-#   stat_smooth(geom="line", method="lm", alpha=0.3, se=FALSE) + 
-#   geom_point(aes(size=population, colour=region, text=paste("country:", country)), alpha=0.4) +
-#   geom_text(aes(size=population/3.5, label=abbreviation), colour="gray20", alpha=1, family="Fira Sans") +
-#   scale_colour_manual(values=lacroix_palette(n=6, name="PeachPear")) +
-#   scale_size_continuous(range = c(3, 8)) +
-#   labs(title = "Recent turnout in European Union countries",
-#        x = "Latest legislative or presidential election (whichever had higher turnout)",
-#        y = "May 2019 European Parliament election",
-#        size = "") +
-#   annotate(geom="text", x=60, y=80, label = paste("European turnout = \n",
-#                                                   round(unname(coef(m)[2]),2),
-#                                                   "x national turnout",
-#                                                   round(unname(coef(m)[1]),1))) +
-#   theme(plot.title = element_text(hjust = 0.5)) +
-#   guides(size=guide_legend(""), fill = FALSE) +
-#   theme(text = element_text(family = 'Fira Sans'))
-# fig <- ggplotly(p)
-
-# fig
-
-
-
-# library(crosstalk)
-# library(d3scatter)
-# library(DT)
-
-# library(scatterD3)
-
-
-# de_min <- de  %>% 
-# select(log2FoldChange, pvalue, feature_id, feature_id_full, chebiasciiname_sirius)
-
-# x <- de %>% 
-# filter(!is.na(pvalue)) %>% 
-# select(feature_id, log2FoldChange, pvalue, feature_id_full, chebiasciiname_sirius, diffexpressed, delabel)
-
-# sd <- SharedData$new(x, key = ~feature_id)
-
-# bo <- bscols(
-# d3scatter(sd, x = ~log2FoldChange, y = ~ -log10(pvalue), color= "blue", width = "99%", height = 700,
-#     x_label = "log2 Fold change", y_label = "-log10 p-value", x_lim= c(-1,1) ),
-# datatable(sd, rownames = FALSE, width = "99%", height = "99%", fillContainer = TRUE, class='compact cell-border hover', extensions = c('Scroller', 'Buttons'),
-#    options = list(scrollY = 600,  scroller = TRUE,  dom = "Bfrtip",
-#      buttons = c('copy', 'csv', 'pdf'))) %>%
-#    formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
-# )
-
-# # We save the plot in a html file
-# htmltools::save_html(bo, "result.html")
-
-
-# de$delabel
-
-
-# x <- de %>% 
-# filter(!is.na(pvalue)) %>% 
-# select(feature_id, log2FoldChange, pvalue, feature_id_full, chebiasciiname_sirius, diffexpressed, delabel)
-
-# sd <- SharedData$new(x, key = ~feature_id)
-
-
-# gg_for_plotly <- ggplot(data=sd, aes(x=log2FoldChange, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
-#         geom_point() + 
-#         theme_minimal() +
-#         # geom_text_repel() +
-#         geom_text() +
-#         scale_color_manual(values=c("blue", "black", "red")) +
-#         geom_vline(xintercept=c(-0.25, 0.25), col="red", linewidth = 0.2) +
-#         geom_hline(yintercept=-log10(0.05), col="red", linewidth = 0.2)
-
-
-# gg_for_plotly <- ggplotly(gg_for_plotly) %>% 
-# #   ## Tell plotly do highlight on selection rather on click
-#   # highlight(on = "plotly_click",
-#   #           off = "plotly_relayout")
-#     highlight(color = "green", on = "plotly_click")
-
-
-# ggouf <- bscols(
-# ggplotly(gg_for_plotly),
-# datatable(sd) %>%
-#    formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
-# )
-
-# # We save the plot in a html file
-# htmltools::save_html(ggouf, "result.html")
-
-
-# style="bootstrap", class="compact", width="100%",
-#             options=list(deferRender=FALSE, dom='t'))
-
-
-
-
-
-# rownames=FALSE, width="100%", 
-#     class='compact cell-border hover', extensions='Buttons',
-#     options=list(dom='Bfrtip',buttons=c('copy','csv','excel')))
-
-
-# shared_mtcars <- SharedData$new(mtcars)
-# bscols(widths = c(3,NA,NA),
-#   list(
-#     filter_checkbox("cyl", "Cylinders", shared_mtcars, ~cyl, inline = TRUE),
-#     filter_slider("hp", "Horsepower", shared_mtcars, ~hp, width = "100%"),
-#     filter_select("auto", "Automatic", shared_mtcars, ~ifelse(am == 0, "Yes", "No"))
-#   ),
-#   d3scatter(shared_mtcars, ~wt, ~mpg, ~factor(cyl), width="100%", height=500),
-#   d3scatter(shared_mtcars, ~hp, ~qsec, ~factor(cyl), width="100%", height=500)
-# )
-
-
-
-
-
-# ---
-# title: "Crosstalk"
-# output: 
-#   flexdashboard::flex_dashboard:
-#     orientation: rows
-# ---
-
-# ```{r setup, include=FALSE}
-# library(flexdashboard)
-# library(plotly)
-# library(crosstalk)
-# library(DT)
-# library(dplyr)
-# ```
-
-# ```{r crosstalk-setup}
-# ## Add an id to not rely only on rownumbers
-# my_iris <- iris %>% 
-#   mutate(id = paste("id", 1:n()))
-# shared_iris <- SharedData$new(my_iris, key = ~ id)
-# ```
-
-
-# ## Row
-
-# ### Plot
-
-# ```{r plot}
-# plotly_shared_iris <- shared_iris %>% 
-#   plot_ly(
-#     type = "scatter",
-#     mode = "markers",
-#     x = ~ Sepal.Length,
-#     y = ~ Petal.Length,
-#     color = ~ Species,
-#     marker = list(size = 5),
-#     hoverinfo = "text",
-#     text = ~ id
-#   ) %>%
-#   ## Tell plotly do highlight on selection rather on click
-#   highlight(on = "plotly_selected",
-#             off = "plotly_deselect")
-# ```
-
-
-# ### Table
-
-# ```{r}
-# datatable(shared_iris)
-
-
-# bo <- bscols(plotly_shared_iris,
-# datatable(shared_iris)) %>%
-#    formatRound(c("log2FoldChange", "pvalue"), digits = 3) %>% formatSignif(c("log2FoldChange", "pvalue"), digits = 3)
-# )
-
-
-
-
-
-# d <- data.frame(x=1:10,y=1:10,f=gl(2,5,labels = letters[1:2]))
-# sd <- SharedData$new(d)
-
-# options(persistent = FALSE)
-
-# p <- ggplot(sd, aes(x, y)) +
-#   geom_text(aes(label=f)) +
-#   theme_void() 
-
-# bscols(
-#   ggplotly(p) %>%
-#     highlight(color = "red",on = "plotly_click"),
-#   datatable(sd, style="bootstrap", class="compact", width="100%",
-#             options=list(deferRender=FALSE, dom='t')))
-
-
-
-
-
-# m <- SharedData$new(mtcars)
-# bscols(
-#   plot_ly(m, x = ~wt, y = ~mpg) %>%
-#     add_markers(text  = row.names(mtcars)) %>%
-#     config(displayModeBar = TRUE) %>%
-#     layout(
-#       title = "Hold shift while clicking \n markers for persistent selection",
-#       margin = list(t = 60)
-#     )  %>% 
-#       highlight(color = "green", on = "plotly_selected",
-#             off = "plotly_deselect"),
-#   datatable(m)
-# )
 
 ###### CrossTalk DT / Plotly - Volcano Plot
 
@@ -2304,7 +1692,7 @@ for (condition in conditions) {
     filter(!!sym(paste0(condition, "_p_value_minus_log10")) > 0)
   
   # Print the filtered data
-  message("Filtered data for condition", condition, "\n")
+  message("Filtered data for condition: ", condition, "\n")
   # print(head(DE_foldchange_pvalues_signi))
   message("\n")
 
@@ -2460,141 +1848,69 @@ for (condition in conditions) {
 
 
 
-if (params$operating_system$system == "windows") {
-    ###windows version
-    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-    htmltools::save_html(plotly_DT_crosstalked, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"),libdir = "lib")
-    unlink("lib", recursive = FALSE)
+  if (params$operating_system$system == "windows") {
+      ###windows version
+      Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+      htmltools::save_html(plotly_DT_crosstalked, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"),libdir = "lib")
+      unlink("lib", recursive = FALSE)
+      }
+
+   # We now generate the associated ggplots
+
+    log2_fold_change_threshold = 0.25
+    pvalue_minus_log10_threshold = 1.3
+
+    # add a column of NAs
+    de$diffexpressed <- "NO"
+    # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
+    de$diffexpressed[de$log2_fold_change < -log2_fold_change_threshold & de$pvalue_minus_log10 > pvalue_minus_log10_threshold] <- first_part
+    # if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
+    de$diffexpressed[de$log2_fold_change > log2_fold_change_threshold & de$pvalue_minus_log10 > pvalue_minus_log10_threshold] <- second_part
+
+    # We define a vector of columns to use as labels
+
+    label_columns <- c("chebiasciiname_sirius", "npc_class_canopus", "npc_superclass_canopus", "npc_pathway_canopus")
+
+
+    # Now we iterate over the vectors
+
+    for (i in 1:length(label_columns)) {
+
+      # We define the label column
+
+      label_column <- label_columns[i]
+
+      # We define the ggplot object
+
+      de$delabel <- NA
+      de$delabel[de$diffexpressed != "NO"] <- de[[label_column]][de$diffexpressed != "NO"]
+
+      cols <- setNames(c(params$colors$volcano), c(first_part, second_part))
+
+      # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
+
+      # plot adding up all layers we have seen so far
+      gg_volcano <- ggplot(data=de, aes(x=log2_fold_change, y=pvalue_minus_log10, col=diffexpressed, label=delabel)) +
+              geom_point() + 
+              theme_minimal() +
+              geom_label_repel() +
+              scale_colour_manual(name = "Differentially\nExpressed", values=cols) +
+              geom_vline(xintercept=c(-log2_fold_change_threshold, log2_fold_change_threshold), col="grey", linewidth = 0.2) +
+              geom_hline(yintercept=pvalue_minus_log10_threshold, col="grey", linewidth = 0.2) +
+              labs(title = title_volcano)  # Set the ggplot title
+              
+      # We save the plot in a pdf file
+      ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf") , width = 10, height = 10)
+
     }
   }
 
-# DE_foldchange_pvalues
-
-# x <- filter( DE_foldchange_pvalues, !is.na(old_young_p_value))
-# p <- ggplot(data=x, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), text=row_ID )) +
-#      geom_point(alpha=0.3, size=1.5, color="blue") +
-#      xlab("Log2 fold change") + ylab("-Log10 p-value") +xlim(-6,6)
-
-# y <- filter(x, old_young_p_value < 1e-5)
-# p + geom_text( data=y, aes(x=old_young_fold_change_log2, y= -log10(old_young_p_value), label=row_ID),
-#        hjust="left", nudge_x=.1)
-
-# ggplotly(p)
-
-
-
-# # keep only the fields needed for the plot
-# diff_df <- DE_foldchange_pvalues[c("row_ID", "old_young_fold_change_log2", "old_young_p_value")]
-
-# # add a grouping column; default value is "not significant"
-# diff_df["group"] <- "NotSignificant"
-
-# # for our plot, we want to highlight 
-# # p value < 0.05
-# # Fold Change > 1
-
-# # change the grouping for the entries with significance but not a large enough Fold change
-# diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) < 1 ),"group"] <- "Significant"
-
-# # change the grouping for the entries a large enough Fold change but not a low enough p value
-# diff_df[which(diff_df['old_young_p_value'] > 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "FoldChange"
-
-# # change the grouping for the entries with both significance and large enough fold change
-# diff_df[which(diff_df['old_young_p_value'] < 0.05 & abs(diff_df['old_young_fold_change_log2']) > 1 ),"group"] <- "Significant&FoldChange"
-
-# # make the Plot.ly plot
-# p <- plot_ly(data = diff_df, x = ~old_young_fold_change_log2, y = ~-log10(old_young_p_value), text = row_ID, mode = "markers", color = ~group) %>% 
-#   layout(title ="DiffBind Volcano Plot")
-# p
-
-
-# C = fold_change_plot(number_features = 20, orientation = 'landscape')
-# chart_plot(C,fold_change_result)
-
-
-
-# cols = c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey")
-# sizes = c("up" = 2, "down" = 2, "ns" = 1)
-# alphas = c("up" = 1, "down" = 1, "ns" = 0.5)
-
-# volc_annot = data_RF$variable_meta[c("row_ID", "npc_superclass_canopus", "npc_pathway_canopus")]
-
-
-# matt_volcano_tot$mol = gsub("X", "", matt_volcano_tot$mol)
-# matt_volcano_plot = merge(matt_volcano_tot, volc_annot, by.x = "mol", by.y = "row_ID")
-
-
-# matt_volcano_plot$lab_plotly = matt_volcano_plot$npc_superclass_canopus
-# matt_volcano_plot$lab_plotly[matt_volcano_plot$p.value > 0.05] = NA
-# matt_volcano_plot$col_points = rep("darkred", nrow(matt_volcano_plot))
-# matt_volcano_plot$col_points[matt_volcano_plot$p.value < 0.05] = "darkgreen"
-
-
-
-# fig_volcano = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = npc_superclass_canopus)) +
-#   geom_point() + # color = matt_volcano_plot$col_points
-#   theme_minimal() +
-#   geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
-#   # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
-#   geom_hline(yintercept = -log10(0.05), col = "red") +
-#   # scale_color_manual(values= wes_palette("Darjeeling1")) +
-#   ggtitle(title_volcano)
-
-
-
-
-
-
-# colnames(DE_foldchange_pvalues)
-
-
-
-# fig_volcano = ggplot(data = DE_foldchange_pvalues, aes(x = lo, y = -log10(p.value), color = X1, label = npc_superclass_canopus)) +
-#   geom_point() + # color = matt_volcano_plot$col_points
-#   theme_minimal() +
-#   geom_label_repel(max.overlaps = 10) + ### control the number of include annoation
-#   # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
-#   geom_hline(yintercept = -log10(0.05), col = "red") +
-#   # scale_color_manual(values= wes_palette("Darjeeling1")) +
-#   ggtitle(title_volcano)
-
-
-
-# # We need to have the feature id displayed on the Volcano plots !
-# # The label = paste(lab_plotly, mol, sep ="_")) works but is not ideal
-
-# fig_volcano_interactive = ggplot(data = matt_volcano_plot, aes(x = estimate, y = -log10(p.value), color = X1, label = paste(lab_plotly, mol, sep ="_"))) +
-#   geom_point(alpha = 0.2) + # color = matt_volcano_plot$col_points
-#   theme_minimal() +
-#   scale_color_discrete(name = "Compared groups") +
-#   # geom_text(position=position_jitter(width=0.2),size=1,col="black") +### control the number of include annoation
-#   # geom_vline(xintercept=c(-0.6, 0.6), col="red") +
-#   geom_hline(yintercept = -log10(0.05), col = "red") +
-#   # scale_color_manual(values= wes_palette("Darjeeling1"))+
-#   ggtitle(title_volcano)
-
-# fig_volcano_interactive = ggplotly(fig_volcano_interactive)
-
-
-# # The files are exported
-
-# ggsave(plot = fig_volcano, filename = filename_volcano , width = 10, height = 10)
-
-# fig_volcano_interactive %>%
-#     htmlwidgets::saveWidget(file = filename_volcano_interactive , selfcontained = TRUE)
-##############################################################################
-##############################################################################
-############ Volcano Plot #################################################
-
-
-
 
 ##############################################################################
 ##############################################################################
-############ treemap fold 
-
-################################### function 
-################################# npc_classifier_parser
+############ Treemaps fold change ############################################
+##############################################################################
+############################################################################## 
 
 
 
@@ -2801,7 +2117,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       filter(!!sym(paste0(condition, "_p_value")) < 0.05)
     
     # Print the filtered data
-    message("Filtered data for condition", condition, ":\n")
+    message("Filtered data for condition: ", condition, ":\n")
     # print(head(DE_foldchange_pvalues_signi))
     message("\n")
 
@@ -3212,7 +2528,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   )
       )
 
-    # We now save the treempa as a html file locally
+    # We now save the treemap as a html file locally
 
   if (params$operating_system$system == "unix") {
     ###linux version
@@ -4677,7 +3993,7 @@ iheatmap <- main_heatmap(as.matrix(t(percentize(data_subset_for_pval_hm_mat))),
   # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
   add_col_annotation(data.frame("Condition" = target_metadata),
-    colors = list("Condition" = c(params$iheatmapr$colors)),
+    colors = list("Condition" = c(params$colors$heatmap)),
     buffer = 0.01
   ) %>%
   add_col_clustering() %>%
