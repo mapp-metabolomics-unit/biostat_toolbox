@@ -36,17 +36,18 @@ r["CRAN"] = "http://cran.us.r-project.org"
 options(repos = r)
 rm(r)
 
-# To organize alphabetically
-
+# Package organized alphabetically
 
 usePackage("ape")
 usePackage("base")
 usePackage("BiocFileCache")
 usePackage("cowplot")
+usePackage("crosstalk")
 usePackage("data.table")
 usePackage("datasets")
 usePackage("dbscan")
 usePackage("dplyr")
+usePackage("DT")
 usePackage("emmeans")
 usePackage("EnhancedVolcano")
 usePackage("fpc")
@@ -64,6 +65,7 @@ usePackage("heatmaply")
 usePackage("here")
 usePackage("igraph")
 usePackage("iheatmapr")
+usePackage("janitor")
 usePackage("manhattanly")
 usePackage("microshades")
 usePackage("openxlsx")
@@ -94,11 +96,6 @@ usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
 
-usePackage("janitor")
-
-usePackage("hciR")
-usePackage("scatterD3")
-usePackage("flexdashboard")
 
 # devtools::install_github("jcheng5/d3scatter")
 
