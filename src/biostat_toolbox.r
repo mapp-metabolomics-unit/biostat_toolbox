@@ -1782,7 +1782,7 @@ for (condition in conditions) {
       log2_fold_change
     )  %>% 
     # We format the smiles column to be able to display it in the datatable
-    mutate(chemical_structure = sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="200"></img>', smiles_sirius))  %>% 
+    mutate(chemical_structure = sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius))  %>% 
       select(
       feature_id,
       feature_id_full,

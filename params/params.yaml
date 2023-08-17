@@ -85,15 +85,15 @@ colors:
     - "Co_night"
     - "KO_day"
     - "KO_night"
-    - "night"
     - "day"
+    - "night"
    value:
     - "peachpuff" # Co_day
     - "darkturquoise" # Co_night
     - "orange" # KO_day
     - "darkviolet" # KO_night
     - "lightskyblue"
-    - "azure"
+    - "navy"
   # heatmap:
   #  - "darkturquoise" # Co_night
   #  - "darkviolet" # KO_night
