@@ -168,21 +168,22 @@ scaling_status = "scaled"
 
 if (params$actions$filter_sample_type == "TRUE" ) {
 filter_sample_type_status = paste(params$filter_sample_type$mode,
-paste(params$filter_sample_type$factor_name, sep = "_"),
-params$filter_sample_type$levels, sep = "_")
+params$filter_sample_type$factor_name,
+paste(params$filter_sample_type$levels, collapse = "_"), sep = "_")
 } else { filter_sample_type_status = "" }
 
 if (params$actions$filter_sample_metadata_one == "TRUE" ) {
 filter_sample_metadata_one_status = paste(params$filter_sample_metadata_one$mode,
-paste(params$filter_sample_metadata_one$factor_name, sep = "_"),
-params$filter_sample_metadata_one$levels, sep = "_")
+params$filter_sample_metadata_one$factor_name,
+paste(params$filter_sample_metadata_one$levels, collapse = "_"), sep = "_")
 } else { filter_sample_metadata_one_status = "" }
 
 if (params$actions$filter_sample_metadata_two == "TRUE" ) {
 filter_sample_metadata_two_status = paste(params$filter_sample_metadata_two$mode,
-paste(params$filter_sample_metadata_two$factor_name, sep = "_"),
-params$filter_sample_metadata_two$levels, sep = "_")
+params$filter_sample_metadata_two$factor_name,
+paste(params$filter_sample_metadata_two$levels, collapse = "_"), sep = "_")
 } else { filter_sample_metadata_two_status = "" }
+
 
 
 filter_sample_metadata_status = paste(filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, sep = "_")
@@ -200,17 +201,16 @@ filter_sample_metadata_status = ""
 
 
 
-
 if (params$actions$filter_variable_metadata_one == "TRUE" ) { 
 filter_variable_metadata_one_status = paste(params$filter_variable_metadata_one$mode,
-paste(params$filter_variable_metadata_one$factor_name, sep = "_"),
-params$filter_variable_metadata_one$levels, sep = "_")
+params$filter_variable_metadata_one$factor_name,
+paste(params$filter_variable_metadata_one$levels, collapse = "_"), sep = "_")
 } else { filter_variable_metadata_one_status = "" }
 
 if (params$actions$filter_variable_metadata_two == "TRUE" ) {
 filter_variable_metadata_two_status = paste(params$filter_variable_metadata_two$mode,
-paste(params$filter_variable_metadata_two$factor_name, sep = "_"),
-params$filter_variable_metadata_two$levels, sep = "_")
+params$filter_variable_metadata_two$factor_name,
+paste(params$filter_variable_metadata_two$levels, collapse = "_"), sep = "_")
 } else { filter_variable_metadata_two_status = "" }
 
 if (params$actions$filter_variable_metadata_annotated == "TRUE" ) {
@@ -270,7 +270,7 @@ filename_DE_model <- paste(file_prefix, "DE_description.txt", sep = "")
 filename_foldchange_pvalues <- paste(file_prefix, "foldchange_pvalues.csv", sep = "")
 filename_formatted_peak_table <- paste(file_prefix, "formatted_peak_table.csv", sep = "")
 filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_data_table.csv", sep = "")
-filename_formatted_sample_metadata <- paste(file_prefix, "formatted_sample_metadata.csv", sep = "")
+filename_formatted_sample_metadata <- paste(file_prefix, "formatted_sample_metadata.tsv", sep = "")
 filename_formatted_variable_metadata <- paste(file_prefix, "formatted_variable_metadata.csv", sep = "")
 filename_graphml <- paste(file_prefix, "graphml.graphml", sep = "")
 filename_heatmap_pval <- paste(file_prefix, "Heatmap_pval.html", sep = "")
@@ -922,7 +922,7 @@ sink()
 
 write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",", row.names = FALSE)
 write.table(formatted_variable_metadata_filtered, file = filename_formatted_variable_metadata, sep = ",", row.names = FALSE)
-write.table(formatted_sample_metadata, file = filename_formatted_sample_metadata, sep = ",", row.names = FALSE)
+write.table(formatted_sample_metadata, file = filename_formatted_sample_metadata, sep = "\t", row.names = FALSE)
 write.table(formatted_sample_data_table, file = filename_formatted_sample_data_table, sep = ",", row.names = FALSE)
 ################################################################################################
 ################################################################################################
@@ -1062,13 +1062,27 @@ pca_scores_plot = pca_scores_plot(
 pca_plot = chart_plot(pca_scores_plot, pca_object)
 
 
-# pca_plot$labels$title <- title_PCA
+# targets = DE$sample_meta  %>% 
+# distinct(!!as.symbol(params$target$sample_metadata_header)) %>%
+# # we make sure that they are ordered
+# arrange(!!as.symbol(params$target$sample_metadata_header))  %>% 
+# # We return the values of the sample metadata variable of interest as a vector
+# pull(!!as.symbol(params$target$sample_metadata_header))  %>% 
+# as.vector()
+
+custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
+
 
 fig_PCA = pca_plot + 
 theme_classic() + 
-# scale_colour_manual(name = "Groups", values=cols) +
 facet_wrap(~ pca_plot$labels$title) +
 ggtitle(title_PCA)
+
+
+if (params$actions$set_colors_manually == "TRUE") {
+    fig_PCA = fig_PCA +
+        scale_colour_manual(name = "Groups", values = custom_colors)
+}
 
 
 #   theme(plot.title = element_text(hjust = 0.2, vjust = -2)) +
@@ -1079,7 +1093,12 @@ ggtitle(title_PCA)
 PCA_meta = merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
 
 
-fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header])
+if (params$actions$set_colors_manually == "TRUE") {
+    fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header], colors = custom_colors)
+} else {
+    fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header])
+}
+
 fig_PCA3D = fig_PCA3D %>% add_markers()
 fig_PCA3D = fig_PCA3D %>% layout(scene = list(
   xaxis = list(title = "PC1"),
@@ -1164,6 +1183,12 @@ plsda_plot = chart_plot(C,plsda_object)
 
 
 fig_PLSDA = plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
+
+
+if (params$actions$set_colors_manually == "TRUE") {
+    fig_PLSDA = fig_PLSDA +
+        scale_colour_manual(name = "Groups", values = custom_colors)
+}
 
 # We output the feature importance
 
@@ -1321,15 +1346,43 @@ fig_PCoA = ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
   theme_classic()
 
 
-fig_PCoA3D = plot_ly(
-  x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
-  type = "scatter3d", mode = "markers", color = cols,
-  hoverinfo = "text",
-  text = ~ paste(
-    "</br> name: ", data_PCOA_merge$sample_name,
-    "</br> num: ", data_PCOA_merge$sample_id
-  )
-) %>% layout(title = title_PCoA3D,
+if (params$actions$set_colors_manually == "TRUE") {
+    fig_PCoA = fig_PCoA +
+        scale_colour_manual(name = "Groups", values = custom_colors)
+}
+
+
+#### PCoA 3D
+
+if (params$actions$set_colors_manually == "TRUE") {
+
+    fig_PCoA3D = plot_ly(
+      x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
+      type = "scatter3d", mode = "markers", color = cols, colors = custom_colors, 
+      hoverinfo = "text",
+      text = ~ paste(
+        "</br> name: ", data_PCOA_merge$sample_name,
+        "</br> num: ", data_PCOA_merge$sample_id
+      )
+    ) 
+
+} else {
+      
+      fig_PCoA3D = plot_ly(
+      x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
+      type = "scatter3d", mode = "markers", color = cols, 
+      hoverinfo = "text",
+      text = ~ paste(
+        "</br> name: ", data_PCOA_merge$sample_name,
+        "</br> num: ", data_PCOA_merge$sample_id
+      )
+    ) 
+}
+
+
+
+
+fig_PCoA3D = fig_PCoA3D %>% layout(title = title_PCoA3D,
 legend = list(title=list(text=params$target$sample_metadata_header)))
 
 
@@ -1886,7 +1939,9 @@ for (condition in conditions) {
       de$delabel <- NA
       de$delabel[de$diffexpressed != "NO"] <- de[[label_column]][de$diffexpressed != "NO"]
 
-      cols <- setNames(c(params$colors$volcano), c(first_part, second_part))
+      # cols <- setNames(c(params$colors$volcano), c(first_part, second_part))
+
+      cols <- custom_colors[c(first_part, second_part)]
 
       # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
 
@@ -2496,8 +2551,8 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       marker = list(
         colors = matttree$foldchange_log2,
         colorscale = list(
-          c(0, 0.5, 1),
-          c("#A89639", "#FFFFFF", "#337AB7")),
+          c(0, 0.5, 1), 
+          c(custom_colors[first_part], "#FFFFFF", custom_colors[second_part])),
         cmin = max(abs(matttree$foldchange_log2)) * (-1),
         cmax = max(abs(matttree$foldchange_log2)),
         showscale = TRUE,
@@ -3217,59 +3272,59 @@ unlink("lib", recursive = FALSE)
 #############################################################################
 #############################################################################
 
-message("Preparing RF-selected Box plots ...")
+# message("Preparing RF-selected Box plots ...")
 
 
-imp.scaled = rfPermute::importance(data.rp, scale = TRUE)
-imp.scaled = data.frame(imp.scaled)
-imp.scaled = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ]
-# boxplot_top_N = row.names(imp.scaled)[1:params$boxplot$topN]
-# This below using head is safer in case the number of features is smaller than the number of features to plot
-boxplot_top_N = row.names(head(imp.scaled, n = params$boxplot$topN))
+# imp.scaled = rfPermute::importance(data.rp, scale = TRUE)
+# imp.scaled = data.frame(imp.scaled)
+# imp.scaled = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ]
+# # boxplot_top_N = row.names(imp.scaled)[1:params$boxplot$topN]
+# # This below using head is safer in case the number of features is smaller than the number of features to plot
+# boxplot_top_N = row.names(head(imp.scaled, n = params$boxplot$topN))
 
-data_subset_boxplot = data_subset_for_RF %>%
-  select(all_of(boxplot_top_N), params$target$sample_metadata_header)
+# data_subset_boxplot = data_subset_for_RF %>%
+#   select(all_of(boxplot_top_N), params$target$sample_metadata_header)
 
-# We now establish a side by side box plot for each columns of the data_subset_norm_boxplot
-# We use the melt function to reshape the data to a long format
-# We then use the ggplot2 syntax to plot the data and the facet_wrap function to plot the data side by side
+# # We now establish a side by side box plot for each columns of the data_subset_norm_boxplot
+# # We use the melt function to reshape the data to a long format
+# # We then use the ggplot2 syntax to plot the data and the facet_wrap function to plot the data side by side
 
-# Gather value columns into key-value pairs
-df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$target$sample_metadata_header)
-
-
-# Create boxplots faceted by variable and colored by age
-# Note how we use the get function to access the variable name
-# See here for details  https://stackoverflow.com/a/22309328/4908629
-p = ggplot(df_long, aes(x = get(params$target$sample_metadata_header), y = value, fill = get(params$target$sample_metadata_header))) +
-  geom_boxplot() +
-  facet_wrap(~ variable, ncol = 4) +
-  theme_minimal()+
-  ggtitle(title_box_plots) 
+# # Gather value columns into key-value pairs
+# df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$target$sample_metadata_header)
 
 
-fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
-  legend.position = "top",
-  legend.title = element_blank()
-)
+# # Create boxplots faceted by variable and colored by age
+# # Note how we use the get function to access the variable name
+# # See here for details  https://stackoverflow.com/a/22309328/4908629
+# p = ggplot(df_long, aes(x = get(params$target$sample_metadata_header), y = value, fill = get(params$target$sample_metadata_header))) +
+#   geom_boxplot() +
+#   facet_wrap(~ variable, ncol = 4) +
+#   theme_minimal()+
+#   ggtitle(title_box_plots) 
 
-# fig_boxplotly = data_subset_boxplot %>%
-#   split(data_subset_boxplot$variable) %>%
-#   map(~ {
-#     plot_ly(data = .x, x = .x$treatment, y = .x$value, color = .x$treatment, type = "box") %>%
-#       layout(showlegend = F, xaxis = list(title = .x$variable[1])) %>%
-#       layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
-#       layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
-#   }) %>%
-#   subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>% 
-#   layout(title = title_box_plots,
-#   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
 
-# The files are exported
+# fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
+#   legend.position = "top",
+#   legend.title = element_blank()
+# )
 
-ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
-# fig_boxplotly %>%
-#     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
+# # fig_boxplotly = data_subset_boxplot %>%
+# #   split(data_subset_boxplot$variable) %>%
+# #   map(~ {
+# #     plot_ly(data = .x, x = .x$treatment, y = .x$value, color = .x$treatment, type = "box") %>%
+# #       layout(showlegend = F, xaxis = list(title = .x$variable[1])) %>%
+# #       layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
+# #       layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
+# #   }) %>%
+# #   subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>% 
+# #   layout(title = title_box_plots,
+# #   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
+
+# # The files are exported
+
+# ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
+# # fig_boxplotly %>%
+# #     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
 
 
 
@@ -3323,7 +3378,9 @@ p = ggplot(df_long_informed, aes(x = !!sym(params$target$sample_metadata_header)
   geom_boxplot() +
   facet_wrap(~feature_id_full_annotated , ncol = 4) +
   # theme_minimal()+
-  ggtitle(title_box_plots) 
+  ggtitle(title_box_plots) +
+  geom_point(position = position_jitter(width = 0.2), size = 1.5, alpha = 0.3)  # Add data points with jitter for better visibility
+
 
 ridiculous_strips <- strip_themed(
      # Horizontal strips
@@ -3342,6 +3399,11 @@ fig_boxplot = p + facet_wrap2(~ chebiasciiname_sirius + feature_id_full, labelle
   legend.position = "top",
   legend.title = element_blank()
 )
+
+if (params$actions$set_colors_manually == "TRUE") {
+    fig_boxplot = fig_boxplot +
+        scale_fill_manual(name = "Groups", values = custom_colors)
+}
 
 # Display the modified plot
 print(fig_boxplot)
@@ -3389,6 +3451,11 @@ labs(x=params$target$sample_metadata_header,
   theme(plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
         plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
         plot.caption.position =  "plot") #NEW parameter
+
+   if (params$actions$set_colors_manually == "TRUE") {
+    p = p +
+        scale_fill_manual(name = "Groups", values = custom_colors)
+}
 
   # Save the plot to a file with a unique filename for each variable
   filename <- paste(output_directory_bp, "boxplot_", gsub(" ", "_", var), ".png", sep = "")
@@ -3943,7 +4010,6 @@ data_subset_for_pval_hm_peak_height = format(data_subset_for_pval_hm_peak_height
 combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), values_mat, sep = "<br>"), nrow = nrow(data_subset_for_pval_hm_peak_height), ncol = ncol(data_subset_for_pval_hm_peak_height))
 
 
-
 iheatmap <- main_heatmap(as.matrix(t(percentize(data_subset_for_pval_hm_mat))),
   name = "Intensity",
   # layout = list(margin = list(b = 80)),
@@ -3994,7 +4060,7 @@ iheatmap <- main_heatmap(as.matrix(t(percentize(data_subset_for_pval_hm_mat))),
   # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
   add_col_annotation(data.frame("Condition" = target_metadata),
-    colors = list("Condition" = c(params$colors$heatmap)),
+    colors = list("Condition" = custom_colors[levels(target_metadata)]),
     buffer = 0.01
   ) %>%
   add_col_clustering() %>%

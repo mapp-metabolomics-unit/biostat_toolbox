@@ -29,6 +29,7 @@ actions:
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
+  set_colors_manually : TRUE
 
 
 filter_sample_type :
@@ -37,12 +38,16 @@ filter_sample_type :
   levels : 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'exclude'
-  factor_name : 'period'
-  levels : 'inter'
+  mode : 'include'
+  factor_name : 'genotype_period'
+  levels : 
+    - "Co_day"
+    # - "Co_night"
+    # - "KO_day"
+    - "KO_night"
 
 filter_sample_metadata_two :
-  mode : 'include'
+  mode : 'exclude'
   factor_name : 'genotype'
   levels : 'Co'
 
@@ -65,25 +70,45 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.7
+  level : 0.8
 
 
 target:
-  sample_metadata_header: "period" # This variable will be used throughout the whole script
+  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
 colors:
-  heatmap:
-   - "#fff400" # bright yellow
-   - "#0040b6" # dark blue
-  #  - "#a89639"
-  #  - "#b1bd7e"
-  #  - "#dd6665"
-  #  - "#dd4341"
-  volcano:
-   - "orange"
-   - "blueviolet"
+  all:
+   key:
+    - "Co_day"
+    - "Co_night"
+    - "KO_day"
+    - "KO_night"
+   value:
+    - "peachpuff" # Co_day
+    - "darkturquoise" # Co_night
+    - "orange" # KO_day
+    - "darkviolet" # KO_night
+  # heatmap:
+  #  - "darkturquoise" # Co_night
+  #  - "darkviolet" # KO_night
+  # #  - "peachpuff" # Co_day
+  # #  - "orange" # KO_day
+  # #  - "blueviolet"
+  # #  - "#fff400" # bright yellow
+  # #  - "#0040b6" # dark blue
+  # #  - "#a89639"
+  # #  - "#b1bd7e"
+  # #  - "#dd6665"
+  # #  - "#dd4341"
+  # volcano:
+  #  - "darkturquoise" # Co_night
+  #  - "darkviolet" # KO_night
+  # #  - "peachpuff" # Co_day
+  # #  - "orange" # KO_day
+  # #  - "orange"
+  # #  - "blueviolet"
 
 # "aliceblue", "antiquewhite", "aquamarine", "azure", "beige", "bisque", "blanchedalmond",
 # "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
