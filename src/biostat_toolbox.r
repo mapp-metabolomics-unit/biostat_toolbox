@@ -1772,6 +1772,8 @@ for (condition in conditions) {
       npc_class_canopus,
       feature_mz,
       feature_rt,
+      componentindex_gnps,
+      gnpslinkout_network_gnps,
       confidencescore_sirius,
       inchi_sirius,
       inchikey2d_sirius,
@@ -1783,6 +1785,7 @@ for (condition in conditions) {
     )  %>% 
     # We format the smiles column to be able to display it in the datatable
     mutate(chemical_structure = sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius))  %>% 
+    mutate(cluster_gnps_link = sprintf('<a href="%s">link %s</a>', gnpslinkout_network_gnps, componentindex_gnps))  %>% 
       select(
       feature_id,
       feature_id_full,
@@ -1795,6 +1798,7 @@ for (condition in conditions) {
       npc_class_canopus,
       feature_mz,
       feature_rt,
+      cluster_gnps_link,
       confidencescore_sirius,
       inchi_sirius,
       inchikey2d_sirius,
@@ -1899,7 +1903,8 @@ for (condition in conditions) {
       )
   ) %>%
     formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
-    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)
+    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
+    formatRound(c("feature_mz", "feature_rt"), digits = 3)
 
   ### Defining the crosstalked object
 
