@@ -1025,6 +1025,16 @@ title_volcano = paste(
   sep = "\n"
 )
 
+#################################################################################################
+#################################################################################################
+############# Colors definition #################################################################
+#################################################################################################
+#################################################################################################
+
+
+
+# We establish a named vector for the whole dataset
+custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
 
 
 #################################################################################################
@@ -1061,16 +1071,6 @@ pca_scores_plot = pca_scores_plot(
 # plot
 pca_plot = chart_plot(pca_scores_plot, pca_object)
 
-
-# targets = DE$sample_meta  %>% 
-# distinct(!!as.symbol(params$target$sample_metadata_header)) %>%
-# # we make sure that they are ordered
-# arrange(!!as.symbol(params$target$sample_metadata_header))  %>% 
-# # We return the values of the sample metadata variable of interest as a vector
-# pull(!!as.symbol(params$target$sample_metadata_header))  %>% 
-# as.vector()
-
-custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
 
 
 fig_PCA = pca_plot + 
@@ -1780,7 +1780,32 @@ for (condition in conditions) {
       smiles_sirius,
       pvalue_minus_log10,
       log2_fold_change
+    )  %>% 
+    # We format the smiles column to be able to display it in the datatable
+    mutate(chemical_structure = sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="200"></img>', smiles_sirius))  %>% 
+      select(
+      feature_id,
+      feature_id_full,
+      chebiasciiname_sirius,
+      chemical_structure,
+      chebiid_sirius,
+      name_sirius,
+      npc_pathway_canopus,
+      npc_superclass_canopus,
+      npc_class_canopus,
+      feature_mz,
+      feature_rt,
+      confidencescore_sirius,
+      inchi_sirius,
+      inchikey2d_sirius,
+      molecularformula_sirius,
+      adduct_sirius,
+      smiles_sirius,
+      pvalue_minus_log10,
+      log2_fold_change
     )
+
+    
 
   # m <- SharedData$new(x, key = ~feature_id)
 
@@ -1820,10 +1845,12 @@ for (condition in conditions) {
   ### Defining the DT object
 
   DT_volcano <- datatable(m,
+    escape = FALSE,
     rownames = FALSE,
     extensions = c("Buttons", "Select"),
     selection = "none",
     filter = 'top',
+    class = list(stripe = FALSE),
     options =
       list(
         #       initComplete = JS(
@@ -1960,6 +1987,7 @@ for (condition in conditions) {
 
     }
   }
+
 
 
 ##############################################################################
@@ -3625,7 +3653,8 @@ data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 #### Iheatmapr
 
 
-target_metadata = DE$sample_meta[[params$target$sample_metadata_header]]
+target_metadata = as.factor(DE$sample_meta[[params$target$sample_metadata_header]])
+custom_colors_heatmap = custom_colors[levels(target_metadata)]
 
 
 # Define the vector of colors
@@ -4060,7 +4089,7 @@ iheatmap <- main_heatmap(as.matrix(t(percentize(data_subset_for_pval_hm_mat))),
   # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
   add_col_annotation(data.frame("Condition" = target_metadata),
-    colors = list("Condition" = custom_colors[levels(target_metadata)]),
+    colors = list("Condition" = custom_colors_heatmap),
     buffer = 0.01
   ) %>%
   add_col_clustering() %>%

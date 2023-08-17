@@ -39,12 +39,12 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'genotype_period'
+  factor_name : 'period'
   levels : 
-    - "Co_day"
+    - "day"
     # - "Co_night"
     # - "KO_day"
-    - "KO_night"
+    - "night"
 
 filter_sample_metadata_two :
   mode : 'exclude'
@@ -74,7 +74,7 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
+  sample_metadata_header: "period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
@@ -85,11 +85,15 @@ colors:
     - "Co_night"
     - "KO_day"
     - "KO_night"
+    - "night"
+    - "day"
    value:
     - "peachpuff" # Co_day
     - "darkturquoise" # Co_night
     - "orange" # KO_day
     - "darkviolet" # KO_night
+    - "lightskyblue"
+    - "azure"
   # heatmap:
   #  - "darkturquoise" # Co_night
   #  - "darkviolet" # KO_night
