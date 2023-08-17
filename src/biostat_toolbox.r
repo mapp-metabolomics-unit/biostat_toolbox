@@ -671,6 +671,7 @@ DE_filtered_name = DE_original
 
 }
 
+
 ## Filtering steps
 
 if (params$actions$filter_sample_type == "TRUE") {
@@ -884,6 +885,7 @@ output_directory <- gsub("/{2,}", "/", output_directory)
 
 if (!dir.exists(output_directory)) {
   dir.create(output_directory, recursive = TRUE)
+  message("Directory created:", output_directory, "\n")
 } else {
   message("Directory already exists:", output_directory, "\n")
 }
@@ -1065,7 +1067,7 @@ pca_scores_plot = pca_scores_plot(
   label_factor = "sample_id",
   ellipse_type = "t",
   ellipse_confidence = 0.9,
-  points_to_label = "all"
+  points_to_label = "none"
 )
 
 # plot

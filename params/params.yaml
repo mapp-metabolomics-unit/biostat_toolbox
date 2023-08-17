@@ -24,7 +24,7 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : TRUE
+  filter_variable_metadata_num : FALSE
   filter_features : TRUE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -39,14 +39,16 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'period'
+  factor_name : 'genotype_period'
   levels : 
     # - "Co_day"
-    # - "Co_night"
+    - "Co_night"
     # - "KO_day"
-    # - "KO_night"
-    - "day"
-    - "night"
+    - "KO_night"
+    # - "day"
+    # - "night"
+    # - "Co"
+    # - "KO"
 
 
 filter_sample_metadata_two :
@@ -73,11 +75,11 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.8
+  level : 0.5
 
 
 target:
-  sample_metadata_header: "period" # This variable will be used throughout the whole script
+  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
@@ -90,32 +92,18 @@ colors:
     - "KO_night"
     - "day"
     - "night"
+    - "Co"
+    - "KO"
    value:
-    - "darkorange" # Co_day
-    - "darkslategrey" # Co_night
-    - "goldenrod" # KO_day
-    - "darkblue" # KO_night
-    - "deepskyblue"
-    - "darkslateblue"
-  # heatmap:
-  #  - "darkturquoise" # Co_night
-  #  - "darkviolet" # KO_night
-  # #  - "peachpuff" # Co_day
-  # #  - "orange" # KO_day
-  # #  - "blueviolet"
-  # #  - "#fff400" # bright yellow
-  # #  - "#0040b6" # dark blue
-  # #  - "#a89639"
-  # #  - "#b1bd7e"
-  # #  - "#dd6665"
-  # #  - "#dd4341"
-  # volcano:
-  #  - "darkturquoise" # Co_night
-  #  - "darkviolet" # KO_night
-  # #  - "peachpuff" # Co_day
-  # #  - "orange" # KO_day
-  # #  - "orange"
-  # #  - "blueviolet"
+    - "#882D60" # Co_day
+    - "#440026" # Co_night
+    - "#7A9F35" # KO_day
+    - "#354F00" # KO_night
+    - "#C19D00" # day
+    - "#070086" # night
+    - "#661141" # Co
+    - "#567714" # KO
+
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
 
