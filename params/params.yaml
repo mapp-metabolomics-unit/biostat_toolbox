@@ -1,19 +1,18 @@
-mapp_project : mapp_project_00013
-mapp_batch : mapp_batch_00026
-met_annot_enhancer_folder : mapp_batch_00026
-gnps_job_id : ae571ceb70644788ac0e14b90546275f
+mapp_project : mapp_project_00007
+mapp_batch : mapp_batch_00020
+met_annot_enhancer_folder : mapp_batch_00020
+gnps_job_id : dbb61f53ca4e4ab8bac13d4662aadd8e
 
 dataset_experiment : 
-  name: "mapp_batch_00026 LCMS metabolomics dataset"
-  description: "Katrin - Mice CSF - total per2"
-
+  name: "mapp_batch_00020 LCMS metabolomics dataset"
+  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 60b99eff119447a8b426f598c054f31c.graphml
+  gnps_graphml: 27ac08b3bd43408c8d7f6a8e42d51cb9.graphml
 
 
 actions:
@@ -24,8 +23,8 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : FALSE
-  filter_features : TRUE
+  filter_variable_metadata_num : TRUE
+  filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -39,16 +38,14 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'genotype_period'
+  factor_name : 'condition_simplified'
   levels : 
-    # - "Co_day"
-    - "Co_night"
-    # - "KO_day"
-    - "KO_night"
-    # - "day"
-    # - "night"
-    # - "Co"
-    # - "KO"
+      #- 'C'
+      # - 'HN'
+      # - 'NifH'
+      # - 'Argon'
+      - 'WT'
+      - 'Argon_NifH'
 
 
 filter_sample_metadata_two :
@@ -57,9 +54,9 @@ filter_sample_metadata_two :
   levels : 'Co'
 
 filter_variable_metadata_one :
-  mode : 'exclude'
+  mode : 'include'
   factor_name : 'npc_pathway_canopus'
-  levels : 'Fatty acids' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+  levels : 'Carbohydrates' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
 
 filter_variable_metadata_two :
   mode : 'include'
@@ -75,34 +72,31 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.5
+  level : 0.8
 
 
 target:
-  sample_metadata_header: "genotype_period" # This variable will be used throughout the whole script
+  sample_metadata_header: "condition_simplified" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
 colors:
   all:
    key:
-    - "Co_day"
-    - "Co_night"
-    - "KO_day"
-    - "KO_night"
-    - "day"
-    - "night"
-    - "Co"
-    - "KO"
+      - 'Argon'
+      - 'Argon_NifH'
+      - 'C'
+      - 'HN'
+      - 'NifH'
+      - 'WT'
+
    value:
-    - "#882D60" # Co_day
-    - "#440026" # Co_night
-    - "#7A9F35" # KO_day
-    - "#354F00" # KO_night
-    - "#C19D00" # day
-    - "#070086" # night
-    - "#661141" # Co
-    - "#567714" # KO
+      - "darkslateblue" # 'Argon'
+      - "darkslategray" # 'Argon_NifH'
+      - "dimgray" # 'C'
+      - "cadetblue" # 'HN'
+      - "goldenrod" # 'NifH'
+      - "darkolivegreen" # 'WT'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -131,51 +125,59 @@ colors:
 # "wheat", "whitesmoke", "yellowgreen"
 
 
-colnames:
-  to_combine: 
-     - "genotype"
-     - "period"
-     - "sex"
 
-  to_output:
-     - "genotype"
-     - "period"
-     - "sex"
-     
+# The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
+to_mean:
+  factor_name:
+    - "condition"
 
-to_combine_horizontally: # beware : do not use underscore in your new names !
-  # column1: 
-  #   name: "condition"
-  #   groups:
-      # group1: 
-      #   name: "HN-WT"
-      #   cols: 
-      #   - "HN"
-      #   - "WT"
-  #      group2: 
-  #        name: "Argon-Nifh" # This name should not be created manually but automatically concatenated (using hyphens and not underscore)
-  #        cols: 
-  #        - "Argon"
-  #        - "NifH"
-  #        - "HN"
+# Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
+# First we work vertically (within a given SM column)
+# The new levels will be named as follows: alphabetically ordered and separated by an underscore.
+# E.g. if you choose to combine Ag and Ab the resulting level will be Ab_Ag. These will appear in a new column which will be name by the name of the original colum suffixed by '_simplified'
+
+
+to_combine_vertically: 
+  column1: 
+    factor_name: "condition"
+    groups:
+      group1:
+        levels: 
+        - "Argon"
+        - "NifH"
+      group2: 
+        levels:
+        - "HN"
+        - "C"
   # # column2: 
   #   name: "sample_type"
   #   groups:
-  #     group1: 
-  #       name: "sample_QC"
+  #     group1:
   #       cols: 
   #       - "sample"
   #       - "QC"
 
+# Then we work horizontally (across SM columns)
+# This action is restricted to rows where sample_type == "sample"
+# The levels are combined row-wise using _ as separator.
+# The resulting column is named by the alphabetically ordered, _ separated, combination of the combined factor_names. (e.g. genotype_period)
+
+
+to_combine_horizontally:
+  factor_name: 
+     - "condition"
+
+
+
 multi_series:
-  colname: 'time.point'
-  points:
-     - '00'
-     - '04'
-     - '08'
-     - '12'
-     - '16'
-     - '20'
+  # colname: 'time.point'
+  # points:
+  #    - '00'
+  #    - '04'
+  #    - '08'
+  #    - '12'
+  #    - '16'
+  #    - '20'
 
 
 boxplot:
@@ -189,222 +191,3 @@ heatmap:
 
 
 feature_to_filter :
-  - '3298'
-  - '3311'
-  - '1630'
-  - '1638'
-  - '3299'
-  - '3306'
-  - '3058'
-  - '1598'
-  - '1941'
-  - '4046'
-  - '4047'
-  - '1580'
-  - '2705'
-  - '1627'
-  - '1617'
-  - '1600'
-  - '1606'
-  - '3980'
-  - '3302'
-  - '253'
-  - '3090'
-  - '1585'
-  - '1601'
-  - '1688'
-  - '3241'
-  - '2203'
-  - '3803'
-  - '4506'
-  - '3305'
-  - '1620'
-  - '2818'
-  - '1619'
-  - '1634'
-  - '2829'
-  - '2270'
-  - '1649'
-  - '4625'
-  - '2815'
-  - '3077'
-  - '3303'
-  - '1610'
-  - '1612'
-  - '1771'
-  - '1578'
-  - '1590'
-  - '2278'
-  - '1770'
-  - '1700'
-  - '1775'
-  - '2006'
-  - '1957'
-  - '3211'
-  - '1808'
-  - '4473'
-  - '1587'
-  - '1583'
-  - '1631'
-  - '1915'
-  - '2768'
-  - '2868'
-  - '1806'
-  - '3924'
-  - '3195'
-  - '3828'
-  - '1642'
-  - '3901'
-  - '2802'
-  - '1922'
-  - '2692'
-  - '1698'
-  - '1621'
-  - '1633'
-  - '3125'
-  - '1607'
-  - '1759'
-  - '2679'
-  - '4015'
-  - '1608'
-  - '2010'
-  - '1689'
-  - '1618'
-  - '1658'
-  - '1680'
-  - '1880'
-  - '1998'
-  - '2846'
-  - '1648'
-  - '4022'
-  - '1652'
-  - '1640'
-  - '3078'
-  - '1917'
-  - '1953'
-  - '2673'
-  - '1644'
-  - '1637'
-  - '1683'
-  - '1639'
-  - '1645'
-  - '4029'
-  - '1852'
-  - '1659'
-  - '1722'
-  - '2693'
-  - '1611'
-  - '900'
-  - '1667'
-  - '2756'
-  - '1609'
-  - '1884'
-  - '1673'
-  - '691'
-  - '2764'
-  - '3091'
-  - '1591'
-  - '1632'
-  - '1604'
-  - '2011'
-  - '1624'
-  - '1841'
-  - '2808'
-  - '3420'
-  - '2843'
-  - '3084'
-  - '1702'
-  - '1772'
-  - '1665'
-  - '2854'
-  - '2483'
-  - '3098'
-  - '4227'
-  - '3580'
-  - '3099'
-  - '1605'
-  - '1615'
-  - '1760'
-  - '3095'
-  - '3059'
-  - '1766'
-  - '4019'
-  - '1671'
-  - '3130'
-  - '1646'
-  - '2763'
-  - '2037'
-  - '2812'
-  - '1662'
-  - '3097'
-  - '4196'
-  - '1748'
-  - '3440'
-  - '1695'
-  - '1577'
-  - '3332'
-  - '1684'
-  - '1657'
-  - '1581'
-  - '1616'
-  - '2798'
-  - '2276'
-  - '2862'
-  - '4620'
-  - '1588'
-  - '2035'
-  - '2000'
-  - '3071'
-  - '1813'
-  - '1676'
-  - '1740'
-  - '2742'
-  - '2678'
-  - '1593'
-  - '3138'
-  - '896'
-  - '1682'
-  - '1622'
-  - '379'
-  - '122'
-  - '3072'
-  - '1675'
-  - '2247'
-  - '2837'
-  - '3237'
-  - '3074'
-  - '1709'
-  - '1408'
-  - '3899'
-  - '2083'
-  - '1635'
-  - '1654'
-  - '837'
-  - '2156'
-  - '228'
-  - '3045'
-  - '3295'
-  - '2790'
-  - '139'
-  - '2074'
-  - '164'
-  - '710'
-  - '2806'
-  - '2850'
-  - '3036'
-  - '152'
-  - '3043'
-  - '3354'
-  - '2161'
-  - '1134'
-  - '220'
-  - '2949'
-  - '1292'
-  - '2835'
-  - '1586'
-  - '4210'
-  - '2515'
-  - '963'
-  - '2025'
-  - '2026'
-  - '4017'

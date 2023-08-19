@@ -96,6 +96,9 @@ usePackage("viridis")
 usePackage("webchem")
 usePackage("wesanderson")
 usePackage("yaml")
+usePackage("WikidataQueryServiceR")
+
+
 
 
 # devtools::install_github("jcheng5/d3scatter")
@@ -524,55 +527,99 @@ sample_metadata = read_delim(file.path(working_directory, "metadata", "treated",
 
 # Here we establish a small test which will check if the sample metadata file contains the required columns (filename, sample_id, sample_type and species)
 
-required_columns <- c("filename", "sample_id", "sample_type")
+required_columns <- c("filename", "sample_id", "sample_type", "source_taxon")
 
-if (!all(required_columns %in% colnames(sample_metadata)) ||
-    !any(c("species", "source_taxon") %in% colnames(sample_metadata))) {
-  stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type) or one of the alternative columns (species or source_taxon). Please check your metadata file and try again.")
+if (!all(required_columns %in% colnames(sample_metadata))) {
+  stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type and source_taxon). Please check your metadata file and try again.")
 }
 
 
 SM = data.frame(sample_metadata)
 
+# Here we fetch the wikidata QIDs for the source_taxon columns
+
+# Get distinct taxon names (including multiple taxa in a single entry)
+distinct_taxa <- SM %>%
+  mutate(source_taxon = strsplit(source_taxon, ", ")) %>%  # Split multiple taxa
+  unnest(source_taxon) %>%  # Expand multiple taxa into separate rows
+  distinct(source_taxon)
+
+# Function to query Wikidata for QIDs based on taxon names
+get_taxon_qids <- function(taxon_names) {
+  qids <- character(length(taxon_names))
+  
+  for (i in seq_along(taxon_names)) {
+    taxon_name <- taxon_names[i]
+    query <- paste0('SELECT ?taxon WHERE { ?taxon wdt:P225 "', taxon_name, '". }')
+    result <- WikidataQueryServiceR::query_wikidata(query)
+    
+    if (!is.null(result$taxon)) {
+      qid_full <- result$taxon
+      qid_plain <- sub("http://www.wikidata.org/entity/", "", qid_full)
+      qids[i] <- qid_plain
+    } else {
+      qids[i] <- NA
+    }
+  }
+  
+  return(qids)
+}
+
+# Get QIDs for distinct taxon names
+distinct_qids <- get_taxon_qids(distinct_taxa$source_taxon)
+
+# Combine distinct taxon names with their QIDs
+distinct_taxa$source_taxon_qid <- distinct_qids
+
+
+# Use dplyr to create comma-separated QID column
+SM <- SM %>%
+  mutate(source_taxon = strsplit(source_taxon, ", ")) %>%
+  rowwise() %>%
+  mutate(source_taxon_qid = paste(distinct_taxa$source_taxon_qid[distinct_taxa$source_taxon %in% source_taxon], collapse = ", ")) %>%
+  ungroup() %>%
+  mutate(source_taxon = sapply(source_taxon, paste, collapse = ", ")) %>%
+  as.data.frame()
+
+
 
 # We take full power over the matrix (sic. Defossez, 2023)
-# First we work horizontally
+# First we work vertically (within a given SM column)
 
-for (column in names(params$to_combine_horizontally)) {
+for (column in names(params$to_combine_vertically)) {
 
-  # column = 'column1'
-  col_info <- params$to_combine_horizontally[[column]]
-  col_name <- col_info$name
+  col_info <- params$to_combine_vertically[[column]]
+  col_name <- col_info$factor_name
 
   # Initialize aggregated groups with original condition variable
-  SM[paste(col_info$name, "simplified", sep = "_")] <- as.factor(SM[[col_info$name]])
+  SM[paste(col_info$factor_name, "simplified", sep = "_")] <- as.factor(SM[[col_info$factor_name]])
 
   # Iterate over each group in params$tocomb
   for (group in names(col_info$groups)) {
-    # group = 'group1'
+
     group_info <- col_info$groups[[group]]
-    cols <- group_info$cols
-    new_label <- group_info$name
+    levels <- group_info$levels
+
+    # now make sure to sort the levels
+    levels <- sort(levels, decreasing = FALSE)
+    # We create a new label for the current group by concatenating the levels value with a "_"
+    new_label <- paste(levels, collapse = "_")
     
     # Combine levels for the current group
-    SM[paste(col_info$name, "simplified", sep = "_")] <- combineLevels(SM[[paste(col_info$name, "simplified", sep = "_")]], levs = cols, newLabel = c(new_label))
+    SM[paste(col_info$factor_name, "simplified", sep = "_")] <- combineLevels(SM[[paste(col_info$factor_name, "simplified", sep = "_")]], levs = levels, newLabel = c(new_label))
 }
 }
 
-# Then we work vertically
 # The function below is used to create metadata combinations
+# Then we work horizontally (across SM columns)
 
-
-
-
-
-if (!is.null(params$colnames$to_combine)) {
+if (!is.null(params$to_combine_horizontally$factor_name)) {
 
   df = SM %>% 
     filter(sample_type == "sample")
 
   # This line allows us to make sure that the columns will be combined in alphabetical order
-  cols = sort(c(params$colnames$to_combine), decreasing = FALSE)
+  cols = sort(c(params$to_combine_horizontally$factor_name), decreasing = FALSE)
 
   for (n in 1:length(cols)) {
     combos = combn(cols, n, simplify = FALSE)
@@ -1207,7 +1254,7 @@ fig_PLSDA_VIP = vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$titl
 # The files are exported
 
 ggsave(plot = fig_PLSDA, filename = filename_PLSDA , width = 10, height = 10)
-ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 15, height = 10)
+ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 20, height = 10)
 
 }
 
@@ -1755,6 +1802,13 @@ for (condition in conditions) {
   condition_parts <- strsplit(condition, "_vs_")[[1]]
   first_part <- condition_parts[1]
   second_part <- condition_parts[2]
+  
+
+
+  formatted_qids <- paste("wd:", distinct_qids, sep = "")  # Add "wd:" prefix
+  target_taxa <- paste(formatted_qids, collapse = "%0A")  # Separate with "%0A" the URLencode equivalent of "\n"
+ 
+
 
 
   de = de  %>% 
@@ -1785,9 +1839,25 @@ for (condition in conditions) {
       pvalue_minus_log10,
       log2_fold_change
     )  %>% 
-    # We format the smiles column to be able to display it in the datatable
-    mutate(chemical_structure = sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius))  %>% 
-    mutate(cluster_gnps_link = sprintf('<a href="%s">link %s</a>', gnpslinkout_network_gnps, componentindex_gnps))  %>% 
+    # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
+    mutate(chemical_structure = ifelse(!is.na(smiles_sirius),
+                                      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
+                                      ""))  %>%
+    mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps))  %>%
+    # We first sanitize the name_sirius column and make it URL safe
+    mutate(name_sirius_url_safe = URLencode(name_sirius))  %>%
+    # We then build the link to the PubChem website
+    mutate(name_sirius = ifelse(!is.na(smiles_sirius),
+                                      sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
+                                      ""))  %>%
+    # We then build the link to the CheBI website
+    mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
+                                      sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
+                                      ""))  %>%
+    # We build a column for WD query
+    mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>% 
+    # We build a column for WD query
+    mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>% 
       select(
       feature_id,
       feature_id_full,
@@ -1795,6 +1865,8 @@ for (condition in conditions) {
       chemical_structure,
       chebiid_sirius,
       name_sirius,
+      wd_occurence_reports,
+      wd_occurence_reports_all,
       npc_pathway_canopus,
       npc_superclass_canopus,
       npc_class_canopus,
@@ -4624,7 +4696,7 @@ merged_D_SM[is.na(merged_D_SM)] <- 0
 
 dfList <- list()
 
-for (i in params$colnames$to_output) {
+for (i in params$to_mean$factor_name) {
   dfList[[i]] <- merged_D_SM %>%
     group_by(!!as.symbol(i)) %>%
     summarise(across(colnames(DE_original$data), mean),
