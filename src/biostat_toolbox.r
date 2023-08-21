@@ -1815,9 +1815,9 @@ de4dt <- DE_foldchange_pvalues %>%
     molecularformula_sirius,
     adduct_sirius,
     smiles_sirius,
-    contains('pvalue_minus_log10'),
-    contains('pvalue'),
-    contains('log2_fold_change'),
+    contains('p_value_minus_log10'),
+    contains('p_value'),
+    contains('fold_change_log2'),
     contains('fold_change')
   )  %>% 
   # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
@@ -1866,9 +1866,9 @@ de4dt <- DE_foldchange_pvalues %>%
     molecularformula_sirius,
     adduct_sirius,
     smiles_sirius,
-    contains('pvalue_minus_log10'),
-    contains('pvalue'),
-    contains('log2_fold_change'),
+    contains('p_value_minus_log10'),
+    contains('p_value'),
+    contains('fold_change_log2'),
     contains('fold_change')
   )  %>% 
   # We set the type of the confidencescore_sirius column to numeric
@@ -1877,69 +1877,69 @@ de4dt <- DE_foldchange_pvalues %>%
 # We outpuzt a generic DT for data exploration of the whole set
 
 
-  ### Defining the DT object
+### Defining the DT object
 
-  DT_volcano <- datatable(de4dt,
-    escape = FALSE,
-    rownames = FALSE,
-    extensions = c("Buttons", "Select"),
-    selection = "none",
-    filter = 'top',
-    class = list(stripe = FALSE),
-    options =
-      list(
-        #       initComplete = JS(
-        #   "function(settings, json) {",
-        #   "$('body').css({'font-family': 'Calibri'});",
-        #   "}"
-        # ),
-        pageLength = 10,
-        select = TRUE,
-        searching = TRUE,
-        scrollX = TRUE,
-        scrollY = TRUE,
-        dom = "Blfrtip",
-        buttons = list(
-          list(
-            extend = "copy",
-            text = "Copy"
-            # ,
-            # exportOptions = list(modifier = list(selected = TRUE))
-          ),
-          list(
-            extend = "csv",
-            text = "CSV"
-            # exportOptions = list(modifier = list(selected = TRUE))
-          ),
-          list(
-            extend = "excel",
-            text = "Excel"
-            # exportOptions = list(modifier = list(selected = TRUE))
-          ),
-          list(
-            extend = "pdf",
-            text = "PDF"
-            # exportOptions = list(modifier = list(selected = TRUE))
-          ),
-          list(
-            extend = "print",
-            text = "Print"
-            # exportOptions = list(modifier = list(selected = TRUE))
-          )
+DT_volcano <- datatable(de4dt,
+  escape = FALSE,
+  rownames = FALSE,
+  extensions = c("Buttons", "Select"),
+  selection = "none",
+  filter = 'top',
+  class = list(stripe = FALSE),
+  options =
+    list(
+      #       initComplete = JS(
+      #   "function(settings, json) {",
+      #   "$('body').css({'font-family': 'Calibri'});",
+      #   "}"
+      # ),
+      pageLength = 10,
+      select = TRUE,
+      searching = TRUE,
+      scrollX = TRUE,
+      scrollY = TRUE,
+      dom = "Blfrtip",
+      buttons = list(
+        list(
+          extend = "copy",
+          text = "Copy"
+          # ,
+          # exportOptions = list(modifier = list(selected = TRUE))
         ),
-        lengthMenu = list(
-          c(10, 25, 50, -1),
-          c(10, 25, 50, "All")
+        list(
+          extend = "csv",
+          text = "CSV"
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ),
+        list(
+          extend = "excel",
+          text = "Excel"
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ),
+        list(
+          extend = "pdf",
+          text = "PDF"
+          # exportOptions = list(modifier = list(selected = TRUE))
+        ),
+        list(
+          extend = "print",
+          text = "Print"
+          # exportOptions = list(modifier = list(selected = TRUE))
         )
+      ),
+      lengthMenu = list(
+        c(10, 25, 50, -1),
+        c(10, 25, 50, "All")
       )
-  ) %>%
-    formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
-    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
-    formatRound(c("feature_mz", "feature_rt"), digits = 3) %>% 
-    formatRound(c("npc_pathway_probability_canopus",
-    "npc_superclass_probability_canopus",
-    "npc_class_probability_canopus",
-    "confidencescore_sirius"), digits = 2)
+    )
+) %>%
+  # formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
+  # formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
+  formatRound(c("feature_mz", "feature_rt"), digits = 3) %>% 
+  formatRound(c("npc_pathway_probability_canopus",
+  "npc_superclass_probability_canopus",
+  "npc_class_probability_canopus",
+  "confidencescore_sirius"), digits = 2)
 
 
 
@@ -1970,6 +1970,7 @@ message("Iterating over the following conditions for the Volcano plots generatio
 # Iterate over the prefixes
 for (condition in conditions) {
 
+  # condition = "Argon_HN_NifH_vs_WT"
   message("Generating Volcano plot for condition: ", condition, '\n')
 
 
@@ -1987,7 +1988,7 @@ for (condition in conditions) {
   second_part <- condition_parts[2]
 
 
-  x = de  %>% 
+  de = de  %>% 
   # we rename the day_vs_night_p_value_minus_log10 column to pvalue
   rename(pvalue_minus_log10 = !!sym(paste0(condition, "_p_value_minus_log10"))) %>%
   # we rename the day_vs_night_fold_change_log2 column to log2FoldChange
@@ -1996,7 +1997,7 @@ for (condition in conditions) {
 
   # m <- SharedData$new(x, key = ~feature_id)
 
-  m <- SharedData$new(x)
+  m <- SharedData$new(de)
 
   ### Defining the plotly object 
 
