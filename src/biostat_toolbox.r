@@ -356,6 +356,7 @@ min = min(X[X > 0], na.rm = TRUE)
 
 X[X == 0] = min
 
+# min(X)
 
 # Uncomment for testing purposes
 # X <- X[,1:100]
@@ -859,11 +860,11 @@ DE$data <- apply(DE$data,2,funModeling::range01)
 
 # Min value imputation also after the scaling stage (to be checked !!!)
 
-half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
+# half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
 
-min_sec = min(DE$data[DE$data > 0], na.rm = TRUE)
+# min_sec = min(DE$data[DE$data > 0], na.rm = TRUE)
 
-DE$data[DE$data == 0] = min_sec
+# DE$data[DE$data == 0] = min_sec
 
 ################################################################################################
 ################################################################################################
@@ -871,9 +872,9 @@ DE$data[DE$data == 0] = min_sec
 
 message("Outputting X, VM and SM ...")
 
-formatted_peak_table <- DE_filtered$data
+formatted_peak_table <- DE$data
 
-formatted_variable_metadata <- DE_filtered$variable_meta ### need to be filter with only usefull output
+formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
 
 
 # col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","inchikey2d_sirius","InChI_sirius",
@@ -895,9 +896,9 @@ col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "mo
 
 formatted_variable_metadata_filtered = formatted_variable_metadata[col_filter]
 
-formatted_sample_metadata = DE_filtered$sample_meta
+formatted_sample_metadata = DE$sample_meta
 
-formatted_sample_data_table = merge(DE_filtered$sample_meta, DE_filtered$data, by="row.names")
+formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 
 
 
@@ -4121,7 +4122,7 @@ data_subset_for_pval_hm_peak_height = format(data_subset_for_pval_hm_peak_height
 combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), values_mat, sep = "<br>"), nrow = nrow(data_subset_for_pval_hm_peak_height), ncol = ncol(data_subset_for_pval_hm_peak_height))
 
 
-iheatmap <- main_heatmap(as.matrix(t(percentize(data_subset_for_pval_hm_mat))),
+iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
   name = "Intensity",
   # layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
