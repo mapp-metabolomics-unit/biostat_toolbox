@@ -503,6 +503,13 @@ VM$"feature_id_full_annotated" = paste0(
   sep = ""
 )
 
+
+# Make sure that all column containing score in their name are as.numeric. But we keep all the dataframes columns (we might want to find a more generic way to do this)
+
+VM = VM %>% 
+mutate_at(vars(contains("score")), as.numeric)
+
+
 # We now convert the VM tibble into a dataframe and set the `feature_id` column as the rownames
 
 VM = as.data.frame(VM)
@@ -914,7 +921,7 @@ formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
 
-target_name <- paste(as.vector(sort(unique(DE$sample_meta[[params$target$sample_metadata_header]]), decreasing = TRUE)), collapse = "_vs_")
+target_name <- paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
 
 
 # if (params$paths$output != "") {
