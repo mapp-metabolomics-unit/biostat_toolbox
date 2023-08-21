@@ -23,7 +23,7 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : FALSE
+  filter_variable_metadata_num : TRUE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -38,14 +38,15 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'condition'
+  factor_name : 'condition_simplified'
   levels : 
       # - 'C'
-      - 'HN'
-      - 'NifH'
-      - 'Argon'
+      # - 'HN'
+      # - 'NifH'
+      # - 'Argon'
       - 'WT'
       # - 'Argon_NifH'
+      - 'Argon_HN_NifH'
 
 
 filter_sample_metadata_two :
@@ -72,11 +73,11 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.5
+  level : 0.8
 
 
 target:
-  sample_metadata_header: "condition" # This variable will be used throughout the whole script
+  sample_metadata_header: "condition_simplified" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
@@ -84,6 +85,7 @@ colors:
   all:
    key:
       - 'Argon'
+      - 'Argon_HN_NifH'
       - 'Argon_NifH'
       - 'C'
       - 'HN'
@@ -92,7 +94,8 @@ colors:
 
    value:
       - "darkslateblue" # 'Argon'
-      - "darkslategray" # 'Argon_NifH'
+      - "#726769" # 'Argon_HN_NifH'
+      - "#806666" # 'Argon_NifH'
       - "dimgray" # 'C'
       - "cadetblue" # 'HN'
       - "goldenrod" # 'NifH'
@@ -102,6 +105,10 @@ colors:
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
 
 # http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+# https://r-charts.com/colors/
+# https://colors.dopely.top/color-mixer/333399-50-cc9933-50
+# https://www.colorhexa.com/483d8b
+# 
 
 # "aliceblue", "antiquewhite", "aquamarine", "azure", "beige", "bisque", "blanchedalmond",
 # "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
@@ -130,6 +137,7 @@ colors:
 to_mean:
   factor_name:
     - "condition"
+    - "condition_simplified"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
@@ -144,11 +152,12 @@ to_combine_vertically:
       group1:
         levels: 
         - "Argon"
-        - "NifH"
-      group2: 
-        levels:
         - "HN"
-        - "C"
+        - "NifH"
+      # group2: 
+      #   levels:
+      #   - "HN"
+      #   - "C"
   # # column2: 
   #   name: "sample_type"
   #   groups:

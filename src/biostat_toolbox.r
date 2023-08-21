@@ -704,7 +704,7 @@ DE_original = DatasetExperiment(
   description = params$dataset_experiment$description
 )
 
-variable_meta = DE_original$variable_meta
+# variable_meta = DE_original$variable_meta
 
 ## Filtering steps
 
@@ -907,7 +907,7 @@ formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
 
-target_name <- paste(as.vector(unique(DE$sample_meta[[params$target$sample_metadata_header]])), collapse = "_vs_")
+target_name <- paste(as.vector(sort(unique(DE$sample_meta[[params$target$sample_metadata_header]]), decreasing = TRUE)), collapse = "_vs_")
 
 
 # if (params$paths$output != "") {
@@ -1781,8 +1781,187 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 
 ###### CrossTalk DT / Plotly - Volcano Plot
 
+message("Launching Volcano Plots calculations ...")
+
+
+formatted_qids <- paste("wd:", distinct_qids, sep = "")  # Add "wd:" prefix
+target_taxa <- paste(formatted_qids, collapse = "%0A")  # Separate with "%0A" the URLencode equivalent of "\n"
+
+
+# We first prepare the table for the dt export 
+
+de4dt <- DE_foldchange_pvalues %>%
+  select(
+    feature_id,
+    feature_id_full,
+    chebiasciiname_sirius,
+    chebiid_sirius,
+    name_sirius,
+    npc_pathway_canopus,
+    npc_superclass_canopus,
+    npc_class_canopus,
+    npc_pathway_probability_canopus,
+    npc_superclass_probability_canopus,
+    npc_class_probability_canopus,
+    feature_mz,
+    feature_rt,
+    componentindex_gnps,
+    gnpslinkout_network_gnps,
+    libraryid_gnps,
+    gnpslinkout_cluster_gnps,
+    confidencescore_sirius,
+    inchi_sirius,
+    inchikey2d_sirius,
+    molecularformula_sirius,
+    adduct_sirius,
+    smiles_sirius,
+    contains('pvalue_minus_log10'),
+    contains('pvalue'),
+    contains('log2_fold_change'),
+    contains('fold_change')
+  )  %>% 
+  # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
+  mutate(chemical_structure = ifelse(!is.na(smiles_sirius),
+                                    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
+                                    ""))  %>%
+  mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps))  %>%
+  mutate(spectra_gnps_link = sprintf("<a href='%s'>gnps spectrum %s</a>", gnpslinkout_cluster_gnps, feature_id))  %>%
+  # We first sanitize the name_sirius column and make it URL safe
+  mutate(name_sirius_url_safe = URLencode(name_sirius))  %>%
+  # We then build the link to the PubChem website
+  mutate(name_sirius = ifelse(!is.na(smiles_sirius),
+                                    sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
+                                    ""))  %>%
+  # We then build the link to the CheBI website
+  mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
+                                    sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
+                                    ""))  %>%
+  # We build a column for WD query
+  mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>% 
+  # We build a column for WD query
+  mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>% 
+    select(
+    feature_id,
+    feature_id_full,
+    chebiasciiname_sirius,
+    chemical_structure,
+    chebiid_sirius,
+    name_sirius,
+    wd_occurence_reports,
+    wd_occurence_reports_all,
+    npc_pathway_canopus,
+    npc_superclass_canopus,
+    npc_class_canopus,
+    npc_pathway_probability_canopus,
+    npc_superclass_probability_canopus,
+    npc_class_probability_canopus,
+    feature_mz,
+    feature_rt,
+    cluster_gnps_link,
+    libraryid_gnps,
+    spectra_gnps_link,
+    confidencescore_sirius,
+    inchi_sirius,
+    inchikey2d_sirius,
+    molecularformula_sirius,
+    adduct_sirius,
+    smiles_sirius,
+    contains('pvalue_minus_log10'),
+    contains('pvalue'),
+    contains('log2_fold_change'),
+    contains('fold_change')
+  )  %>% 
+  # We set the type of the confidencescore_sirius column to numeric
+  mutate(confidencescore_sirius = as.numeric(confidencescore_sirius))
+
+# We outpuzt a generic DT for data exploration of the whole set
+
+
+  ### Defining the DT object
+
+  DT_volcano <- datatable(de4dt,
+    escape = FALSE,
+    rownames = FALSE,
+    extensions = c("Buttons", "Select"),
+    selection = "none",
+    filter = 'top',
+    class = list(stripe = FALSE),
+    options =
+      list(
+        #       initComplete = JS(
+        #   "function(settings, json) {",
+        #   "$('body').css({'font-family': 'Calibri'});",
+        #   "}"
+        # ),
+        pageLength = 10,
+        select = TRUE,
+        searching = TRUE,
+        scrollX = TRUE,
+        scrollY = TRUE,
+        dom = "Blfrtip",
+        buttons = list(
+          list(
+            extend = "copy",
+            text = "Copy"
+            # ,
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "csv",
+            text = "CSV"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "excel",
+            text = "Excel"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "pdf",
+            text = "PDF"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          ),
+          list(
+            extend = "print",
+            text = "Print"
+            # exportOptions = list(modifier = list(selected = TRUE))
+          )
+        ),
+        lengthMenu = list(
+          c(10, 25, 50, -1),
+          c(10, 25, 50, "All")
+        )
+      )
+  ) %>%
+    formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
+    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
+    formatRound(c("feature_mz", "feature_rt"), digits = 3) %>% 
+    formatRound(c("npc_pathway_probability_canopus",
+    "npc_superclass_probability_canopus",
+    "npc_class_probability_canopus",
+    "confidencescore_sirius"), digits = 2)
+
+
+
+if (params$operating_system$system == "unix") {
+  ###linux version
+  htmltools::save_html(DT_volcano, file = paste0("DT_full_dataset.html"))
+}
+
+
+
+if (params$operating_system$system == "windows") {
+    ###windows version
+    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+    htmltools::save_html(DT_volcano, file = paste0("DT_full_dataset.html"),libdir = "lib")
+    unlink("lib", recursive = FALSE)
+    }
+
+
+
 # Extract prefixes of columns with "_p_value" suffix
 conditions <- sub("_p_value$", "", grep("_p_value$", names(DE_foldchange_pvalues), value = TRUE))
+
 
 # Print message before iterating over conditions
 message("Iterating over the following conditions for the Volcano plots generation:\n")
@@ -1795,7 +1974,7 @@ for (condition in conditions) {
 
 
   # Perform filtering using the prefix as a condition
-  de <- DE_foldchange_pvalues %>%
+  de <- de4dt %>%
     filter(!!sym(paste0(condition, "_p_value_minus_log10")) > 0)
   
   # Print the filtered data
@@ -1806,88 +1985,14 @@ for (condition in conditions) {
   condition_parts <- strsplit(condition, "_vs_")[[1]]
   first_part <- condition_parts[1]
   second_part <- condition_parts[2]
-  
 
 
-  formatted_qids <- paste("wd:", distinct_qids, sep = "")  # Add "wd:" prefix
-  target_taxa <- paste(formatted_qids, collapse = "%0A")  # Separate with "%0A" the URLencode equivalent of "\n"
- 
-
-
-
-  de = de  %>% 
+  x = de  %>% 
   # we rename the day_vs_night_p_value_minus_log10 column to pvalue
   rename(pvalue_minus_log10 = !!sym(paste0(condition, "_p_value_minus_log10"))) %>%
   # we rename the day_vs_night_fold_change_log2 column to log2FoldChange
   rename(log2_fold_change = !!sym(paste0(condition, "_fold_change_log2")))
-  x <- de %>%
-    select(
-      feature_id,
-      feature_id_full,
-      chebiasciiname_sirius,
-      chebiid_sirius,
-      name_sirius,
-      npc_pathway_canopus,
-      npc_superclass_canopus,
-      npc_class_canopus,
-      feature_mz,
-      feature_rt,
-      componentindex_gnps,
-      gnpslinkout_network_gnps,
-      confidencescore_sirius,
-      inchi_sirius,
-      inchikey2d_sirius,
-      molecularformula_sirius,
-      adduct_sirius,
-      smiles_sirius,
-      pvalue_minus_log10,
-      log2_fold_change
-    )  %>% 
-    # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
-    mutate(chemical_structure = ifelse(!is.na(smiles_sirius),
-                                      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
-                                      ""))  %>%
-    mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps))  %>%
-    # We first sanitize the name_sirius column and make it URL safe
-    mutate(name_sirius_url_safe = URLencode(name_sirius))  %>%
-    # We then build the link to the PubChem website
-    mutate(name_sirius = ifelse(!is.na(smiles_sirius),
-                                      sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
-                                      ""))  %>%
-    # We then build the link to the CheBI website
-    mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
-                                      sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
-                                      ""))  %>%
-    # We build a column for WD query
-    mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>% 
-    # We build a column for WD query
-    mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>% 
-      select(
-      feature_id,
-      feature_id_full,
-      chebiasciiname_sirius,
-      chemical_structure,
-      chebiid_sirius,
-      name_sirius,
-      wd_occurence_reports,
-      wd_occurence_reports_all,
-      npc_pathway_canopus,
-      npc_superclass_canopus,
-      npc_class_canopus,
-      feature_mz,
-      feature_rt,
-      cluster_gnps_link,
-      confidencescore_sirius,
-      inchi_sirius,
-      inchikey2d_sirius,
-      molecularformula_sirius,
-      adduct_sirius,
-      smiles_sirius,
-      pvalue_minus_log10,
-      log2_fold_change
-    )
 
-    
 
   # m <- SharedData$new(x, key = ~feature_id)
 
@@ -1982,7 +2087,13 @@ for (condition in conditions) {
   ) %>%
     formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
     formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
-    formatRound(c("feature_mz", "feature_rt"), digits = 3)
+    formatRound(c("feature_mz", "feature_rt"), digits = 3) %>% 
+    formatRound(c("npc_pathway_probability_canopus",
+    "npc_superclass_probability_canopus",
+    "npc_class_probability_canopus",
+    "confidencescore_sirius"), digits = 2)
+
+
 
   ### Defining the crosstalked object
 
@@ -2015,7 +2126,7 @@ for (condition in conditions) {
   if (params$operating_system$system == "windows") {
       ###windows version
       Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-      htmltools::save_html(plotly_DT_crosstalked, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"),libdir = "lib")
+      htmltools::save_html(plotly_DT_crosstalked_div, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"),libdir = "lib")
       unlink("lib", recursive = FALSE)
       }
 
