@@ -22,7 +22,7 @@ actions:
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : FALSE
+  filter_variable_metadata_annotated : TRUE
   filter_variable_metadata_num : TRUE
   filter_features : FALSE
   run_PLSDA : TRUE

@@ -540,9 +540,12 @@ SM = data.frame(sample_metadata)
 
 # Get distinct taxon names (including multiple taxa in a single entry)
 distinct_taxa <- SM %>%
+  filter(sample_type == "sample") %>%
   mutate(source_taxon = strsplit(source_taxon, ", ")) %>%  # Split multiple taxa
   unnest(source_taxon) %>%  # Expand multiple taxa into separate rows
   distinct(source_taxon)
+
+taxon_names = distinct_taxa$source_taxon
 
 # Function to query Wikidata for QIDs based on taxon names
 get_taxon_qids <- function(taxon_names) {
