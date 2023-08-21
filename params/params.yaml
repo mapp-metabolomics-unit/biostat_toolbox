@@ -1,7 +1,7 @@
 mapp_project : mapp_project_00007
 mapp_batch : mapp_batch_00020
 met_annot_enhancer_folder : mapp_batch_00020
-gnps_job_id : dbb61f53ca4e4ab8bac13d4662aadd8e
+gnps_job_id : 74a7bc6828294e8c95bdba312f1b58b7
 
 dataset_experiment : 
   name: "mapp_batch_00020 LCMS metabolomics dataset"
@@ -12,7 +12,8 @@ ms_files_extension: ".mzML"
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 27ac08b3bd43408c8d7f6a8e42d51cb9.graphml
+  gnps_graphml: cde3e161b5924dde99e24685d4ab0f30.graphml
+
 
 
 actions:
@@ -23,12 +24,17 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : TRUE
+  filter_variable_metadata_num : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
   set_colors_manually : TRUE
+  run_with_gap_filled: TRUE
+
+options:
+  gnps_column_for_boxplots : 
+    factor_name : 'condition'
 
 
 filter_sample_type :
@@ -38,15 +44,15 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'condition_simplified'
+  factor_name : 'condition'
   levels : 
       # - 'C'
-      # - 'HN'
-      # - 'NifH'
-      # - 'Argon'
+      - 'HN'
+      - 'NifH'
+      - 'Argon'
       - 'WT'
       # - 'Argon_NifH'
-      - 'Argon_HN_NifH'
+      # - 'Argon_HN_NifH'
 
 
 filter_sample_metadata_two :
@@ -73,11 +79,11 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'npc_superclass_probability_canopus'
-  level : 0.8
+  level : 0.5
 
 
 target:
-  sample_metadata_header: "condition_simplified" # This variable will be used throughout the whole script
+  sample_metadata_header: "condition" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
