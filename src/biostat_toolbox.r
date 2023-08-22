@@ -1941,13 +1941,12 @@ de4dt <- DE_foldchange_pvalues %>%
 
 
 ### Defining the DT object
-
 DT_volcano <- datatable(de4dt,
   escape = FALSE,
   rownames = FALSE,
   extensions = c("Buttons", "Select"),
   selection = "none",
-  filter = 'top',
+  filter = "top",
   class = list(stripe = FALSE),
   options =
     list(
@@ -1997,28 +1996,30 @@ DT_volcano <- datatable(de4dt,
     )
 ) %>%
   # formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
-  # formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
-  formatRound(c("feature_mz", "feature_rt"), digits = 3) %>% 
-  formatRound(c("npc_pathway_probability_canopus",
-  "npc_superclass_probability_canopus",
-  "npc_class_probability_canopus",
-  "confidencescore_sirius"), digits = 2)
+  # formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>%
+  formatRound(c("feature_mz", "feature_rt"), digits = 3) %>%
+  formatRound(c(
+    "npc_pathway_probability_canopus",
+    "npc_superclass_probability_canopus",
+    "npc_class_probability_canopus",
+    "confidencescore_sirius"
+  ), digits = 2)
 
 
 
 if (params$operating_system$system == "unix") {
-  ###linux version
+  ### linux version
   htmltools::save_html(DT_volcano, file = paste0("DT_full_dataset.html"))
 }
 
 
 
 if (params$operating_system$system == "windows") {
-    ###windows version
-    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-    htmltools::save_html(DT_volcano, file = paste0("DT_full_dataset.html"),libdir = "lib")
-    unlink("lib", recursive = FALSE)
-    }
+  ### windows version
+  Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+  htmltools::save_html(DT_volcano, file = paste0("DT_full_dataset.html"), libdir = "lib")
+  unlink("lib", recursive = FALSE)
+}
 
 
 
@@ -2032,15 +2033,14 @@ message("Iterating over the following conditions for the Volcano plots generatio
 
 # Iterate over the prefixes
 for (condition in conditions) {
-
   # condition = "Argon_HN_NifH_vs_WT"
-  message("Generating Volcano plot for condition: ", condition, '\n')
+  message("Generating Volcano plot for condition: ", condition, "\n")
 
 
   # Perform filtering using the prefix as a condition
   de <- de4dt %>%
     filter(!!sym(paste0(condition, "_p_value_minus_log10")) > 0)
-  
+
   # Print the filtered data
   message("Filtered data for condition: ", condition, "\n")
   # print(head(DE_foldchange_pvalues_signi))
@@ -2051,24 +2051,23 @@ for (condition in conditions) {
   second_part <- condition_parts[2]
 
 
-  de = de  %>% 
-  # we rename the day_vs_night_p_value_minus_log10 column to pvalue
-  rename(pvalue_minus_log10 = !!sym(paste0(condition, "_p_value_minus_log10"))) %>%
-  # we rename the day_vs_night_fold_change_log2 column to log2FoldChange
-  rename(log2_fold_change = !!sym(paste0(condition, "_fold_change_log2")))
+  de <- de %>%
+    # we rename the day_vs_night_p_value_minus_log10 column to pvalue
+    rename(pvalue_minus_log10 = !!sym(paste0(condition, "_p_value_minus_log10"))) %>%
+    # we rename the day_vs_night_fold_change_log2 column to log2FoldChange
+    rename(log2_fold_change = !!sym(paste0(condition, "_fold_change_log2")))
 
 
   # m <- SharedData$new(x, key = ~feature_id)
 
   m <- SharedData$new(de)
 
-  ### Defining the plotly object 
+  ### Defining the plotly object
 
 
   plotly_volcano <- plot_ly(m, x = ~log2_fold_change, y = ~pvalue_minus_log10) %>%
     add_markers(text = row.names(m)) %>%
-    add_markers(text = row.names(m),yaxis='y2'
-    ) %>%
+    add_markers(text = row.names(m), yaxis = "y2") %>%
     # config(displayModeBar = FALSE) %>%
     layout(
       title = "Hold shift while clicking \n markers for persistent selection",
@@ -2082,14 +2081,14 @@ for (condition in conditions) {
         t = 100, # Top margin in pixels, adjust as needed
         b = 100 # Bottom margin in pixels, adjust as needed
       )
-    )  %>%
-  layout(
-    title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"), plot_bgcolor = "#e5ecf6",
-    xaxis = list(title = "-log10(pvalue)"),
-    yaxis = list(title = paste0("log2(FC) ", first_part), side = "left"),
-    yaxis2 = list(title = paste0("log2(FC) ", second_part), side = "right")
-  )  %>% 
-  layout(showlegend = FALSE)
+    ) %>%
+    layout(
+      title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"), plot_bgcolor = "#e5ecf6",
+      xaxis = list(title = "-log10(pvalue)"),
+      yaxis = list(title = paste0("log2(FC) ", first_part), side = "left"),
+      yaxis2 = list(title = paste0("log2(FC) ", second_part), side = "right")
+    ) %>%
+    layout(showlegend = FALSE)
 
   # gg_plotly_volcano <- ggplotly(plotly_volcano)
 
@@ -2100,7 +2099,7 @@ for (condition in conditions) {
     rownames = FALSE,
     extensions = c("Buttons", "Select"),
     selection = "none",
-    filter = 'top',
+    filter = "top",
     class = list(stripe = FALSE),
     options =
       list(
@@ -2150,12 +2149,14 @@ for (condition in conditions) {
       )
   ) %>%
     formatRound(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
-    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3)  %>% 
-    formatRound(c("feature_mz", "feature_rt"), digits = 3) %>% 
-    formatRound(c("npc_pathway_probability_canopus",
-    "npc_superclass_probability_canopus",
-    "npc_class_probability_canopus",
-    "confidencescore_sirius"), digits = 2)
+    formatSignif(c("log2_fold_change", "pvalue_minus_log10"), digits = 3) %>%
+    formatRound(c("feature_mz", "feature_rt"), digits = 3) %>%
+    formatRound(c(
+      "npc_pathway_probability_canopus",
+      "npc_superclass_probability_canopus",
+      "npc_class_probability_canopus",
+      "confidencescore_sirius"
+    ), digits = 2)
 
 
 
@@ -2171,80 +2172,86 @@ for (condition in conditions) {
   # )
 
   plotly_DT_crosstalked_div <- browsable(div(
-    div(style="display: grid; grid-template-columns: 1fr;", 
-        plotly_volcano %>%
-      highlight(
-        color = "green", on = "plotly_selected",
-        off = "plotly_deselect"
-      )),DT_volcano))
+    div(
+      style = "display: grid; grid-template-columns: 1fr;",
+      plotly_volcano %>%
+        highlight(
+          color = "green", on = "plotly_selected",
+          off = "plotly_deselect"
+        )
+    ), DT_volcano
+  ))
 
   ### Saving the plotly_DT_crosstalked object
-  
+
   if (params$operating_system$system == "unix") {
-    ###linux version
+    ### linux version
     htmltools::save_html(plotly_DT_crosstalked_div, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"))
   }
 
 
 
   if (params$operating_system$system == "windows") {
-      ###windows version
-      Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-      htmltools::save_html(plotly_DT_crosstalked_div, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"),libdir = "lib")
-      unlink("lib", recursive = FALSE)
-      }
-
-   # We now generate the associated ggplots
-
-    log2_fold_change_threshold = 0.25
-    pvalue_minus_log10_threshold = 1.3
-
-    # add a column of NAs
-    de$diffexpressed <- "NO"
-    # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-    de$diffexpressed[de$log2_fold_change < -log2_fold_change_threshold & de$pvalue_minus_log10 > pvalue_minus_log10_threshold] <- first_part
-    # if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP" 
-    de$diffexpressed[de$log2_fold_change > log2_fold_change_threshold & de$pvalue_minus_log10 > pvalue_minus_log10_threshold] <- second_part
-
-    # We define a vector of columns to use as labels
-
-    label_columns <- c("chebiasciiname_sirius", "npc_class_canopus", "npc_superclass_canopus", "npc_pathway_canopus")
-
-
-    # Now we iterate over the vectors
-
-    for (i in 1:length(label_columns)) {
-
-      # We define the label column
-
-      label_column <- label_columns[i]
-
-      # We define the ggplot object
-
-      de$delabel <- NA
-      de$delabel[de$diffexpressed != "NO"] <- de[[label_column]][de$diffexpressed != "NO"]
-
-      # cols <- setNames(c(params$colors$volcano), c(first_part, second_part))
-
-      cols <- custom_colors[c(first_part, second_part)]
-
-      # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
-
-      # plot adding up all layers we have seen so far
-      gg_volcano <- ggplot(data=de, aes(x=log2_fold_change, y=pvalue_minus_log10, col=diffexpressed, label=delabel)) +
-              geom_point() + 
-              theme_minimal() +
-              geom_label_repel() +
-              scale_colour_manual(name = "Differentially\nExpressed", values=cols) +
-              geom_vline(xintercept=c(-log2_fold_change_threshold, log2_fold_change_threshold), col="grey", linewidth = 0.2) +
-              geom_hline(yintercept=pvalue_minus_log10_threshold, col="grey", linewidth = 0.2) +
-              labs(title = title_volcano)  # Set the ggplot title
-              
-      # We save the plot in a pdf file
-      ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf") , width = 10, height = 10)
-
-    }
+    ### windows version
+    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+    htmltools::save_html(plotly_DT_crosstalked_div, file = paste0("Volcano_DT_", first_part, "_vs_", second_part, ".html"), libdir = "lib")
+    unlink("lib", recursive = FALSE)
   }
+
+  # We now generate the associated ggplots
+
+  log2_fold_change_threshold <- 0.25
+  pvalue_minus_log10_threshold <- 1.3
+
+  # add a column of NAs
+  de$diffexpressed <- "NO"
+  # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
+  de$diffexpressed[de$log2_fold_change < -log2_fold_change_threshold & de$pvalue_minus_log10 > pvalue_minus_log10_threshold] <- first_part
+  # if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP"
+  de$diffexpressed[de$log2_fold_change > log2_fold_change_threshold & de$pvalue_minus_log10 > pvalue_minus_log10_threshold] <- second_part
+
+  # We define a vector of columns to use as labels
+
+  label_columns <- c("chebiasciiname_sirius", "npc_class_canopus", "npc_superclass_canopus", "npc_pathway_canopus")
+
+
+  # Now we iterate over the vectors
+
+  for (i in 1:length(label_columns)) {
+    # We define the label column
+
+    label_column <- label_columns[i]
+
+    # We define the ggplot object
+
+    de$delabel <- NA
+    de$delabel[de$diffexpressed != "NO"] <- de[[label_column]][de$diffexpressed != "NO"]
+
+    # cols <- setNames(c(params$colors$volcano), c(first_part, second_part))
+
+    cols <- custom_colors[c(first_part, second_part)]
+
+    # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
+
+    # plot adding up all layers we have seen so far
+    gg_volcano <- ggplot(data = de, aes(x = log2_fold_change, y = pvalue_minus_log10, col = diffexpressed, label = delabel)) +
+      geom_point() +
+      theme_minimal() +
+      geom_label_repel() +
+      scale_colour_manual(name = "Differentially\nExpressed", values = cols) +
+      geom_vline(xintercept = c(-log2_fold_change_threshold, log2_fold_change_threshold), col = "grey", linewidth = 0.2) +
+      geom_hline(yintercept = pvalue_minus_log10_threshold, col = "grey", linewidth = 0.2) +
+      labs(title = title_volcano) # Set the ggplot title
+
+    # We save the plot in a pdf file
+    tryCatch(
+      {
+        ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf"), width = 10, height = 10)
+      },
+      error = function(e) {}
+    )
+  }
+}
 
 
 
