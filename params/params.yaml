@@ -1,18 +1,18 @@
 mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00020
-met_annot_enhancer_folder : mapp_batch_00020
-gnps_job_id : 74a7bc6828294e8c95bdba312f1b58b7
+mapp_batch : mapp_batch_00059
+met_annot_enhancer_folder : mapp_batch_00059
+gnps_job_id : 939130db497a40a3a7f7fa5117b58c61
 
 dataset_experiment : 
-  name: "mapp_batch_00020 LCMS metabolomics dataset"
-  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos"
+  name: "mapp_batch_00059 LCMS metabolomics dataset"
+  description: "Didier reinhardt Medicago Nodules HILIC Metabo neg"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: cde3e161b5924dde99e24685d4ab0f30.graphml
+  gnps_graphml: d93b7dbfef814325a0ef9c0c9f716785.graphml
 
 
 
@@ -23,8 +23,8 @@ actions:
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : TRUE
+  filter_variable_metadata_annotated : TRUE
+  filter_variable_metadata_num : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -44,14 +44,14 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'condition_simplified'
+  factor_name : 'condition'
   levels : 
       # - 'C'
       - 'HN'
-      # - 'NifH'
-      # - 'Argon'
-      # - 'WT'
-      - 'Argon_NifH'
+      - 'NifH'
+      - 'Argon'
+      - 'WT'
+      # - 'Argon_NifH'
       # - 'Argon_HN_NifH'
 
 
@@ -73,7 +73,7 @@ filter_variable_metadata_two :
 
 filter_variable_metadata_annotated :
   mode : 'exclude'
-  factor_name : 'chebiasciiname_sirius'
+  factor_name : 'spectrumid_gnps'
   levels : 'NA'
 
 filter_variable_metadata_num :
@@ -83,7 +83,7 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "condition_simplified" # This variable will be used throughout the whole script
+  sample_metadata_header: "condition" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 

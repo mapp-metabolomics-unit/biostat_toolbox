@@ -476,10 +476,56 @@ data_gnps$feature_id = data_gnps$`cluster index_gnps`
 data_gnps$feature_id = as.numeric(data_gnps$feature_id)
 
 
+# First we check if a chebied version exists, if not we create it
+
+# if (file.exists(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "chebied_DB_result.tsv"))) {
+#   data_gnps_annotations = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "DB_result", "chebied_DB_result.tsv"),
+#   delim = "\t", escape_double = FALSE,
+#   trim_ws = TRUE
+# )
+# } else {
+#   data_gnps_annotations = read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "DB_result", "*.tsv")),
+#     delim = "\t", escape_double = FALSE,
+#     trim_ws = TRUE
+#   )
+
+#   # Here we add this step to "standardize" the sirius names to more classical names
+#   # We first remove duplicates form the Sirius smiles columns
+
+#   for_chembiid_smiles <- unique(data_gnps_annotations$Smiles)
+
+#   # We then use the get_chebiid function from the chembiid package to get the ChEBI IDs
+
+#   print("Getting ChEBI IDs from smiles ...")
+
+#   chebi_ids <- get_chebiid(for_chembiid_smiles, from = "smiles", to = "chebiid", match = "best")
+#   str(chebi_ids)
+#   # And we merge the data_sirius dataframe with the chebi_ids dataframe
+#   data_gnps_annotations <- merge(data_gnps_annotations, chebi_ids, by.x = "Smiles", by.y = "query")
+
+#   # The column names are modified to include the source of the data
+
+#   colnames(data_gnps_annotations) = paste(colnames(data_gnps_annotations), "dbresult_gnps", sep = "_")
+
+#   # We now build a unique feature_id for each feature in the GNPS data
+
+#   data_gnps_annotations$feature_id = data_gnps_annotations$`#Scan#_dbresult_gnps`
+#   data_gnps_annotations$feature_id = as.numeric(data_gnps_annotations$feature_id)
+#   str(data_gnps_annotations)
+
+#   write.table(data_gnps_annotations, file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "DB_result", "chebied_DB_result.tsv"),
+#   sep = "\t", row.names = FALSE)
+# }
+
+
 # The four previous dataframe are merged into one using the common `feature_id` column as key and the tidyverse `reduce` function
 
 list_df = list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
 VM = list_df %>% reduce(full_join, by='feature_id')
+
+# We take care to convert all N/A values to NA
+
+VM[VM == "N/A"] = NA
 
 # We add a sanitizing function. first we lowercase all colnames
 
