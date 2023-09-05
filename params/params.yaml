@@ -73,7 +73,7 @@ filter_variable_metadata_two :
 
 filter_variable_metadata_annotated :
   mode : 'exclude'
-  factor_name : 'spectrumid_gnps'
+  factor_name : 'chebiasciiname_sirius'  #'spectrumid_gnps'  
   levels : 'NA'
 
 filter_variable_metadata_num :
