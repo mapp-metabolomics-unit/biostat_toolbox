@@ -44,14 +44,14 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'condition_simplified'
+  factor_name : 'condition'
   levels : 
       # - 'C'
       - 'HN'
-      # - 'NifH'
-      # - 'Argon'
-      # - 'WT'
-      - 'Argon_NifH'
+      - 'NifH'
+      - 'Argon'
+      - 'WT'
+      # - 'Argon_NifH'
       # - 'Argon_HN_NifH'
 
 
@@ -73,7 +73,7 @@ filter_variable_metadata_two :
 
 filter_variable_metadata_annotated :
   mode : 'exclude'
-  factor_name : 'chebiasciiname_sirius'
+  factor_name : 'spectrumid_gnps'
   levels : 'NA'
 
 filter_variable_metadata_num :
