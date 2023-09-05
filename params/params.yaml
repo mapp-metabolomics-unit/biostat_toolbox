@@ -1,40 +1,40 @@
-mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00020
-met_annot_enhancer_folder : mapp_batch_00020
-gnps_job_id : 74a7bc6828294e8c95bdba312f1b58b7
+mapp_project : MAPP_project_00017
+mapp_batch : mapp_batch_00044
+met_annot_enhancer_folder : mapp_batch_00044
+gnps_job_id : d53d09cdd2c04fd2961724cb136cfe61
 
 dataset_experiment : 
-  name: "mapp_batch_00020 LCMS metabolomics dataset"
-  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos"
+  name: "mapp_batch_00044 LCMS metabolomics dataset"
+  description: "Simon Blanchoud Tunicate pos"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: cde3e161b5924dde99e24685d4ab0f30.graphml
-
+  gnps_graphml: 9fa4ac7e2ffa4f4c874724e7d6e9051d.graphml
 
 
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_one : FALSE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : TRUE
+  filter_variable_metadata_num : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
-  set_colors_manually : TRUE
-  run_with_gap_filled: TRUE
+  set_colors_manually : FALSE
+  run_with_gap_filled: FALSE
+  short_path : TRUE
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'condition'
+    factor_name : 'source_taxon'
 
 
 filter_sample_type :
@@ -79,12 +79,13 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'confidencescore_sirius'
-  level : 0.8
+  level : 0.7
 
 
 target:
-  sample_metadata_header: "condition_simplified" # This variable will be used throughout the whole script
+  sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
+  target_path_name: "all_species"
 
 
 colors:
@@ -142,8 +143,8 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "condition"
-    - "condition_simplified"
+    - "source_taxon"
+    #- "condition_simplified"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
@@ -152,14 +153,14 @@ to_mean:
 
 
 to_combine_vertically: 
-  column1: 
-    factor_name: "condition"
-    groups:
-      group1:
-        levels: 
-        - "Argon"
-        # - "HN"
-        - "NifH"
+  # column1: 
+  #   factor_name: "condition"
+  #   groups:
+  #     group1:
+  #       levels: 
+  #       - "Argon"
+  #       # - "HN"
+  #       - "NifH"
       # group2: 
       #   levels:
       #   - "HN"
@@ -180,7 +181,7 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-     - "condition"
+     - "source_taxon"
 
 
 

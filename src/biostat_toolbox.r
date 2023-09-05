@@ -68,7 +68,7 @@ usePackage("igraph")
 usePackage("iheatmapr")
 usePackage("janitor")
 usePackage("manhattanly")
-usePackage("microshades")
+usePackage("microshades") ### remotes::install_github("KarstensLab/microshades", dependencies=TRUE)
 usePackage("openxlsx")
 usePackage("plotly")
 usePackage("pls")
@@ -99,16 +99,13 @@ usePackage("yaml")
 usePackage("WikidataQueryServiceR")
 
 
-
-
 # devtools::install_github("jcheng5/d3scatter")
-
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
 
-# library(devtools)
-# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
+#library(devtools)
+#install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
 library(MAPPstructToolbox)
 
 
@@ -870,7 +867,7 @@ DE = M$scaled
 
 ##### we range  all feature to o to 1
 
-DE$data <- apply(DE$data,2,funModeling::range01)
+DE$data <- apply(DE$data,2,modEvA::range01)
 
 # Min value imputation also after the scaling stage (to be checked !!!)
 
@@ -922,6 +919,10 @@ formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 
 
 target_name <- paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
+
+if (params$actions$short_path == TRUE) {
+  target_name <- params$target$target_path_name
+}
 
 
 # if (params$paths$output != "") {
@@ -2195,8 +2196,9 @@ for (condition in conditions) {
               labs(title = title_volcano)  # Set the ggplot title
               
       # We save the plot in a pdf file
+      tryCatch({
       ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf") , width = 10, height = 10)
-
+      }, error=function(e){})
     }
   }
 
@@ -2376,7 +2378,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   # Alternatively we generate a new df where all class-superclass pairs are distinct and we add a column with the corresponding pathway (we keep the first occurence). We rename the columns (npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway).We return a data.frame.
 
   npclassifier_newpath_simple <- npclassifier_origin %>%
-    distinct(class, .keep_all	= TRUE) %>%
+    distinct(class, .keep_all = TRUE) %>%
     rename(npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway) %>%
     na.omit() %>% 
     data.frame() 
@@ -3418,7 +3420,7 @@ unlink("lib", recursive = FALSE)
 
 message("Launching Random Forest calculations ...")
 
-sink(filename_random_forest_model)
+
 
 # Here we traduce to fit Manu's inputs ... to be updated later 
 
@@ -3458,8 +3460,9 @@ imp_table_rf = data.frame(data.rp$pval)
 imp_table_rf = importance(data.rp)
 imp_table_rf = data.frame(imp_table_rf)
 
-summary(data.rp)
 
+sink(filename_random_forest_model)
+summary(data.rp)
 #f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
 
 sink() 
@@ -3505,6 +3508,8 @@ fig_rf %>%
 unlink("lib", recursive = FALSE)
 
 }
+
+
 
 #############################################################################
 #############################################################################
@@ -3972,7 +3977,7 @@ fixed_custom_create_color_dfs <- function(mdf,
 
     # Rename missing genera
     mdf_unknown_subgroup <- mdf %>%
-        mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown"))
+        mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown")) ## fct_na_value_to_level 
 
     # Rank group-subgroup categories by ranked abundance and add order
     # Ranked abundance aggregated using sum() function
