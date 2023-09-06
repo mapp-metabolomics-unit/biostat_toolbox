@@ -3922,6 +3922,7 @@ target_metadata = as.factor(DE$sample_meta[[params$target$sample_metadata_header
 custom_colors_heatmap = custom_colors[levels(target_metadata)]
 
 
+
 # Define the vector of colors
 micro_cvd_gray     = rev(c(microshades_palette("micro_cvd_gray")))
 micro_cvd_purple   = rev(c(microshades_palette("micro_cvd_purple")))
