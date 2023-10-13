@@ -1,0 +1,5 @@
+
+
+original version structToolbox ok : structToolbox_1.12.0.tar.gz
+
+original version MAPPstructToolbox ok : https://github.com/mapp-metabolomics-unit/MAPPstructToolbox/commit/97e0771ed0d1a4224fa00fe3bd90aa58ad490982

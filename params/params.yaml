@@ -85,7 +85,7 @@ filter_variable_metadata_num :
 target:
   sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "all_species"
+  target_path_name: "source_taxon"
 
 
 colors:

@@ -51,7 +51,6 @@ usePackage("DT")
 usePackage("emmeans")
 usePackage("EnhancedVolcano")
 usePackage("fpc")
-usePackage("funModeling")
 usePackage("ggdendro")
 usePackage("ggh4x")
 usePackage("ggplot2")
@@ -85,7 +84,6 @@ usePackage("rfPermute")
 usePackage("rgl")
 usePackage("rockchalk")
 usePackage("ropls")
-usePackage("structToolbox")
 usePackage("this.path")
 usePackage("tidyr")
 usePackage("tidyverse")
@@ -915,6 +913,8 @@ DE = M$scaled
 
 DE$data <- apply(DE$data,2,modEvA::range01)
 
+
+
 # Min value imputation also after the scaling stage (to be checked !!!)
 
 # half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
@@ -1144,11 +1144,20 @@ title_volcano = paste(
 ############# Colors definition #################################################################
 #################################################################################################
 #################################################################################################
+wes_palettes_vec <- sample(sort(unique(unlist(wes_palettes[names(wes_palettes)]))))
 
-
+factor_name_meta <- unlist(unique(DE$sample_meta[params$target$sample_metadata_header]))
 
 # We establish a named vector for the whole dataset
+if (params$actions$set_colors_manually == "TRUE") {
 custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
+} else {
+
+
+custom_colors = wes_palettes_vec[sample(c(1:length(wes_palettes_vec)),length(factor_name_meta))]
+names(custom_colors) <- factor_name_meta
+}
+
 
 
 #################################################################################################
@@ -1171,7 +1180,7 @@ pca_seq_result = model_apply(pca_seq_model, DE)
 
 # Fetching the PCA data object
 pca_object = pca_seq_result[length(pca_seq_result)]
-
+pca_object@scores@value$sample_meta
 # PCA scores plot
 
 pca_scores_plot = pca_scores_plot(
@@ -1193,10 +1202,9 @@ facet_wrap(~ pca_plot$labels$title) +
 ggtitle(title_PCA)
 
 
-if (params$actions$set_colors_manually == "TRUE") {
     fig_PCA = fig_PCA +
         scale_colour_manual(name = "Groups", values = custom_colors)
-}
+
 
 
 #   theme(plot.title = element_text(hjust = 0.2, vjust = -2)) +
@@ -1207,11 +1215,8 @@ if (params$actions$set_colors_manually == "TRUE") {
 PCA_meta = merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
 
 
-if (params$actions$set_colors_manually == "TRUE") {
-    fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header], colors = custom_colors)
-} else {
-    fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header])
-}
+fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header], colors = custom_colors)
+
 
 fig_PCA3D = fig_PCA3D %>% add_markers()
 fig_PCA3D = fig_PCA3D %>% layout(scene = list(
@@ -1265,13 +1270,12 @@ DE$sample_meta[,params$target$sample_metadata_header] = as.factor(DE$sample_meta
 
 
 # # prepare model sequence
-plsda_seq_model = # autoscale() +
+plsda_seq_model = # autoscale() + 
                   filter_na_count(threshold=3,factor_name=params$target$sample_metadata_header) +
                   # knn_impute() +
                   PLSDA(factor_name=params$target$sample_metadata_header, number_components=2)
 
 plsda_seq_result = model_apply(plsda_seq_model,DE)
-
 
 
 
@@ -1293,16 +1297,17 @@ rownames(plsda_object$vip) = vip_variable_meta$feature_id_full
 
 C = pls_scores_plot(factor_name = params$target$sample_metadata_header)
 
-plsda_plot = chart_plot(C,plsda_object)
+plsda_plot = structToolbox::chart_plot(C,plsda_object)
+
+
 
 
 fig_PLSDA = plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
 
 
-if (params$actions$set_colors_manually == "TRUE") {
     fig_PLSDA = fig_PLSDA +
         scale_colour_manual(name = "Groups", values = custom_colors)
-}
+
 
 # We output the feature importance
 
@@ -1460,15 +1465,13 @@ fig_PCoA = ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
   theme_classic()
 
 
-if (params$actions$set_colors_manually == "TRUE") {
+
     fig_PCoA = fig_PCoA +
         scale_colour_manual(name = "Groups", values = custom_colors)
-}
+
 
 
 #### PCoA 3D
-
-if (params$actions$set_colors_manually == "TRUE") {
 
     fig_PCoA3D = plot_ly(
       x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
@@ -1479,20 +1482,6 @@ if (params$actions$set_colors_manually == "TRUE") {
         "</br> num: ", data_PCOA_merge$sample_id
       )
     ) 
-
-} else {
-      
-      fig_PCoA3D = plot_ly(
-      x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
-      type = "scatter3d", mode = "markers", color = cols, 
-      hoverinfo = "text",
-      text = ~ paste(
-        "</br> name: ", data_PCOA_merge$sample_name,
-        "</br> num: ", data_PCOA_merge$sample_id
-      )
-    ) 
-}
-
 
 
 
@@ -3694,10 +3683,10 @@ fig_boxplot = p + facet_wrap2(~ chebiasciiname_sirius + feature_id_full, labelle
   legend.title = element_blank()
 )
 
-if (params$actions$set_colors_manually == "TRUE") {
+
     fig_boxplot = fig_boxplot +
         scale_fill_manual(name = "Groups", values = custom_colors)
-}
+
 
 # Display the modified plot
 print(fig_boxplot)
@@ -3746,10 +3735,10 @@ labs(x=params$target$sample_metadata_header,
         plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
         plot.caption.position =  "plot") #NEW parameter
 
-   if (params$actions$set_colors_manually == "TRUE") {
-    p = p +
+
+  p = p +
         scale_fill_manual(name = "Groups", values = custom_colors)
-}
+
 
   # Save the plot to a file with a unique filename for each variable
   filename <- paste(output_directory_bp, "boxplot_", gsub(" ", "_", var), ".png", sep = "")
@@ -3920,7 +3909,12 @@ data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 
 
 target_metadata = as.factor(DE$sample_meta[[params$target$sample_metadata_header]])
-custom_colors_heatmap = custom_colors[levels(target_metadata)]
+
+
+##########################
+
+
+custom_colors_heatmap = custom_colors
 
 
 # Define the vector of colors
@@ -4305,13 +4299,18 @@ data_subset_for_pval_hm_peak_height = format(data_subset_for_pval_hm_peak_height
 combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), values_mat, sep = "<br>"), nrow = nrow(data_subset_for_pval_hm_peak_height), ncol = ncol(data_subset_for_pval_hm_peak_height))
 
 
-iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
+
+##########################
+
+
+
+iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat[,1:50])), ### add heat map top 100
   name = "Intensity",
   # layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
   colors = "GnBu",
   show_colorbar = TRUE,
-  text = t(combined_matrix),
+  text = t(combined_matrix[,1:50]),
   layout = list(
     title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
     margin = list(t = 160, r = 80, b = 80, l = 80)
@@ -4319,7 +4318,7 @@ iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
 ) %>%
   add_row_labels(
     tickvals = NULL,
-    ticktext = selected_variable_meta$feature_id_full_annotated,
+    ticktext = selected_variable_meta$feature_id_full_annotated[1:50],
     side = "left",
     buffer = 0.01,
     textangle = 0,
@@ -4367,7 +4366,7 @@ iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
     font = list(size = 10)
   )
 
-iheatmap
+#iheatmap
 
 # library(iheatmapr)
 # data(measles, package = "iheatmapr")
@@ -4392,22 +4391,8 @@ iheatmap
 
 # The file is exported
 
-
-if (params$operating_system$system == "unix") {
-### linux version
-
 iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
 
-}
-
-if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-iheatmap %>%
-    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
-}
 
 
 # unique(selected_variable_meta_NPC_simple_resolved$npc_superclass_canopus)

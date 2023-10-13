@@ -5,4 +5,4 @@ paths:
 
 operating_system:
   system: windows # unix (for Mac or Linux)
-  pandoc: "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools" ### only for windows
+  pandoc: "C:\Program Files\RStudio\bin\quarto\bin\tools" ### only for windows #C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools
