@@ -1,18 +1,18 @@
-mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00059
-met_annot_enhancer_folder : mapp_batch_00059
-gnps_job_id : 939130db497a40a3a7f7fa5117b58c61
+mapp_project : mapp_project_00014
+mapp_batch : mapp_batch_00056
+met_annot_enhancer_folder : mapp_batch_00056
+gnps_job_id : 1fb0fee9278a4cf79ca8d53be7782ea2
 
 dataset_experiment : 
-  name: "mapp_batch_00059 LCMS metabolomics dataset"
-  description: "Didier reinhardt Medicago Nodules HILIC Metabo neg"
+  name: "mapp_batch_00056 LCMS metabolomics dataset"
+  description: "Adria Leboeuf Myrmecocystus mexicanus metabolomics pos"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: d93b7dbfef814325a0ef9c0c9f716785.graphml
+  gnps_graphml: 3074877183ce4261930e9875bd3a1381.graphml
 
 
 
@@ -23,42 +23,43 @@ actions:
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : TRUE
-  filter_variable_metadata_num : FALSE
+  filter_variable_metadata_annotated : FALSE
+  filter_variable_metadata_num : TRUE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
-  set_colors_manually : TRUE
-  run_with_gap_filled: TRUE
+  set_colors_manually : FALSE
+  run_with_gap_filled: FALSE
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'condition'
+    factor_name : 'colony'
 
 
 filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
-  levels : 'sample' 
+  levels :
+   - 'sample' 
+  #  - 'QC'
+
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'condition'
+  factor_name : 'colony'
   levels : 
-      # - 'C'
-      - 'HN'
-      - 'NifH'
-      - 'Argon'
-      - 'WT'
-      # - 'Argon_NifH'
-      # - 'Argon_HN_NifH'
-
+      - 'X1'
+      - 'X2'
+      - 'X3'
 
 filter_sample_metadata_two :
   mode : 'exclude'
-  factor_name : 'genotype'
-  levels : 'Co'
+  factor_name : 'sample_id'
+  levels :
+      - 'MAPP_012'
+      - 'MAPP_016'
+
 
 filter_variable_metadata_one :
   mode : 'include'
@@ -78,34 +79,29 @@ filter_variable_metadata_annotated :
 
 filter_variable_metadata_num :
   mode : 'above'
-  factor_name : 'confidencescore_sirius'
+  factor_name : 'npc_superclass_probability_canopus' # npc_sperclass_probability_canopus, confidencescore_sirius
   level : 0.8
 
 
 target:
-  sample_metadata_header: "condition" # This variable will be used throughout the whole script
+  sample_metadata_header: "colony_color" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
 colors:
   all:
    key:
-      - 'Argon'
-      - 'Argon_HN_NifH'
-      - 'Argon_NifH'
-      - 'C'
-      - 'HN'
-      - 'NifH'
-      - 'WT'
+      - 'X1'
+      - 'X2'
+      - 'X3'
+      # - 'NA'
+
 
    value:
-      - "darkslateblue" # 'Argon'
-      - "#726769" # 'Argon_HN_NifH'
-      - "#806666" # 'Argon_NifH'
-      - "dimgray" # 'C'
-      - "cadetblue" # 'HN'
-      - "goldenrod" # 'NifH'
-      - "darkolivegreen" # 'WT'
+      - "cadetblue" # 'X1'
+      - "goldenrod" # 'X2'
+      - "darkolivegreen" # 'X3'
+      # - "magenta" # NA (QC)
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -142,8 +138,8 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "condition"
-    - "condition_simplified"
+    - "colony"
+    # - "condition_simplified"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
@@ -153,13 +149,13 @@ to_mean:
 
 to_combine_vertically: 
   column1: 
-    factor_name: "condition"
+    factor_name: "colony"
     groups:
       group1:
         levels: 
-        - "Argon"
-        # - "HN"
-        - "NifH"
+        - "X1"
+        - "X2"
+        - "X3"
       # group2: 
       #   levels:
       #   - "HN"
@@ -180,7 +176,8 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-     - "condition"
+    - "colony"
+    - "color"
 
 
 
