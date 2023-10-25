@@ -1025,7 +1025,8 @@ sink(filename_DE_model)
 
 print(DE)
 
-sink() 
+sink()
+
 } else {
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
