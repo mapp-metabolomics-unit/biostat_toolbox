@@ -4959,7 +4959,7 @@ script_name <- get_filename()
 file.copy(script_name, file.path(output_directory,filename_R_script), overwrite = TRUE)
 
 
-message("Done !")¨
+message("Done !")
 
 
 ######### run cytoscape
