@@ -1,18 +1,18 @@
 mapp_project : mapp_project_00014
-mapp_batch : mapp_batch_00019
-met_annot_enhancer_folder : mapp_batch_00019
-gnps_job_id : d4aca8b0f5d342488086b66b755dfd21
+mapp_batch : mapp_batch_00056
+met_annot_enhancer_folder : mapp_batch_00056
+gnps_job_id : 1fb0fee9278a4cf79ca8d53be7782ea2
 
 dataset_experiment : 
-  name: "mapp_batch_00019 LCMS metabolomics dataset"
-  description: "Adria Leboeuf Myrmecocystus mexicanus metabolomics pos first batch"
+  name: "mapp_batch_00056 LCMS metabolomics dataset"
+  description: "Adria Leboeuf Myrmecocystus mexicanus metabolomics pos"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: c9dec64208c44a2faaca10a53db3e037.graphml
+  gnps_graphml: 3074877183ce4261930e9875bd3a1381.graphml
 
 
 
@@ -26,11 +26,12 @@ actions:
   filter_variable_metadata_annotated : FALSE
   filter_variable_metadata_num : TRUE
   filter_features : FALSE
-  run_PLSDA : TRUE
+  run_PLSDA : FALSE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
   set_colors_manually : TRUE
   run_with_gap_filled: FALSE
+  short_path : FALSE
 
 options:
   gnps_column_for_boxplots : 
@@ -46,19 +47,19 @@ filter_sample_type :
 
 
 filter_sample_metadata_one :
-  mode : 'exclude'
-  factor_name : 'comments'
+  mode : 'include'
+  factor_name : 'colony'
   levels : 
-      - 'crickets and sugar water 2 24 2022'
-      # - 'X2'
-      # - 'X3'
+      - 'X1'
+      - 'X2'
+      - 'X3'
 
 filter_sample_metadata_two :
   mode : 'exclude'
   factor_name : 'sample_id'
   levels :
-      - 'MAPP_01_21_19'
-      - 'MAPP_01_21_26'
+      - 'MAPP_012'
+      - 'MAPP_016'
 
 
 filter_variable_metadata_one :
@@ -84,25 +85,35 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "color" # This variable will be used throughout the whole script
+  sample_metadata_header: "color_dysbiosis" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
+  target_path_name: "color_dysbiosis"
 
 
 colors:
   all:
    key:
-      - 'zero'
-      - 'one'
-      # - 'two'
+      - "one_zero"
+      - "zero_zero"
+      - "zero_one"
+      - "one_one"
+      # - 'X1_one'
+      # - 'X1_zero'
+      # - 'X2_one'
+      # - 'X2_zero'
+      # - 'X3_one'
+      # - 'X3_zero'
+      # - 'X3'
       # - 'NA'
 
 
    value:
-      - "cadetblue" # 'X1'
-      - "goldenrod" # 'X2'
-      # - "darkolivegreen" # 'X3'
-      # - "magenta" # NA (QC)
-
+      - "cadetblue" # 'X1_one'
+      - "cyan" # 'X1_zero'
+      - "coral" # 'X2_one'
+      - "darkgoldenrod" # 'X2_zero'
+      # - "darkolivegreen" #  'X3_one'
+      # - "darkseagreen" # 'X3_zero'
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
 
@@ -138,7 +149,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "color"
+    - "colony"
     # - "condition_simplified"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
@@ -148,14 +159,14 @@ to_mean:
 
 
 to_combine_vertically: 
-  # column1: 
-  #   factor_name: "colony"
-  #   groups:
-  #     group1:
-  #       levels: 
-  #       - "X1"
-  #       - "X2"
-  #       - "X3"
+  column1: 
+    # factor_name: "colony"
+    # groups:
+    #   group1:
+    #     levels: 
+    #     - "X1"
+    #     - "X2"
+    #     - "X3"
       # group2: 
       #   levels:
       #   - "HN"

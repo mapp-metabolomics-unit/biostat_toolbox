@@ -51,7 +51,6 @@ usePackage("DT")
 usePackage("emmeans")
 usePackage("EnhancedVolcano")
 usePackage("fpc")
-usePackage("funModeling")
 usePackage("ggdendro")
 usePackage("ggh4x")
 usePackage("ggplot2")
@@ -67,8 +66,10 @@ usePackage("htmltools")
 usePackage("igraph")
 usePackage("iheatmapr")
 usePackage("janitor")
+# usePackage("magick")
 usePackage("manhattanly")
-usePackage("microshades")
+usePackage("microshades") ### remotes::install_github("KarstensLab/microshades", dependencies=TRUE)
+usePackage("modEvA")
 usePackage("openxlsx")
 usePackage("plotly")
 usePackage("pls")
@@ -85,7 +86,6 @@ usePackage("rfPermute")
 usePackage("rgl")
 usePackage("rockchalk")
 usePackage("ropls")
-usePackage("structToolbox")
 usePackage("this.path")
 usePackage("tidyr")
 usePackage("tidyverse")
@@ -100,15 +100,13 @@ usePackage("WikidataQueryServiceR")
 
 
 
-
 # devtools::install_github("jcheng5/d3scatter")
-
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
 
-# library(devtools)
-# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
+#library(devtools)
+#install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
 library(MAPPstructToolbox)
 
 
@@ -598,6 +596,7 @@ if (!all(required_columns %in% colnames(sample_metadata))) {
 SM = data.frame(sample_metadata)
 
 
+
 # Sanitize SM colnames
 SM = SM %>%
 clean_names(case = "snake")
@@ -923,7 +922,9 @@ DE = M$scaled
 
 ##### we range  all feature to o to 1
 
-DE$data <- apply(DE$data,2,funModeling::range01)
+DE$data <- apply(DE$data,2,modEvA::range01)
+
+
 
 # Min value imputation also after the scaling stage (to be checked !!!)
 
@@ -975,6 +976,10 @@ formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 
 
 target_name <- paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
+
+if (params$actions$short_path == TRUE) {
+  target_name <- params$target$target_path_name
+}
 
 
 # if (params$paths$output != "") {
@@ -1031,7 +1036,8 @@ sink(filename_DE_model)
 
 print(DE)
 
-sink() 
+sink()
+
 } else {
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
@@ -1150,11 +1156,20 @@ title_volcano = paste(
 ############# Colors definition #################################################################
 #################################################################################################
 #################################################################################################
+wes_palettes_vec <- sample(sort(unique(unlist(wes_palettes[names(wes_palettes)]))))
 
-
+factor_name_meta <- unlist(unique(DE$sample_meta[params$target$sample_metadata_header]))
 
 # We establish a named vector for the whole dataset
+if (params$actions$set_colors_manually == "TRUE") {
 custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
+} else {
+
+
+custom_colors = wes_palettes_vec[sample(c(1:length(wes_palettes_vec)),length(factor_name_meta))]
+names(custom_colors) <- factor_name_meta
+}
+
 
 
 #################################################################################################
@@ -1177,7 +1192,7 @@ pca_seq_result = model_apply(pca_seq_model, DE)
 
 # Fetching the PCA data object
 pca_object = pca_seq_result[length(pca_seq_result)]
-
+pca_object@scores@value$sample_meta
 # PCA scores plot
 
 pca_scores_plot = pca_scores_plot(
@@ -1199,10 +1214,9 @@ facet_wrap(~ pca_plot$labels$title) +
 ggtitle(title_PCA)
 
 
-if (params$actions$set_colors_manually == "TRUE") {
     fig_PCA = fig_PCA +
         scale_colour_manual(name = "Groups", values = custom_colors)
-}
+
 
 
 #   theme(plot.title = element_text(hjust = 0.2, vjust = -2)) +
@@ -1213,11 +1227,8 @@ if (params$actions$set_colors_manually == "TRUE") {
 PCA_meta = merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
 
 
-if (params$actions$set_colors_manually == "TRUE") {
-    fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header], colors = custom_colors)
-} else {
-    fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header])
-}
+fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header], colors = custom_colors)
+
 
 fig_PCA3D = fig_PCA3D %>% add_markers()
 fig_PCA3D = fig_PCA3D %>% layout(scene = list(
@@ -1271,13 +1282,12 @@ DE$sample_meta[,params$target$sample_metadata_header] = as.factor(DE$sample_meta
 
 
 # # prepare model sequence
-plsda_seq_model = # autoscale() +
+plsda_seq_model = # autoscale() + 
                   filter_na_count(threshold=3,factor_name=params$target$sample_metadata_header) +
                   # knn_impute() +
                   PLSDA(factor_name=params$target$sample_metadata_header, number_components=2)
 
 plsda_seq_result = model_apply(plsda_seq_model,DE)
-
 
 
 
@@ -1299,16 +1309,17 @@ rownames(plsda_object$vip) = vip_variable_meta$feature_id_full
 
 C = pls_scores_plot(factor_name = params$target$sample_metadata_header)
 
-plsda_plot = chart_plot(C,plsda_object)
+plsda_plot = structToolbox::chart_plot(C,plsda_object)
+
+
 
 
 fig_PLSDA = plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
 
 
-if (params$actions$set_colors_manually == "TRUE") {
     fig_PLSDA = fig_PLSDA +
         scale_colour_manual(name = "Groups", values = custom_colors)
-}
+
 
 # We output the feature importance
 
@@ -1466,15 +1477,13 @@ fig_PCoA = ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
   theme_classic()
 
 
-if (params$actions$set_colors_manually == "TRUE") {
+
     fig_PCoA = fig_PCoA +
         scale_colour_manual(name = "Groups", values = custom_colors)
-}
+
 
 
 #### PCoA 3D
-
-if (params$actions$set_colors_manually == "TRUE") {
 
     fig_PCoA3D = plot_ly(
       x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
@@ -1485,20 +1494,6 @@ if (params$actions$set_colors_manually == "TRUE") {
         "</br> num: ", data_PCOA_merge$sample_id
       )
     ) 
-
-} else {
-      
-      fig_PCoA3D = plot_ly(
-      x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
-      type = "scatter3d", mode = "markers", color = cols, 
-      hoverinfo = "text",
-      text = ~ paste(
-        "</br> name: ", data_PCOA_merge$sample_name,
-        "</br> num: ", data_PCOA_merge$sample_id
-      )
-    ) 
-}
-
 
 
 
@@ -2294,25 +2289,22 @@ for (condition in conditions) {
 
     # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
 
-    # plot adding up all layers we have seen so far
-    gg_volcano <- ggplot(data = de, aes(x = log2_fold_change, y = pvalue_minus_log10, col = diffexpressed, label = delabel)) +
-      geom_point() +
-      theme_minimal() +
-      geom_label_repel() +
-      scale_colour_manual(name = "Differentially\nExpressed", values = cols) +
-      geom_vline(xintercept = c(-log2_fold_change_threshold, log2_fold_change_threshold), col = "grey", linewidth = 0.2) +
-      geom_hline(yintercept = pvalue_minus_log10_threshold, col = "grey", linewidth = 0.2) +
-      labs(title = title_volcano) # Set the ggplot title
-
-    # We save the plot in a pdf file
-    tryCatch(
-      {
-        ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf"), width = 10, height = 10)
-      },
-      error = function(e) {}
-    )
+      # plot adding up all layers we have seen so far
+      gg_volcano <- ggplot(data=de, aes(x=log2_fold_change, y=pvalue_minus_log10, col=diffexpressed, label=delabel)) +
+              geom_point() + 
+              theme_minimal() +
+              geom_label_repel() +
+              scale_colour_manual(name = "Differentially\nExpressed", values=cols) +
+              geom_vline(xintercept=c(-log2_fold_change_threshold, log2_fold_change_threshold), col="grey", linewidth = 0.2) +
+              geom_hline(yintercept=pvalue_minus_log10_threshold, col="grey", linewidth = 0.2) +
+              labs(title = title_volcano)  # Set the ggplot title
+              
+      # We save the plot in a pdf file
+      tryCatch({
+      ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf") , width = 10, height = 10)
+      }, error=function(e){})
+    }
   }
-}
 
 
 
@@ -2490,7 +2482,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
   # Alternatively we generate a new df where all class-superclass pairs are distinct and we add a column with the corresponding pathway (we keep the first occurence). We rename the columns (npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway).We return a data.frame.
 
   npclassifier_newpath_simple <- npclassifier_origin %>%
-    distinct(class, .keep_all	= TRUE) %>%
+    distinct(class, .keep_all = TRUE) %>%
     rename(npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway) %>%
     na.omit() %>% 
     data.frame() 
@@ -3532,7 +3524,7 @@ unlink("lib", recursive = FALSE)
 
 message("Launching Random Forest calculations ...")
 
-sink(filename_random_forest_model)
+
 
 # Here we traduce to fit Manu's inputs ... to be updated later 
 
@@ -3572,8 +3564,9 @@ imp_table_rf = data.frame(data.rp$pval)
 imp_table_rf = importance(data.rp)
 imp_table_rf = data.frame(imp_table_rf)
 
-summary(data.rp)
 
+sink(filename_random_forest_model)
+summary(data.rp)
 #f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
 
 sink() 
@@ -3619,6 +3612,8 @@ fig_rf %>%
 unlink("lib", recursive = FALSE)
 
 }
+
+
 
 #############################################################################
 #############################################################################
@@ -3754,10 +3749,10 @@ fig_boxplot = p + facet_wrap2(~ chebiasciiname_sirius + feature_id_full, labelle
   legend.title = element_blank()
 )
 
-if (params$actions$set_colors_manually == "TRUE") {
+
     fig_boxplot = fig_boxplot +
         scale_fill_manual(name = "Groups", values = custom_colors)
-}
+
 
 # Display the modified plot
 print(fig_boxplot)
@@ -3806,10 +3801,10 @@ labs(x=params$target$sample_metadata_header,
         plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
         plot.caption.position =  "plot") #NEW parameter
 
-   if (params$actions$set_colors_manually == "TRUE") {
-    p = p +
+
+  p = p +
         scale_fill_manual(name = "Groups", values = custom_colors)
-}
+
 
   # Save the plot to a file with a unique filename for each variable
   filename <- paste(output_directory_bp, "boxplot_", gsub(" ", "_", var), ".png", sep = "")
@@ -3980,8 +3975,12 @@ data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 
 
 target_metadata = as.factor(DE$sample_meta[[params$target$sample_metadata_header]])
-custom_colors_heatmap = custom_colors[levels(target_metadata)]
 
+
+##########################
+
+
+custom_colors_heatmap = custom_colors
 
 
 # Define the vector of colors
@@ -4087,7 +4086,7 @@ fixed_custom_create_color_dfs <- function(mdf,
 
     # Rename missing genera
     mdf_unknown_subgroup <- mdf %>%
-        mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown"))
+        mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown")) ## fct_na_value_to_level 
 
     # Rank group-subgroup categories by ranked abundance and add order
     # Ranked abundance aggregated using sum() function
@@ -4366,13 +4365,18 @@ data_subset_for_pval_hm_peak_height = format(data_subset_for_pval_hm_peak_height
 combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), values_mat, sep = "<br>"), nrow = nrow(data_subset_for_pval_hm_peak_height), ncol = ncol(data_subset_for_pval_hm_peak_height))
 
 
-iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
+
+##########################
+
+
+
+iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat[,1:50])), ### add heat map top 100
   name = "Intensity",
   # layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
   colors = "GnBu",
   show_colorbar = TRUE,
-  text = t(combined_matrix),
+  text = t(combined_matrix[,1:50]),
   layout = list(
     title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
     margin = list(t = 160, r = 80, b = 80, l = 80)
@@ -4380,7 +4384,7 @@ iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
 ) %>%
   add_row_labels(
     tickvals = NULL,
-    ticktext = selected_variable_meta$feature_id_full_annotated,
+    ticktext = selected_variable_meta$feature_id_full_annotated[1:50],
     side = "left",
     buffer = 0.01,
     textangle = 0,
@@ -4428,7 +4432,7 @@ iheatmap <- main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)),
     font = list(size = 10)
   )
 
-iheatmap
+#iheatmap
 
 # library(iheatmapr)
 # data(measles, package = "iheatmapr")
@@ -4453,22 +4457,8 @@ iheatmap
 
 # The file is exported
 
-
-if (params$operating_system$system == "unix") {
-### linux version
-
 iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
 
-}
-
-if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-iheatmap %>%
-    htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
-}
 
 
 # unique(selected_variable_meta_NPC_simple_resolved$npc_superclass_canopus)
@@ -4746,10 +4736,10 @@ summary_stat_output_selected_cytoscape = DE_foldchange_pvalues %>%
     score_taxo_metannot
   )
 
+#### ad rf importance 
 
-
-
-
+imp_table_rf$feature_id <- gsub("X","",row.names(imp_table_rf))
+summary_stat_output_selected_cytoscape<- merge(summary_stat_output_selected_cytoscape,imp_table_rf,by="feature_id")
 # glimpse(summary_stat_output_selected)
 
 
@@ -5026,3 +5016,40 @@ file.copy(script_name, file.path(output_directory,filename_R_script), overwrite 
 
 
 message("Done !")
+
+
+######### run cytoscape
+
+cytoscapePing()
+
+createNetworkFromIgraph(generated_g,"myIgraph")
+
+
+setNodeCustomPieChart(c("mean_int_source_taxon_Botrylloides.anceps",
+"mean_int_source_taxon_Botrylloides.diegensis",
+"mean_int_source_taxon_Botrylloides.niger","mean_int_source_taxon_Botryllus.schlosseri"),
+colors = custom_colors,style.name = "Solid")
+
+setNodeSizeMapping('MeanDecreaseGini.y', sizes=c(30,200),style.name = "Solid")
+
+exportPDF(filename = "xxxx3",pageSize = "Auto")
+
+
+size_gradient <- c(1:4)
+pdf("color_legend.pdf")
+# Create a legend
+plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
+legend("topleft", legend =names(custom_colors), pch=15, pt.cex=2, cex=1, bty='n',
+    col = custom_colors)
+mtext("Species", at=0, cex=1)
+legend("topright", legend =size_gradient, pch=16, pt.cex=size_gradient*0.7, cex=1, bty='n',
+col = "black")
+mtext("Importance", at=0.95, cex=1)
+dev.off()
+
+
+files <- c("xxxx3.pdf","color_legend.pdf")          #get pdf filenames
+pdfs <- Reduce(c, lapply(files, image_read_pdf)) #read in and combine
+montage <- image_montage(pdfs, tile = '1x2', geometry = "x1200") #create pages of 4
+image_write(montage, format = "pdf", "pages1234.pdf") #save as single pdf
+
