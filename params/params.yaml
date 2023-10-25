@@ -19,8 +19,8 @@ filenames:
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : FALSE
-  filter_sample_metadata_two : FALSE
+  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_two : TRUE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
@@ -46,10 +46,10 @@ filter_sample_type :
 
 
 filter_sample_metadata_one :
-  mode : 'include'
-  factor_name : 'colony'
+  mode : 'exclude'
+  factor_name : 'comments'
   levels : 
-      # - 'X1'
+      - 'crickets and sugar water 2 24 2022'
       # - 'X2'
       # - 'X3'
 
@@ -57,8 +57,8 @@ filter_sample_metadata_two :
   mode : 'exclude'
   factor_name : 'sample_id'
   levels :
-      - 'MAPP_012'
-      - 'MAPP_016'
+      - 'MAPP_01_21_19'
+      - 'MAPP_01_21_26'
 
 
 filter_variable_metadata_one :
@@ -138,7 +138,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "colony"
+    - "color"
     # - "condition_simplified"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
