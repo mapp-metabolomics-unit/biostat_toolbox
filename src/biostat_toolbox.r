@@ -592,6 +592,14 @@ if (!all(required_columns %in% colnames(sample_metadata))) {
 
 SM = data.frame(sample_metadata)
 
+
+
+# Sanitize SM colnames
+SM = SM %>%
+clean_names(case = "snake")
+
+
+
 # Here we fetch the wikidata QIDs for the source_taxon columns
 
 # Get distinct taxon names (including multiple taxa in a single entry)
