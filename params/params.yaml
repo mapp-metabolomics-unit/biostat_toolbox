@@ -85,16 +85,18 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "color" # This variable will be used throughout the whole script
+  sample_metadata_header: "color_dysbiosis" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "color"
+  target_path_name: "color_dysbiosis"
 
 
 colors:
   all:
    key:
-      - "one"
-      - "zero"
+      - "one_zero"
+      - "zero_zero"
+      - "zero_one"
+      - "one_one"
       # - 'X1_one'
       # - 'X1_zero'
       # - 'X2_one'
@@ -108,8 +110,8 @@ colors:
    value:
       - "cadetblue" # 'X1_one'
       - "cyan" # 'X1_zero'
-      # - "coral" # 'X2_one'
-      # - "darkgoldenrod" # 'X2_zero'
+      - "coral" # 'X2_one'
+      - "darkgoldenrod" # 'X2_zero'
       # - "darkolivegreen" #  'X3_one'
       # - "darkseagreen" # 'X3_zero'
 
@@ -158,13 +160,13 @@ to_mean:
 
 to_combine_vertically: 
   column1: 
-    factor_name: "colony"
-    groups:
-      group1:
-        levels: 
-        - "X1"
-        - "X2"
-        - "X3"
+    # factor_name: "colony"
+    # groups:
+    #   group1:
+    #     levels: 
+    #     - "X1"
+    #     - "X2"
+    #     - "X3"
       # group2: 
       #   levels:
       #   - "HN"
@@ -185,8 +187,8 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-    - "colony"
-    - "color"
+    # - "colony"
+    # - "color"
 
 
 
