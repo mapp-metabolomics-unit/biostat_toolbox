@@ -4670,10 +4670,10 @@ summary_stat_output_selected_cytoscape = DE_foldchange_pvalues %>%
     score_taxo_metannot
   )
 
+#### ad rf importance 
 
-
-
-
+imp_table_rf$feature_id <- gsub("X","",row.names(imp_table_rf))
+summary_stat_output_selected_cytoscape<- merge(summary_stat_output_selected_cytoscape,imp_table_rf,by="feature_id")
 # glimpse(summary_stat_output_selected)
 
 
@@ -4949,4 +4949,41 @@ script_name <- get_filename()
 file.copy(script_name, file.path(output_directory,filename_R_script), overwrite = TRUE)
 
 
-message("Done !")
+message("Done !")¨
+
+
+######### run cytoscape
+¨
+cytoscapePing()
+
+createNetworkFromIgraph(generated_g,"myIgraph")
+
+
+setNodeCustomPieChart(c("mean_int_source_taxon_Botrylloides.anceps",
+"mean_int_source_taxon_Botrylloides.diegensis",
+"mean_int_source_taxon_Botrylloides.niger","mean_int_source_taxon_Botryllus.schlosseri"),
+colors = custom_colors,style.name = "Solid")
+
+setNodeSizeMapping('MeanDecreaseGini.y', sizes=c(30,200),style.name = "Solid")
+
+exportPDF(filename = "xxxx3",pageSize = "Auto")
+
+
+size_gradient <- c(1:4)
+pdf("color_legend.pdf")
+# Create a legend
+plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
+legend("topleft", legend =names(custom_colors), pch=15, pt.cex=2, cex=1, bty='n',
+    col = custom_colors)
+mtext("Species", at=0, cex=1)
+legend("topright", legend =size_gradient, pch=16, pt.cex=size_gradient*0.7, cex=1, bty='n',
+col = "black")
+mtext("Importance", at=0.95, cex=1)
+dev.off()
+
+library(magick)
+files <- c("xxxx3.pdf","color_legend.pdf")          #get pdf filenames
+pdfs <- Reduce(c, lapply(files, image_read_pdf)) #read in and combine
+montage <- image_montage(pdfs, tile = '1x2', geometry = "x1200") #create pages of 4
+image_write(montage, format = "pdf", "pages1234.pdf") #save as single pdf
+

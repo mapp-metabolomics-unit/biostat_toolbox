@@ -12,7 +12,7 @@ ms_files_extension: ".mzML"
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 9fa4ac7e2ffa4f4c874724e7d6e9051d.graphml
+  gnps_graphml: e1369f2f08f041218f24d0cf4b085f7c.graphml
 
 
 actions:
