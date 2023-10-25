@@ -26,7 +26,7 @@ actions:
   filter_variable_metadata_annotated : FALSE
   filter_variable_metadata_num : TRUE
   filter_features : FALSE
-  run_PLSDA : TRUE
+  run_PLSDA : FALSE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
   set_colors_manually : TRUE
@@ -84,25 +84,30 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "color" # This variable will be used throughout the whole script
+  sample_metadata_header: "colony_color" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
 
 
 colors:
   all:
    key:
-      - '0'
-      - '1'
+      - 'X1_one'
+      - 'X1_zero'
+      - 'X2_one'
+      - 'X2_zero'
+      - 'X3_one'
+      - 'X3_zero'
       # - 'X3'
       # - 'NA'
 
 
    value:
-      - "cadetblue" # 'X1'
-      - "goldenrod" # 'X2'
-      # - "darkolivegreen" # 'X3'
-      # - "magenta" # NA (QC)
-
+      - "cadetblue" # 'X1_one'
+      - "cyan" # 'X1_zero'
+      - "coral" # 'X2_one'
+      - "darkgoldenrod" # 'X2_zero'
+      - "darkolivegreen" #  'X3_one'
+      - "darkseagreen" # 'X3_zero'
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
 
