@@ -1164,13 +1164,9 @@ factor_name_meta <- unlist(unique(DE$sample_meta[params$target$sample_metadata_h
 if (params$actions$set_colors_manually == "TRUE") {
 custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
 } else {
-
-
 custom_colors = wes_palettes_vec[sample(c(1:length(wes_palettes_vec)),length(factor_name_meta))]
 names(custom_colors) <- factor_name_meta
 }
-
-
 
 #################################################################################################
 #################################################################################################
@@ -4370,13 +4366,13 @@ combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), 
 
 
 
-iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat[,1:50])), ### add heat map top 100
+iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)), ### add heat map top 100
   name = "Intensity",
   # layout = list(margin = list(b = 80)),
   colorbar_grid = grid_params,
   colors = "GnBu",
   show_colorbar = TRUE,
-  text = t(combined_matrix[,1:50]),
+  text = t(combined_matrix),
   layout = list(
     title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
     margin = list(t = 160, r = 80, b = 80, l = 80)
@@ -4384,7 +4380,7 @@ iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat[,1:5
 ) %>%
   add_row_labels(
     tickvals = NULL,
-    ticktext = selected_variable_meta$feature_id_full_annotated[1:50],
+    ticktext = selected_variable_meta$feature_id_full_annotated,
     side = "left",
     buffer = 0.01,
     textangle = 0,
