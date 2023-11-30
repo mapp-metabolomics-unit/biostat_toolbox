@@ -1,18 +1,18 @@
-mapp_project : mapp_project_00014
-mapp_batch : mapp_batch_00019
-met_annot_enhancer_folder : mapp_batch_00019
-gnps_job_id : d4aca8b0f5d342488086b66b755dfd21
+mapp_project : mapp_project_00007
+mapp_batch : mapp_batch_00020
+met_annot_enhancer_folder : mapp_batch_00020
+gnps_job_id : 74a7bc6828294e8c95bdba312f1b58b7
 
 dataset_experiment : 
-  name: "mapp_batch_00019 LCMS metabolomics dataset"
-  description: "Adria Leboeuf Myrmecocystus mexicanus metabolomics pos first batch"
+  name: "mapp_batch_00020 LCMS metabolomics dataset"
+  description: "Didier reinhardt Medicago Nodules HILIC Metabo pos"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: c9dec64208c44a2faaca10a53db3e037.graphml
+  gnps_graphml: cde3e161b5924dde99e24685d4ab0f30.graphml
 
 
 
@@ -20,47 +20,48 @@ actions:
   scale_data : TRUE
   filter_sample_type : TRUE
   filter_sample_metadata_one : TRUE
-  filter_sample_metadata_two : TRUE
+  filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
   filter_variable_metadata_num : TRUE
   filter_features : FALSE
-  run_PLSDA : FALSE
+  run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
   set_colors_manually : TRUE
-  run_with_gap_filled: FALSE
+  run_with_gap_filled: TRUE
   short_path : FALSE
+
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'Color'
+    factor_name : 'condition'
 
 
 filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
-  levels :
-   - 'sample' 
-  #  - 'QC'
-
+  levels : 
+    - 'sample' 
 
 filter_sample_metadata_one :
-  mode : 'exclude'
-  factor_name : 'comments'
+  mode : 'include'
+  factor_name : 'condition'
   levels : 
-      - 'crickets and sugar water 2 24 2022'
-      # - 'X2'
-      # - 'X3'
+      # - 'C'
+      - 'HN'
+      # - 'NifH'
+      - 'Argon'
+      # - 'WT'
+      # - 'Argon_NifH'
+      # - 'Argon_HN_NifH'
+
 
 filter_sample_metadata_two :
   mode : 'exclude'
-  factor_name : 'sample_id'
-  levels :
-      - 'MAPP_01_21_19'
-      - 'MAPP_01_21_26'
-
+  factor_name : 'genotype'
+  levels : 'Co'
 
 filter_variable_metadata_one :
   mode : 'include'
@@ -75,35 +76,41 @@ filter_variable_metadata_two :
 
 filter_variable_metadata_annotated :
   mode : 'exclude'
-  factor_name : 'spectrumid_gnps'
+  factor_name : 'chebiasciiname_sirius'
   levels : 'NA'
 
 filter_variable_metadata_num :
   mode : 'above'
-  factor_name : 'npc_superclass_probability_canopus' # npc_sperclass_probability_canopus, confidencescore_sirius
+  factor_name : 'confidencescore_sirius'
   level : 0.8
 
 
 target:
-  sample_metadata_header: "color" # This variable will be used throughout the whole script
+  sample_metadata_header: "condition" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "color"
+  # target_path_name: "color"
+
 
 
 colors:
   all:
    key:
-      - 'zero'
-      - 'one'
-      # - 'two'
-      # - 'NA'
-
+      - 'Argon'
+      - 'Argon_HN_NifH'
+      - 'Argon_NifH'
+      - 'C'
+      - 'HN'
+      - 'NifH'
+      - 'WT'
 
    value:
-      - "cadetblue" # 'X1'
-      - "goldenrod" # 'X2'
-      # - "darkolivegreen" # 'X3'
-      # - "magenta" # NA (QC)
+      - "darkslateblue" # 'Argon'
+      - "#726769" # 'Argon_HN_NifH'
+      - "#806666" # 'Argon_NifH'
+      - "dimgray" # 'C'
+      - "cadetblue" # 'HN'
+      - "goldenrod" # 'NifH'
+      - "darkolivegreen" # 'WT'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -140,8 +147,8 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "color"
-    # - "condition_simplified"
+    - "condition"
+    - "condition_simplified"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
@@ -150,14 +157,14 @@ to_mean:
 
 
 to_combine_vertically: 
-  # column1: 
-  #   factor_name: "colony"
-  #   groups:
-  #     group1:
-  #       levels: 
-  #       - "X1"
-  #       - "X2"
-  #       - "X3"
+  column1: 
+    factor_name: "condition"
+    groups:
+      group1:
+        levels: 
+        - "Argon"
+        # - "HN"
+        - "NifH"
       # group2: 
       #   levels:
       #   - "HN"
@@ -178,8 +185,7 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-    # - "colony"
-    # - "color"
+     - "condition"
 
 
 
