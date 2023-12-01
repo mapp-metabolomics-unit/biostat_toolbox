@@ -11,7 +11,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 }
 
 # install structToolbox and dependencies
-# BiocManager::install("structToolbox")
+# BiocManager::install("structToolbox") v1.10.0
 
 ## install additional bioc packages for vignette if needed
 # BiocManager::install(c("pmp", "ropls", "BiocFileCache"))
@@ -66,7 +66,7 @@ usePackage("htmltools")
 usePackage("igraph")
 usePackage("iheatmapr")
 usePackage("janitor")
-# usePackage("magick")
+usePackage("magick")
 usePackage("manhattanly")
 usePackage("microshades") ### remotes::install_github("KarstensLab/microshades", dependencies=TRUE)
 usePackage("modEvA")
@@ -98,9 +98,9 @@ usePackage("wesanderson")
 usePackage("yaml")
 usePackage("WikidataQueryServiceR")
 
+struct(1.10)
 
-
-# devtools::install_github("jcheng5/d3scatter")
+#devtools::install_github("jcheng5/d3scatter")
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
@@ -4961,7 +4961,10 @@ df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_
 df_from_graph_vertices_plus_plus = df_from_graph_vertices_plus_plus %>%
   select(feature_id, everything())
 
+node_size <- df_from_graph_vertices_plus_plus$MeanDecreaseGini
+node_size[is.na(node_size)] <- min(node_size,na.rm=T)
 
+df_from_graph_vertices_plus_plus$node_size <- node_size
 # We then add the attributes to the edges dataframe and generate the igraph object
 
 # In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging. 
@@ -5015,37 +5018,43 @@ message("Done !")
 
 
 ######### run cytoscape
+library(RCy3)
+library(pdftools)
+setwd(output_directory)
+cytoscapePing()
 
-# cytoscapePing()
+createNetworkFromIgraph(generated_g,"myIgraph")  
 
-# createNetworkFromIgraph(generated_g,"myIgraph")
-
-
-# setNodeCustomPieChart(c("mean_int_source_taxon_Botrylloides.anceps",
-# "mean_int_source_taxon_Botrylloides.diegensis",
-# "mean_int_source_taxon_Botrylloides.niger","mean_int_source_taxon_Botryllus.schlosseri"),
-# colors = custom_colors,style.name = "Solid")
-
-# setNodeSizeMapping('MeanDecreaseGini.y', sizes=c(30,200),style.name = "Solid")
-
-# exportPDF(filename = "xxxx3",pageSize = "Auto")
+colnames_piechart <- paste("mean_int",params$target$sample_metadata_header,names(custom_colors), sep="_")
+colnames_piechart <- gsub(" ",".",colnames_piechart)
 
 
-# size_gradient <- c(1:4)
-# pdf("color_legend.pdf")
-# # Create a legend
-# plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
-# legend("topleft", legend =names(custom_colors), pch=15, pt.cex=2, cex=1, bty='n',
-#     col = custom_colors)
-# mtext("Species", at=0, cex=1)
-# legend("topright", legend =size_gradient, pch=16, pt.cex=size_gradient*0.7, cex=1, bty='n',
-# col = "black")
-# mtext("Importance", at=0.95, cex=1)
-# dev.off()
+ setNodeCustomPieChart(colnames_piechart,
+ colors = custom_colors,style.name = "Solid")
+
+ setNodeSizeMapping('node_size', sizes=c(60,120),style.name = "Solid")
 
 
-# files <- c("xxxx3.pdf","color_legend.pdf")          #get pdf filenames
-# pdfs <- Reduce(c, lapply(files, image_read_pdf)) #read in and combine
-# montage <- image_montage(pdfs, tile = '1x2', geometry = "x1200") #create pages of 4
-# image_write(montage, format = "pdf", "pages1234.pdf") #save as single pdf
+saveSession("cytoscape_piechart")
+ exportPDF(filename = "cytoscape_piechart",pageSize = "Auto")
 
+
+ size_gradient <- c(1:4)
+ pdf("color_legend.pdf")
+ # Create a legend
+ plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
+ legend("topleft", legend =names(custom_colors), pch=15, pt.cex=2, cex=1, bty='n',
+     col = custom_colors)
+ mtext(params$target$sample_metadata_header, at=0, cex=1)
+ legend("topright", legend =size_gradient, pch=16, pt.cex=size_gradient*0.7, cex=1, bty='n',
+ col = "black")
+ mtext("Importance", at=0.95, cex=1)
+ dev.off()
+
+
+ files <- c("cytoscape_piechart.pdf","color_legend.pdf")          #get pdf filenames
+ pdfs <- Reduce(c, lapply(files, image_read_pdf)) #read in and combine
+ montage <- image_montage(pdfs, tile = '1x2', geometry = "x1200") #create pages of 4
+image_write(montage, format = "pdf", "cytoscape_piechart.pdf") #save as single pdf
+
+file.remove("color_legend.pdf")
