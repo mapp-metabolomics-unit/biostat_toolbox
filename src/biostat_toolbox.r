@@ -972,54 +972,54 @@ formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 
 # We work on an export for MetaboAnalyst Pathways analysis
 
-DE$sample_meta
+# DE$sample_meta
 
 
-DE$data
+# DE$data
 
-# First we merge the sample metadata and the data
+# # First we merge the sample metadata and the data
 
-sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
+# sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 
-# We now drop the useless columns. We use the dplyr syntax
+# # We now drop the useless columns. We use the dplyr syntax
 
-colnames_to_drop = c("Row.names","condition_detailed","condition_simplified","filename","id","internal_id","sample_type","source_taxon","source_taxon_qid")
+# colnames_to_drop = c("Row.names","condition_detailed","condition_simplified","filename","id","internal_id","sample_type","source_taxon","source_taxon_qid")
 
-sample_data_table = sample_data_table %>%
-  select(-one_of(colnames_to_drop))  %>% 
-  # reorganize the columns
-  select(sample_id, condition, everything())
+# sample_data_table = sample_data_table %>%
+#   select(-one_of(colnames_to_drop))  %>% 
+#   # reorganize the columns
+#   select(sample_id, condition, everything())
 
-# We now filter the variable metadata to keep only the columns and rows we need
+# # We now filter the variable metadata to keep only the columns and rows we need
 
-colnames(DE$variable_meta)
+# colnames(DE$variable_meta)
 
-DE$variable_meta$chebiasciiname_sirius
+# DE$variable_meta$chebiasciiname_sirius
 
-compound_names = DE$variable_meta  %>% 
-select(chebiasciiname_sirius)  %>% 
-# NA are dropped by default
-filter(!is.na(chebiasciiname_sirius))
+# compound_names = DE$variable_meta  %>% 
+# select(chebiasciiname_sirius)  %>% 
+# # NA are dropped by default
+# filter(!is.na(chebiasciiname_sirius))
 
-# We now replace the column names in the sample_data_table with the compound names
-# For this we transpose the sample_data_table and then match 
+# # We now replace the column names in the sample_data_table with the compound names
+# # For this we transpose the sample_data_table and then match 
 
-sample_data_table_transposed = as.data.frame(t(sample_data_table))
+# sample_data_table_transposed = as.data.frame(t(sample_data_table))
 
-# We now merge the compound names with the sample_data_table_transposed
+# # We now merge the compound names with the sample_data_table_transposed
 
-merged = merge(sample_data_table_transposed, compound_names, by = "row.names", all = TRUE)
+# merged = merge(sample_data_table_transposed, compound_names, by = "row.names", all = TRUE)
 
-as.data.frame(merged)
+# as.data.frame(merged)
 
-# We now transpose the merged dataframe defining the rownames column as the first row
+# # We now transpose the merged dataframe defining the rownames column as the first row
 
 
-sample_compounds = as.data.frame(t(merged))
+# sample_compounds = as.data.frame(t(merged))
 
-rownames(sample_compounds)
+# rownames(sample_compounds)
 
-# Row "chebiasciiname_sirius" is now the first row. We now rename it to "compound_name"
+# # Row "chebiasciiname_sirius" is now the first row. We now rename it to "compound_name"
 
 
 
