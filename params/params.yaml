@@ -12,14 +12,13 @@ ms_files_extension: ".mzML"
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 5d07a5f6db3c4d24b6c55247563f0acd.graphml
-
+  gnps_graphml: e3a445eacb324d26838dda304b6b47e8.graphml
 
 
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : FALSE
+  filter_sample_metadata_one : TRUE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
@@ -29,7 +28,7 @@ actions:
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
-  set_colors_manually : FALSE
+  set_colors_manually : TRUE
   run_with_gap_filled: FALSE
   short_path : TRUE
 
@@ -44,12 +43,13 @@ filter_sample_type :
   factor_name : 'sample_type'
   levels : 
     - 'sample'
-    - 'BK'
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : ''
+  factor_name : 'attribute_timepoint'
   levels :
+    - 'D0'
+    - 'D14'
 
 
 filter_sample_metadata_two :
@@ -80,31 +80,21 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_timepoint" # This variable will be used throughout the whole script
+  sample_metadata_header: "attribute_timepoint" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "ATTRIBUTE_timepoint"
+  target_path_name: "attribute_timepoint"
 
 
 
 colors:
   all:
    key:
-      - 'Argon'
-      - 'Argon_HN_NifH'
-      - 'Argon_NifH'
-      - 'C'
-      - 'HN'
-      - 'NifH'
-      - 'WT'
+      - 'D0'
+      - 'D14'
 
    value:
-      - "darkslateblue" # 'Argon'
-      - "#726769" # 'Argon_HN_NifH'
-      - "#806666" # 'Argon_NifH'
-      - "dimgray" # 'C'
-      - "cadetblue" # 'HN'
-      - "goldenrod" # 'NifH'
-      - "darkolivegreen" # 'WT'
+      - "darkslateblue" # 'D0'
+      - "goldenrod" # 'D14'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)

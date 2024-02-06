@@ -922,8 +922,16 @@ M = model_train(M,DE_filtered)
 M = model_predict(M,DE_filtered)
 DE = M$scaled
 
-##### we range  all feature to o to 1
+# We use the filter_na_count function to filter out features with a number of NAs greater than the threshold
 
+M = filter_na_count(threshold=1,factor_name='sample_type')
+M = model_apply(M,DE)
+
+DE = M$filtered
+
+##### we range all feature from 0 to 1
+
+# @Manu !!! Why do we have this ?!
 DE$data <- apply(DE$data,2,modEvA::range01)
 
 
@@ -1714,7 +1722,6 @@ for (i in params$multi_series$points) {
   # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
   #n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
 
-
   colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
 
 
@@ -1762,7 +1769,6 @@ for (i in params$multi_series$points) {
 DE_foldchange_pvalues = Reduce(function(x, y) merge(x, y, by = "row_id"), l)
 
 } else {
-
 
 # The formula is defined externally
 formula = as.formula(paste0('y', '~', params$target$sample_metadata_header, '+' ,
