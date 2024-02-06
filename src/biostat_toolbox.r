@@ -98,7 +98,7 @@ usePackage("wesanderson")
 usePackage("yaml")
 usePackage("WikidataQueryServiceR")
 
-struct(1.10)
+# struct(1.10)
 
 #devtools::install_github("jcheng5/d3scatter")
 
@@ -610,19 +610,22 @@ distinct_taxa <- SM %>%
   unnest(source_taxon) %>%  # Expand multiple taxa into separate rows
   distinct(source_taxon)
 
+
 taxon_names = distinct_taxa$source_taxon
+
+
 
 # Function to query Wikidata for QIDs based on taxon names
 get_taxon_qids <- function(taxon_names) {
   qids <- character(length(taxon_names))
-  
+  # i= 1
   for (i in seq_along(taxon_names)) {
     taxon_name <- taxon_names[i]
     query <- paste0('SELECT ?taxon WHERE { ?taxon wdt:P225 "', taxon_name, '". }')
     result <- WikidataQueryServiceR::query_wikidata(query)
     
-    if (!is.null(result$taxon)) {
-      qid_full <- result$taxon
+    if (!is.null(result$taxon) && length(result$taxon) > 0) {
+      qid_full <- result$taxon[1]
       qid_plain <- sub("http://www.wikidata.org/entity/", "", qid_full)
       qids[i] <- qid_plain
     } else {
@@ -632,6 +635,7 @@ get_taxon_qids <- function(taxon_names) {
   
   return(qids)
 }
+
 
 # Get QIDs for distinct taxon names
 distinct_qids <- get_taxon_qids(distinct_taxa$source_taxon)

@@ -1,18 +1,18 @@
-mapp_project : mapp_project_00017
-mapp_batch : mapp_batch_00044
-met_annot_enhancer_folder : mapp_batch_00044
-gnps_job_id : d53d09cdd2c04fd2961724cb136cfe61
+mapp_project : mapp_project_00038
+mapp_batch : mapp_batch_00082
+met_annot_enhancer_folder : mapp_batch_00082
+gnps_job_id : 11807d43c10848df883747a102817222
 
 dataset_experiment : 
-  name: "mapp_batch_00044 LCMS metabolomics dataset"
-  description: "Simon Blanchoud tunicate"
+  name: "mapp_batch_00082 LCMS metabolomics dataset"
+  description: "Rat plasma - Losartan Captopril"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: e1369f2f08f041218f24d0cf4b085f7c.graphml
+  gnps_graphml: 5d07a5f6db3c4d24b6c55247563f0acd.graphml
 
 
 
@@ -24,7 +24,7 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : TRUE
+  filter_variable_metadata_num : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -43,30 +43,24 @@ filter_sample_type :
   mode : 'include'
   factor_name : 'sample_type'
   levels : 
-    - 'sample' 
+    - 'sample'
+    - 'BK'
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'condition'
-  levels : 
-      # - 'C'
-      - 'HN'
-      # - 'NifH'
-      - 'Argon'
-      # - 'WT'
-      # - 'Argon_NifH'
-      # - 'Argon_HN_NifH'
+  factor_name : ''
+  levels :
 
 
 filter_sample_metadata_two :
   mode : 'exclude'
-  factor_name : 'genotype'
-  levels : 'Co'
+  factor_name : ''
+  levels : ''
 
 filter_variable_metadata_one :
   mode : 'include'
   factor_name : 'npc_pathway_canopus'
-  levels : 'Carbohydrates' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+  levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
 
 filter_variable_metadata_two :
   mode : 'include'
@@ -86,9 +80,9 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script
+  sample_metadata_header: "ATTRIBUTE_timepoint" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "source_taxon"
+  target_path_name: "ATTRIBUTE_timepoint"
 
 
 
