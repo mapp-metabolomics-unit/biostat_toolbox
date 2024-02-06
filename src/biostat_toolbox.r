@@ -79,6 +79,7 @@ usePackage("randomcoloR")
 usePackage("randomForest")
 usePackage("rcdk")
 usePackage("RColorBrewer")
+usePackage("RCy3")
 usePackage("readr")
 usePackage("reshape2")
 usePackage("reticulate")
@@ -95,12 +96,15 @@ usePackage("vegan")
 usePackage("viridis")
 usePackage("webchem")
 usePackage("wesanderson")
-usePackage("yaml")
 usePackage("WikidataQueryServiceR")
+usePackage("yaml")
 
 # struct(1.10)
 
 #devtools::install_github("jcheng5/d3scatter")
+
+# install.packages("BiocManager")
+# BiocManager::install("RCy3")
 
 # We use the MAPPstructToolbox package 
 # Uncomment the lines below to download the MAPPstructToolbox package from github
