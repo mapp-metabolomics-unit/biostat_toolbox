@@ -22,17 +22,17 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 
 # We define the following helper function in order to load or install the packages according to the condition
 
-usePackage = function(p) {
+usePackage <- function(p) {
   if (!is.element(p, installed.packages()[, 1])) {
     install.packages(p, dep = TRUE)
   }
   require(p, character.only = TRUE)
 }
- 
+
 # This one below is to the the default CRAN repo
 
-r = getOption("repos")
-r["CRAN"] = "http://cran.us.r-project.org"
+r <- getOption("repos")
+r["CRAN"] <- "http://cran.us.r-project.org"
 options(repos = r)
 rm(r)
 
@@ -79,7 +79,6 @@ usePackage("randomcoloR")
 usePackage("randomForest")
 usePackage("rcdk")
 usePackage("RColorBrewer")
-usePackage("RCy3")
 usePackage("readr")
 usePackage("reshape2")
 usePackage("reticulate")
@@ -101,16 +100,18 @@ usePackage("yaml")
 
 # struct(1.10)
 
-#devtools::install_github("jcheng5/d3scatter")
+# devtools::install_github("jcheng5/d3scatter")
 
 # install.packages("BiocManager")
 # BiocManager::install("RCy3")
+# remotes::install_gitlab("artemklevtsov/uchardet@devel")
 
-# We use the MAPPstructToolbox package 
+
+# We use the MAPPstructToolbox package
 # Uncomment the lines below to download the MAPPstructToolbox package from github
 
-#library(devtools)
-#install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
+# library(devtools)
+# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
 library(MAPPstructToolbox)
 
 
@@ -127,32 +128,38 @@ script_path <- file.path(getwd(), current_script)
 
 print(script_path)
 
-if(!exists("params"))   {my_path_params <- script_path} ### conserve the path after multiple run
-if(exists("params"))   {setwd(my_path_params)} ### conserve the path after multiple run
+if (!exists("params")) {
+  my_path_params <- script_path
+} ### conserve the path after multiple run
+if (exists("params")) {
+  setwd(my_path_params)
+} ### conserve the path after multiple run
 
 # We call the external params
-path_to_params = "./params/params.yaml"
-path_to_params_user = "./params/params_user.yaml"
+path_to_params <- "./params/params.yaml"
+path_to_params_user <- "./params/params_user.yaml"
 
-params = yaml.load_file(path_to_params)
-params_user = yaml.load_file(path_to_params_user)
+params <- yaml.load_file(path_to_params)
+params_user <- yaml.load_file(path_to_params_user)
 
 # Here we load the user params if they exist
 
-params$paths$docs = params_user$paths$docs
-params$paths$output = params_user$paths$output
-params$operating_system$system = params_user$operating_system$system
-params$operating_system$pandoc = params_user$operating_system$pandoc
+params$paths$docs <- params_user$paths$docs
+params$paths$output <- params_user$paths$output
+params$operating_system$system <- params_user$operating_system$system
+params$operating_system$pandoc <- params_user$operating_system$pandoc
 
 # We set the working directory
 
-working_directory = file.path(params$paths$docs, params$mapp_project, params$mapp_batch)
+working_directory <- file.path(params$paths$docs, params$mapp_project, params$mapp_batch)
 
-# We set the output directory 
+# We set the output directory
 
 if (params$actions$scale_data == "TRUE") {
-scaling_status = "scaled"
-} else { scaling_status = "raw" }
+  scaling_status <- "scaled"
+} else {
+  scaling_status <- "raw"
+}
 
 
 # if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
@@ -167,31 +174,43 @@ scaling_status = "scaled"
 # filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
 # params$filter_sample_metadata_one$factor_name,
 # paste(params$filter_sample_metadata_one$levels, collapse = "_"),
-# sep = "_") 
+# sep = "_")
 # } else { filter_sample_metadata_status = "" }
 
 
-if (params$actions$filter_sample_type == "TRUE" ) {
-filter_sample_type_status = paste(params$filter_sample_type$mode,
-params$filter_sample_type$factor_name,
-paste(params$filter_sample_type$levels, collapse = "_"), sep = "_")
-} else { filter_sample_type_status = "" }
+if (params$actions$filter_sample_type == "TRUE") {
+  filter_sample_type_status <- paste(params$filter_sample_type$mode,
+    params$filter_sample_type$factor_name,
+    paste(params$filter_sample_type$levels, collapse = "_"),
+    sep = "_"
+  )
+} else {
+  filter_sample_type_status <- ""
+}
 
-if (params$actions$filter_sample_metadata_one == "TRUE" ) {
-filter_sample_metadata_one_status = paste(params$filter_sample_metadata_one$mode,
-params$filter_sample_metadata_one$factor_name,
-paste(params$filter_sample_metadata_one$levels, collapse = "_"), sep = "_")
-} else { filter_sample_metadata_one_status = "" }
+if (params$actions$filter_sample_metadata_one == "TRUE") {
+  filter_sample_metadata_one_status <- paste(params$filter_sample_metadata_one$mode,
+    params$filter_sample_metadata_one$factor_name,
+    paste(params$filter_sample_metadata_one$levels, collapse = "_"),
+    sep = "_"
+  )
+} else {
+  filter_sample_metadata_one_status <- ""
+}
 
-if (params$actions$filter_sample_metadata_two == "TRUE" ) {
-filter_sample_metadata_two_status = paste(params$filter_sample_metadata_two$mode,
-params$filter_sample_metadata_two$factor_name,
-paste(params$filter_sample_metadata_two$levels, collapse = "_"), sep = "_")
-} else { filter_sample_metadata_two_status = "" }
+if (params$actions$filter_sample_metadata_two == "TRUE") {
+  filter_sample_metadata_two_status <- paste(params$filter_sample_metadata_two$mode,
+    params$filter_sample_metadata_two$factor_name,
+    paste(params$filter_sample_metadata_two$levels, collapse = "_"),
+    sep = "_"
+  )
+} else {
+  filter_sample_metadata_two_status <- ""
+}
 
 
 
-filter_sample_metadata_status = paste(filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, sep = "_")
+filter_sample_metadata_status <- paste(filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, sep = "_")
 
 # We make sure that no multiple _ exists in the filter_variable_metadata_status string
 filter_sample_metadata_status <- gsub("_{2,}", "_", filter_sample_metadata_status)
@@ -201,36 +220,52 @@ filter_sample_metadata_status <- gsub("^_|_$", "", filter_sample_metadata_status
 # Finally, if filter_sample_metadata_status is '_' we set it to an empty string.
 
 if (filter_sample_metadata_status == "_") {
-filter_sample_metadata_status = ""
+  filter_sample_metadata_status <- ""
 }
 
 
 
-if (params$actions$filter_variable_metadata_one == "TRUE" ) { 
-filter_variable_metadata_one_status = paste(params$filter_variable_metadata_one$mode,
-params$filter_variable_metadata_one$factor_name,
-paste(params$filter_variable_metadata_one$levels, collapse = "_"), sep = "_")
-} else { filter_variable_metadata_one_status = "" }
+if (params$actions$filter_variable_metadata_one == "TRUE") {
+  filter_variable_metadata_one_status <- paste(params$filter_variable_metadata_one$mode,
+    params$filter_variable_metadata_one$factor_name,
+    paste(params$filter_variable_metadata_one$levels, collapse = "_"),
+    sep = "_"
+  )
+} else {
+  filter_variable_metadata_one_status <- ""
+}
 
-if (params$actions$filter_variable_metadata_two == "TRUE" ) {
-filter_variable_metadata_two_status = paste(params$filter_variable_metadata_two$mode,
-params$filter_variable_metadata_two$factor_name,
-paste(params$filter_variable_metadata_two$levels, collapse = "_"), sep = "_")
-} else { filter_variable_metadata_two_status = "" }
+if (params$actions$filter_variable_metadata_two == "TRUE") {
+  filter_variable_metadata_two_status <- paste(params$filter_variable_metadata_two$mode,
+    params$filter_variable_metadata_two$factor_name,
+    paste(params$filter_variable_metadata_two$levels, collapse = "_"),
+    sep = "_"
+  )
+} else {
+  filter_variable_metadata_two_status <- ""
+}
 
-if (params$actions$filter_variable_metadata_annotated == "TRUE" ) {
-filter_variable_metadata_annotated_status = paste(params$filter_variable_metadata_annotated$mode,
-paste(params$filter_variable_metadata_annotated$factor_name, sep = "_"),
-params$filter_variable_metadata_annotated$levels, sep = "_")
-} else { filter_variable_metadata_annotated_status = "" }
+if (params$actions$filter_variable_metadata_annotated == "TRUE") {
+  filter_variable_metadata_annotated_status <- paste(params$filter_variable_metadata_annotated$mode,
+    paste(params$filter_variable_metadata_annotated$factor_name, sep = "_"),
+    params$filter_variable_metadata_annotated$levels,
+    sep = "_"
+  )
+} else {
+  filter_variable_metadata_annotated_status <- ""
+}
 
-if (params$actions$filter_variable_metadata_num == "TRUE" ) {
-filter_variable_metadata_num_status = paste(params$filter_variable_metadata_num$mode,
-paste(params$filter_variable_metadata_num$level, sep = "_"),
-params$filter_variable_metadata_num$factor_name, sep = "_")
-} else { filter_variable_metadata_num_status = "" }
+if (params$actions$filter_variable_metadata_num == "TRUE") {
+  filter_variable_metadata_num_status <- paste(params$filter_variable_metadata_num$mode,
+    paste(params$filter_variable_metadata_num$level, sep = "_"),
+    params$filter_variable_metadata_num$factor_name,
+    sep = "_"
+  )
+} else {
+  filter_variable_metadata_num_status <- ""
+}
 
-filter_variable_metadata_status = paste(filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, sep = "_")
+filter_variable_metadata_status <- paste(filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, sep = "_")
 
 # We make sure that no multiple _ exists in the filter_variable_metadata_status string
 filter_variable_metadata_status <- gsub("_{2,}", "_", filter_variable_metadata_status)
@@ -240,7 +275,7 @@ filter_variable_metadata_status <- gsub("^_|_$", "", filter_variable_metadata_st
 # Finally, if filter_variable_metadata_status is '_' we set it to an empty string.
 
 if (filter_variable_metadata_status == "_") {
-filter_variable_metadata_status = ""
+  filter_variable_metadata_status <- ""
 }
 
 #################################################################################################
@@ -252,19 +287,19 @@ filter_variable_metadata_status = ""
 # The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
 
 
-#file_prefix = paste(params$mapp_batch, 
-#                    params$target$sample_metadata_header, 
-#                    filter_variable_metadata_status, 
-#                    filter_sample_metadata_status, 
-#                    params$polarity, 
-#                    scaling_status, 
+# file_prefix = paste(params$mapp_batch,
+#                    params$target$sample_metadata_header,
+#                    filter_variable_metadata_status,
+#                    filter_sample_metadata_status,
+#                    params$polarity,
+#                    scaling_status,
 #                    sep = "_")
 
-# file_prefix = paste(params$mapp_batch, 
+# file_prefix = paste(params$mapp_batch,
 #                     params$target$sample_metadata_header,
 #                     sep = "_")
 
-file_prefix = paste("")
+file_prefix <- paste("")
 
 
 filename_box_plots <- paste(file_prefix, "Boxplots.pdf", sep = "")
@@ -305,12 +340,12 @@ filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", s
 # If params$actions$run_with_gap_filled is set to TRUE, we load the gap filled peak table
 
 if (params$actions$run_with_gap_filled == "TRUE") {
-  feature_table = read_delim(file.path(working_directory, "results", "mzmine", paste0(params$mapp_batch, "_gf_quant.csv")),
+  feature_table <- read_delim(file.path(working_directory, "results", "mzmine", paste0(params$mapp_batch, "_gf_quant.csv")),
     delim = ",", escape_double = FALSE,
     trim_ws = TRUE
   )
 } else {
-  feature_table = read_delim(file.path(working_directory, "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
+  feature_table <- read_delim(file.path(working_directory, "results", "mzmine", paste0(params$mapp_batch, "_quant.csv")),
     delim = ",", escape_double = FALSE,
     trim_ws = TRUE
   )
@@ -318,14 +353,15 @@ if (params$actions$run_with_gap_filled == "TRUE") {
 
 # The column names are modified using the rename function from the dplyr package
 
-feature_table = feature_table %>%
-  rename("feature_id" = "row ID",
+feature_table <- feature_table %>%
+  rename(
+    "feature_id" = "row ID",
     "feature_mz" = "row m/z",
     "feature_rt" = "row retention time"
   )
 
 # The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full`
-feature_table$"feature_id_full" = paste(feature_table$feature_id,
+feature_table$"feature_id_full" <- paste(feature_table$feature_id,
   round(feature_table$feature_mz, digits = 2),
   round(feature_table$feature_rt, digits = 1),
   sep = "_"
@@ -336,32 +372,32 @@ feature_table$"feature_id_full" = paste(feature_table$feature_id,
 # We then remove the ` Peak area` pattern from the column names using the rename_with function from the dplyr package
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
-feature_table_intensities = feature_table %>%
+feature_table_intensities <- feature_table %>%
   select(feature_id, contains(" Peak area")) %>%
-  rename_with(~gsub(" Peak area", "", .x)) %>%
+  rename_with(~ gsub(" Peak area", "", .x)) %>%
   column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
 
 # We keep the feature_table_intensities dataframe in a separate variable
 
-X = feature_table_intensities
+X <- feature_table_intensities
 
 
 # We order the X by rownames and by column names
 
-X = X[order(row.names(X)), ]
-X = X[, order(colnames(X))]
+X <- X[order(row.names(X)), ]
+X <- X[, order(colnames(X))]
 
-X = as.data.frame(X)
+X <- as.data.frame(X)
 
 # Min value imputation (to be checked !!!)
 
-half_min = min(X[X > 0], na.rm = TRUE) / 2
-min = min(X[X > 0], na.rm = TRUE)
+half_min <- min(X[X > 0], na.rm = TRUE) / 2
+min <- min(X[X > 0], na.rm = TRUE)
 
 
-X[X == 0] = min
+X[X == 0] <- min
 
 # min(X)
 
@@ -371,7 +407,7 @@ X[X == 0] = min
 
 # We keep the feature metadata in a separate dataframe
 
-feature_metadata = feature_table %>%
+feature_metadata <- feature_table %>%
   select(feature_id_full, feature_id, feature_mz, feature_rt)
 
 ############################### load annotation tables #####################################
@@ -422,7 +458,7 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
 
 # The CANOPUS data is loaded
 
-data_canopus = read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
+data_canopus <- read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
@@ -430,50 +466,50 @@ data_canopus = read_delim(file.path(working_directory, "results", "sirius", para
 
 # The column names are modified to include the source of the data
 
-colnames(data_canopus) = paste(colnames(data_canopus), "canopus", sep = "_")
+colnames(data_canopus) <- paste(colnames(data_canopus), "canopus", sep = "_")
 
 # We now build a unique feature_id for each feature in the Sirius data
 
-data_canopus$feature_id = sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$id_canopus)
-data_canopus$feature_id = as.numeric(data_canopus$feature_id)
+data_canopus$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$id_canopus)
+data_canopus$feature_id <- as.numeric(data_canopus$feature_id)
 
 
 write.table(data_canopus, file = file.path(working_directory, "results", "sirius", paste("featured", params$filenames$canopus_annotations, sep = "_")), sep = "\t", row.names = FALSE)
 
 # The MetAnnot data is loaded
 
-data_metannot = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
+data_metannot <- read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
 
 # The column names are modified to include the source of the data
 
-colnames(data_metannot) = paste(colnames(data_metannot), "metannot", sep = "_")
+colnames(data_metannot) <- paste(colnames(data_metannot), "metannot", sep = "_")
 
 
 # We now build a unique feature_id for each feature in the Metannot data
 
-data_metannot$feature_id = data_metannot$feature_id_metannot
-data_metannot$feature_id = as.numeric(data_metannot$feature_id)
+data_metannot$feature_id <- data_metannot$feature_id_metannot
+data_metannot$feature_id <- as.numeric(data_metannot$feature_id)
 
 
 
 # The GNPS data is loaded. Note that we use the `Sys.glob` function to get the path to the file and expand the wildcard
 
-data_gnps = read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
 
 # The column names are modified to include the source of the data
 
-colnames(data_gnps) = paste(colnames(data_gnps), "gnps", sep = "_")
+colnames(data_gnps) <- paste(colnames(data_gnps), "gnps", sep = "_")
 
 # We now build a unique feature_id for each feature in the GNPS data
 
-data_gnps$feature_id = data_gnps$`cluster index_gnps`
-data_gnps$feature_id = as.numeric(data_gnps$feature_id)
+data_gnps$feature_id <- data_gnps$`cluster index_gnps`
+data_gnps$feature_id <- as.numeric(data_gnps$feature_id)
 
 
 # First we check if a chebied version exists, if not we create it
@@ -520,28 +556,28 @@ data_gnps$feature_id = as.numeric(data_gnps$feature_id)
 
 # The four previous dataframe are merged into one using the common `feature_id` column as key and the tidyverse `reduce` function
 
-list_df = list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
-VM = list_df %>% reduce(full_join, by='feature_id')
+list_df <- list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
+VM <- list_df %>% reduce(full_join, by = "feature_id")
 
 # We take care to convert all N/A values to NA
 
-VM[VM == "N/A"] = NA
+VM[VM == "N/A"] <- NA
 
 # We add a sanitizing function. first we lowercase all colnames
 
-colnames(VM) = tolower(colnames(VM))
+colnames(VM) <- tolower(colnames(VM))
 
 # We then take care of the # chracter and change it to _
 
-colnames(VM) = gsub("#", "_", colnames(VM))
+colnames(VM) <- gsub("#", "_", colnames(VM))
 
 
-VM = VM %>%
-clean_names(case = "snake")
+VM <- VM %>%
+  clean_names(case = "snake")
 
 
 # The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full_annotated`
-VM$"feature_id_full_annotated" = paste0(
+VM$"feature_id_full_annotated" <- paste0(
   VM$chebiasciiname_sirius,
   "_[",
   VM$feature_id_full,
@@ -552,20 +588,20 @@ VM$"feature_id_full_annotated" = paste0(
 
 # Make sure that all column containing score in their name are as.numeric. But we keep all the dataframes columns (we might want to find a more generic way to do this)
 
-VM = VM %>% 
-mutate_at(vars(contains("score")), as.numeric)
+VM <- VM %>%
+  mutate_at(vars(contains("score")), as.numeric)
 
 
 # We now convert the VM tibble into a dataframe and set the `feature_id` column as the rownames
 
-VM = as.data.frame(VM)
-row.names(VM) = VM$feature_id
+VM <- as.data.frame(VM)
+row.names(VM) <- VM$feature_id
 
 
 # We order the VM by rownames and by column names
 
-VM = VM[order(row.names(VM)), ]
-VM = VM[, order(colnames(VM))]
+VM <- VM[order(row.names(VM)), ]
+VM <- VM[, order(colnames(VM))]
 
 # Uncomment for testing purposes
 # VM = head(VM, 100)
@@ -580,7 +616,7 @@ VM = VM[, order(colnames(VM))]
 # We here load the sample metadata
 
 
-sample_metadata = read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch,  "metadata.txt", sep = "_")),
+sample_metadata <- read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch, "metadata.txt", sep = "_")),
   delim = "\t",
   escape_double = FALSE,
   trim_ws = TRUE
@@ -595,13 +631,13 @@ if (!all(required_columns %in% colnames(sample_metadata))) {
 }
 
 
-SM = data.frame(sample_metadata)
+SM <- data.frame(sample_metadata)
 
 
 
 # Sanitize SM colnames
-SM = SM %>%
-clean_names(case = "snake")
+SM <- SM %>%
+  clean_names(case = "snake")
 
 
 
@@ -610,12 +646,12 @@ clean_names(case = "snake")
 # Get distinct taxon names (including multiple taxa in a single entry)
 distinct_taxa <- SM %>%
   filter(sample_type == "sample") %>%
-  mutate(source_taxon = strsplit(source_taxon, ", ")) %>%  # Split multiple taxa
-  unnest(source_taxon) %>%  # Expand multiple taxa into separate rows
+  mutate(source_taxon = strsplit(source_taxon, ", ")) %>% # Split multiple taxa
+  unnest(source_taxon) %>% # Expand multiple taxa into separate rows
   distinct(source_taxon)
 
 
-taxon_names = distinct_taxa$source_taxon
+taxon_names <- distinct_taxa$source_taxon
 
 
 
@@ -627,7 +663,7 @@ get_taxon_qids <- function(taxon_names) {
     taxon_name <- taxon_names[i]
     query <- paste0('SELECT ?taxon WHERE { ?taxon wdt:P225 "', taxon_name, '". }')
     result <- WikidataQueryServiceR::query_wikidata(query)
-    
+
     if (!is.null(result$taxon) && length(result$taxon) > 0) {
       qid_full <- result$taxon[1]
       qid_plain <- sub("http://www.wikidata.org/entity/", "", qid_full)
@@ -636,7 +672,7 @@ get_taxon_qids <- function(taxon_names) {
       qids[i] <- NA
     }
   }
-  
+
   return(qids)
 }
 
@@ -663,7 +699,6 @@ SM <- SM %>%
 # First we work vertically (within a given SM column)
 
 for (column in names(params$to_combine_vertically)) {
-
   col_info <- params$to_combine_vertically[[column]]
   col_name <- col_info$factor_name
 
@@ -672,7 +707,6 @@ for (column in names(params$to_combine_vertically)) {
 
   # Iterate over each group in params$tocomb
   for (group in names(col_info$groups)) {
-
     group_info <- col_info$groups[[group]]
     levels <- group_info$levels
 
@@ -680,57 +714,54 @@ for (column in names(params$to_combine_vertically)) {
     levels <- sort(levels, decreasing = FALSE)
     # We create a new label for the current group by concatenating the levels value with a "_"
     new_label <- paste(levels, collapse = "_")
-    
+
     # Combine levels for the current group
     SM[paste(col_info$factor_name, "simplified", sep = "_")] <- combineLevels(SM[[paste(col_info$factor_name, "simplified", sep = "_")]], levs = levels, newLabel = c(new_label))
-}
+  }
 }
 
 # The function below is used to create metadata combinations
 # Then we work horizontally (across SM columns)
 
 if (!is.null(params$to_combine_horizontally$factor_name)) {
-
-  df = SM %>% 
+  df <- SM %>%
     filter(sample_type == "sample")
 
   # This line allows us to make sure that the columns will be combined in alphabetical order
-  cols = sort(c(params$to_combine_horizontally$factor_name), decreasing = FALSE)
+  cols <- sort(c(params$to_combine_horizontally$factor_name), decreasing = FALSE)
 
   for (n in 1:length(cols)) {
-    combos = combn(cols, n, simplify = FALSE)
+    combos <- combn(cols, n, simplify = FALSE)
     for (combo in combos) {
-      new_col_name = paste(combo, collapse = "_")
-      df[new_col_name] = apply(df[combo], 1, paste, collapse = "_")
+      new_col_name <- paste(combo, collapse = "_")
+      df[new_col_name] <- apply(df[combo], 1, paste, collapse = "_")
     }
   }
 
   # We merge back the resulting df to the original SM dataframe and fill the NA values with "ND"
-  SM = merge(x = SM, y = df,  all.x = TRUE)
-
-
+  SM <- merge(x = SM, y = df, all.x = TRUE)
 }
 
-SM[is.na(SM)] = "ND"
+SM[is.na(SM)] <- "ND"
 
-SM = SM %>%
+SM <- SM %>%
   remove_rownames() %>%
   column_to_rownames(var = "filename")
 
 
 # This allows us to both have the filename as rownames and as a unique column
-SM$filename = rownames(SM)
-#cuirmoustache
+SM$filename <- rownames(SM)
+# cuirmoustache
 
 # We order the SM by rownames and by column names.
 
-SM = SM[order(row.names(SM)), ]
-SM = SM[, order(colnames(SM))]
+SM <- SM[order(row.names(SM)), ]
+SM <- SM[, order(colnames(SM))]
 
 
 # glimpse(SM)
 # Optional ponderation step.
-#To clean
+# To clean
 
 # XSM = merge(x = X, y = SMDF, by = "row.names", all = TRUE)
 
@@ -768,7 +799,7 @@ if (any(row.names(X) != row.names(SM))) {
 
 # The DatasetExperiment object is created using the X_pond, SMDF and VM objects.
 
-DE_original = DatasetExperiment(
+DE_original <- DatasetExperiment(
   data = X,
   sample_meta = SM,
   variable_meta = VM,
@@ -781,327 +812,316 @@ DE_original = DatasetExperiment(
 ## Filtering steps
 
 if (params$actions$filter_features == "TRUE") {
+  filter_by_name_model <- filter_by_name(mode = "exclude", dimension = "variable", names = params$feature_to_filter)
 
-filter_by_name_model = filter_by_name(mode='exclude',dimension='variable',names=params$feature_to_filter)
-
-# apply model sequence
-filter_by_name_result = model_apply(filter_by_name_model,DE_original)
-DE_filtered_name = filter_by_name_result@filtered
-
+  # apply model sequence
+  filter_by_name_result <- model_apply(filter_by_name_model, DE_original)
+  DE_filtered_name <- filter_by_name_result@filtered
 } else {
-
-DE_filtered_name = DE_original
-
+  DE_filtered_name <- DE_original
 }
 
 
 ## Filtering steps
 
 if (params$actions$filter_sample_type == "TRUE") {
+  filter_smeta_model <- filter_smeta(
+    mode = params$filter_sample_type$mode,
+    factor_name = params$filter_sample_type$factor_name,
+    levels = params$filter_sample_type$levels
+  )
 
-filter_smeta_model <- filter_smeta(mode = params$filter_sample_type$mode,
-                          factor_name = params$filter_sample_type$factor_name,
-                          levels = params$filter_sample_type$levels)
+  # apply model sequence
+  filter_smeta_result <- model_apply(filter_smeta_model, DE_filtered_name)
 
-# apply model sequence
-filter_smeta_result = model_apply(filter_smeta_model, DE_filtered_name)
-
-DE_filtered = filter_smeta_result@filtered
-
+  DE_filtered <- filter_smeta_result@filtered
 } else {
-
-DE_filtered = DE_filtered_name
-
+  DE_filtered <- DE_filtered_name
 }
 
 if (params$actions$filter_sample_metadata_one == "TRUE") {
+  filter_smeta_model <- filter_smeta(
+    mode = params$filter_sample_metadata_one$mode,
+    factor_name = params$filter_sample_metadata_one$factor_name,
+    levels = params$filter_sample_metadata_one$levels
+  )
 
-filter_smeta_model <- filter_smeta(mode = params$filter_sample_metadata_one$mode,
-                          factor_name = params$filter_sample_metadata_one$factor_name,
-                          levels = params$filter_sample_metadata_one$levels)
+  # apply model sequence
+  filter_smeta_result <- model_apply(filter_smeta_model, DE_filtered)
 
-# apply model sequence
-filter_smeta_result = model_apply(filter_smeta_model, DE_filtered)
-
-DE_filtered = filter_smeta_result@filtered
-
+  DE_filtered <- filter_smeta_result@filtered
 }
 
 if (params$actions$filter_sample_metadata_two == "TRUE") {
+  filter_smeta_model <- filter_smeta(
+    mode = params$filter_sample_metadata_two$mode,
+    factor_name = params$filter_sample_metadata_two$factor_name,
+    levels = params$filter_sample_metadata_two$levels
+  )
 
-filter_smeta_model <- filter_smeta(mode = params$filter_sample_metadata_two$mode,
-                          factor_name = params$filter_sample_metadata_two$factor_name,
-                          levels = params$filter_sample_metadata_two$levels)
+  # apply model sequence
+  filter_smeta_result <- model_apply(filter_smeta_model, DE_filtered)
 
-# apply model sequence
-filter_smeta_result = model_apply(filter_smeta_model, DE_filtered)
-
-DE_filtered = filter_smeta_result@filtered
-
+  DE_filtered <- filter_smeta_result@filtered
 }
 
 
 
 if (params$actions$filter_variable_metadata_one == "TRUE") {
+  filter_vmeta_model <- filter_vmeta(
+    mode = params$filter_variable_metadata_one$mode,
+    factor_name = params$filter_variable_metadata_one$factor_name,
+    levels = params$filter_variable_metadata_one$levels
+  )
 
-filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_one$mode,
-                          factor_name = params$filter_variable_metadata_one$factor_name,
-                          levels = params$filter_variable_metadata_one$levels)
+  # apply model sequence
+  filter_vmeta_result <- model_apply(filter_vmeta_model, DE_filtered)
 
-# apply model sequence
-filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
-
-DE_filtered = filter_vmeta_result@filtered
-
+  DE_filtered <- filter_vmeta_result@filtered
 }
 
 if (params$actions$filter_variable_metadata_two == "TRUE") {
+  filter_vmeta_model <- filter_vmeta(
+    mode = params$filter_variable_metadata_two$mode,
+    factor_name = params$filter_variable_metadata_two$factor_name,
+    levels = params$filter_variable_metadata_two$levels
+  )
 
-filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_two$mode,
-                          factor_name = params$filter_variable_metadata_two$factor_name,
-                          levels = params$filter_variable_metadata_two$levels)
+  # apply model sequence
+  filter_vmeta_result <- model_apply(filter_vmeta_model, DE_filtered)
 
-# apply model sequence
-filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
-
-DE_filtered = filter_vmeta_result@filtered
-
+  DE_filtered <- filter_vmeta_result@filtered
 }
 
 
 
 if (params$actions$filter_variable_metadata_annotated == "TRUE") {
+  # Convert the "levels" value to NA if it is "NA" as a character string
+  if (params$filter_variable_metadata_annotated$levels == "NA") {
+    params$filter_variable_metadata_annotated$levels <- NA
+  }
 
-# Convert the "levels" value to NA if it is "NA" as a character string
-if (params$filter_variable_metadata_annotated$levels == "NA") {
-  params$filter_variable_metadata_annotated$levels <- NA
-}
+  filter_vmeta_model <- filter_vmeta(
+    mode = params$filter_variable_metadata_annotated$mode,
+    factor_name = params$filter_variable_metadata_annotated$factor_name,
+    levels = as.character(params$filter_variable_metadata_annotated$levels)
+  )
 
-filter_vmeta_model <- filter_vmeta(mode = params$filter_variable_metadata_annotated$mode,
-                          factor_name = params$filter_variable_metadata_annotated$factor_name,
-                          levels = as.character(params$filter_variable_metadata_annotated$levels)
-                          )
+  # apply model sequence
+  filter_vmeta_result <- model_apply(filter_vmeta_model, DE_filtered)
 
-# apply model sequence
-filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
-
-DE_filtered = filter_vmeta_result@filtered
-
+  DE_filtered <- filter_vmeta_result@filtered
 }
 
 
 if (params$actions$filter_variable_metadata_num == "TRUE") {
+  filter_vmeta_model <- filter_vmeta_num(
+    mode = params$filter_variable_metadata_num$mode,
+    factor_name = params$filter_variable_metadata_num$factor_name,
+    level = params$filter_variable_metadata_num$level
+  )
 
+  # apply model sequence
+  filter_vmeta_result <- model_apply(filter_vmeta_model, DE_filtered)
 
-filter_vmeta_model <- filter_vmeta_num(mode = params$filter_variable_metadata_num$mode,
-                          factor_name = params$filter_variable_metadata_num$factor_name,
-                          level = params$filter_variable_metadata_num$level
-                          )
-
-# apply model sequence
-filter_vmeta_result = model_apply(filter_vmeta_model, DE_filtered)
-
-DE_filtered = filter_vmeta_result@filtered
-
+  DE_filtered <- filter_vmeta_result@filtered
 }
 
 
 if (params$actions$scale_data == "FALSE") {
+  DE <- DE_filtered
 
-DE = DE_filtered
+  # We display the properties of the DatasetExperiment object to the user.
+  message("DatasetExperiment object properties: ")
 
-# We display the properties of the DatasetExperiment object to the user.
-message("DatasetExperiment object properties: ")
+  sink(filename_DE_model)
 
-sink(filename_DE_model)
+  print(DE)
 
-print(DE)
+  sink()
+} else if (params$actions$scale_data == "TRUE") {
+  # Overall Pareto scaling (test)
 
-sink() } else if (params$actions$scale_data == "TRUE") {
+  M <- pareto_scale()
+  M <- model_train(M, DE_filtered)
+  M <- model_predict(M, DE_filtered)
+  DE <- M$scaled
 
-# Overall Pareto scaling (test)
+  # We use the filter_na_count function to filter out features with a number of NAs greater than the threshold
 
-M = pareto_scale()
-M = model_train(M,DE_filtered)
-M = model_predict(M,DE_filtered)
-DE = M$scaled
+  M <- filter_na_count(threshold = 1, factor_name = "sample_type")
+  M <- model_apply(M, DE)
 
-# We use the filter_na_count function to filter out features with a number of NAs greater than the threshold
+  DE <- M$filtered
 
-M = filter_na_count(threshold=1,factor_name='sample_type')
-M = model_apply(M,DE)
+  ##### we range all feature from 0 to 1
 
-DE = M$filtered
+  # @Manu !!! Why do we have this ?!
+  DE$data <- apply(DE$data, 2, modEvA::range01)
 
-##### we range all feature from 0 to 1
 
-# @Manu !!! Why do we have this ?!
-DE$data <- apply(DE$data,2,modEvA::range01)
+  # Min value imputation also after the scaling stage (to be checked !!!)
 
+  # half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
 
-# Min value imputation also after the scaling stage (to be checked !!!)
+  # min_sec = min(DE$data[DE$data > 0], na.rm = TRUE)
 
-# half_min_sec = min(DE$data[DE$data > 0], na.rm = TRUE) / 2
+  # DE$data[DE$data == 0] = min_sec
 
-# min_sec = min(DE$data[DE$data > 0], na.rm = TRUE)
+  ################################################################################################
+  ################################################################################################
+  ######################## structool box formatted data export
 
-# DE$data[DE$data == 0] = min_sec
+  message("Outputting X, VM and SM ...")
 
-################################################################################################
-################################################################################################
-######################## structool box formatted data export 
+  formatted_peak_table <- DE$data
 
-message("Outputting X, VM and SM ...")
+  formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
 
-formatted_peak_table <- DE$data
 
-formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
+  # col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","inchikey2d_sirius","InChI_sirius",
+  # "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "npc_pathway_canopus","NPC.pathway.Probability_canopus",
+  # "npc_superclass_canopus", "npc_class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
+  # "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
+  # "structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
+  # "short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
+  # "structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
+  # "organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
+  # "organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
+  # "matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
+  # "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
+  # "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
+  # "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
 
 
-# col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","inchikey2d_sirius","InChI_sirius",
-# "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "npc_pathway_canopus","NPC.pathway.Probability_canopus",
-# "npc_superclass_canopus", "npc_class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
-# "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
-# "structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
-# "short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
-# "structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
-# "organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
-# "organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
-# "matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
-# "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
-# "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
-# "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
+  col_filter <- c("feature_id_full", "feature_id", "feature_mz", "feature_rt", "molecularformula_sirius", "freq_structure_taxonomy_npclassifier_03class_metannot")
 
+  formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
 
-col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","freq_structure_taxonomy_npclassifier_03class_metannot")
+  formatted_sample_metadata <- DE$sample_meta
 
-formatted_variable_metadata_filtered = formatted_variable_metadata[col_filter]
+  formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
 
-formatted_sample_metadata = DE$sample_meta
 
-formatted_sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
+  # We work on an export for MetaboAnalyst Pathways analysis
 
+  # DE$sample_meta
 
-# We work on an export for MetaboAnalyst Pathways analysis
 
-# DE$sample_meta
+  # DE$data
 
+  # # First we merge the sample metadata and the data
 
-# DE$data
+  # sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
 
-# # First we merge the sample metadata and the data
+  # # We now drop the useless columns. We use the dplyr syntax
 
-# sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
+  # colnames_to_drop = c("Row.names","condition_detailed","condition_simplified","filename","id","internal_id","sample_type","source_taxon","source_taxon_qid")
 
-# # We now drop the useless columns. We use the dplyr syntax
+  # sample_data_table = sample_data_table %>%
+  #   select(-one_of(colnames_to_drop))  %>%
+  #   # reorganize the columns
+  #   select(sample_id, condition, everything())
 
-# colnames_to_drop = c("Row.names","condition_detailed","condition_simplified","filename","id","internal_id","sample_type","source_taxon","source_taxon_qid")
+  # # We now filter the variable metadata to keep only the columns and rows we need
 
-# sample_data_table = sample_data_table %>%
-#   select(-one_of(colnames_to_drop))  %>% 
-#   # reorganize the columns
-#   select(sample_id, condition, everything())
+  # colnames(DE$variable_meta)
 
-# # We now filter the variable metadata to keep only the columns and rows we need
+  # DE$variable_meta$chebiasciiname_sirius
 
-# colnames(DE$variable_meta)
+  # compound_names = DE$variable_meta  %>%
+  # select(chebiasciiname_sirius)  %>%
+  # # NA are dropped by default
+  # filter(!is.na(chebiasciiname_sirius))
 
-# DE$variable_meta$chebiasciiname_sirius
+  # # We now replace the column names in the sample_data_table with the compound names
+  # # For this we transpose the sample_data_table and then match
 
-# compound_names = DE$variable_meta  %>% 
-# select(chebiasciiname_sirius)  %>% 
-# # NA are dropped by default
-# filter(!is.na(chebiasciiname_sirius))
+  # sample_data_table_transposed = as.data.frame(t(sample_data_table))
 
-# # We now replace the column names in the sample_data_table with the compound names
-# # For this we transpose the sample_data_table and then match 
+  # # We now merge the compound names with the sample_data_table_transposed
 
-# sample_data_table_transposed = as.data.frame(t(sample_data_table))
+  # merged = merge(sample_data_table_transposed, compound_names, by = "row.names", all = TRUE)
 
-# # We now merge the compound names with the sample_data_table_transposed
+  # as.data.frame(merged)
 
-# merged = merge(sample_data_table_transposed, compound_names, by = "row.names", all = TRUE)
+  # # We now transpose the merged dataframe defining the rownames column as the first row
 
-# as.data.frame(merged)
 
-# # We now transpose the merged dataframe defining the rownames column as the first row
+  # sample_compounds = as.data.frame(t(merged))
 
+  # rownames(sample_compounds)
 
-# sample_compounds = as.data.frame(t(merged))
+  # # Row "chebiasciiname_sirius" is now the first row. We now rename it to "compound_name"
 
-# rownames(sample_compounds)
 
-# # Row "chebiasciiname_sirius" is now the first row. We now rename it to "compound_name"
 
+  ###################################################################################################
+  ######################### rename main folder - short version
+  # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
 
-###################################################################################################
-######################### rename main folder - short version
-# Here we check if the params$paths$out value exist and use it else we use the default output_directory
+  target_name <- paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
 
+  if (params$actions$short_path == TRUE) {
+    target_name <- params$target$target_path_name
+  }
 
-target_name <- paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
 
-if (params$actions$short_path == TRUE) {
-  target_name <- params$target$target_path_name
-}
+  # if (params$paths$output != "") {
+  #   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  # } else {
+  #   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  # }
 
 
-# if (params$paths$output != "") {
-#   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-# } else {
-#   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-# }
+  if (params$paths$output != "") {
+    output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
+  } else {
+    output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
+  }
 
 
-if (params$paths$output != "") {
-  output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status,filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-} else {
-  output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status,filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-}
+  # output_directory <- gsub("//","/",output_directory)
+  output_directory <- gsub("/{2,}", "/", output_directory)
 
+  # We make sure that the pathe is correct and convert any double, triple, our higher number of slashes to a single slash
 
-# output_directory <- gsub("//","/",output_directory)
-output_directory <- gsub("/{2,}", "/", output_directory)
 
-# We make sure that the pathe is correct and convert any double, triple, our higher number of slashes to a single slash
+  # dir.create(output_directory)
 
+  # output_directory <- tools::file_path_as_absolute(output_directory)
 
-# dir.create(output_directory)
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+    message("Directory created:", output_directory, "\n")
+  } else {
+    message("Directory already exists:", output_directory, "\n")
+  }
 
-# output_directory <- tools::file_path_as_absolute(output_directory)
+  #################################################################################
+  #################################################################################
+  ##### write raw data and param
 
-if (!dir.exists(output_directory)) {
-  dir.create(output_directory, recursive = TRUE)
-  message("Directory created:", output_directory, "\n")
-} else {
-  message("Directory already exists:", output_directory, "\n")
-}
+  ## We save the used params.yaml
 
-#################################################################################
-#################################################################################
-##### write raw data and param 
+  message("Writing params.yaml ...")
 
-## We save the used params.yaml
+  file.copy(path_to_params, file.path(output_directory, filename_params), overwrite = TRUE)
+  file.copy(path_to_params_user, file.path(output_directory, filename_params_user), overwrite = TRUE)
 
-message("Writing params.yaml ...")
+  # We move to the output directory
 
-file.copy(path_to_params, file.path(output_directory,filename_params), overwrite = TRUE)
-file.copy(path_to_params_user, file.path(output_directory,filename_params_user), overwrite = TRUE)
+  setwd(output_directory)
 
-# We move to the output directory
+  # We display the properties of the DatasetExperiment object to the user.
+  message("DatasetExperiment object properties: ")
 
-setwd(output_directory)
+  sink(filename_DE_model)
 
-# We display the properties of the DatasetExperiment object to the user.
-message("DatasetExperiment object properties: ")
+  print(DE)
 
-sink(filename_DE_model)
-
-print(DE)
-
-sink()
-
+  sink()
 } else {
   stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
@@ -1119,21 +1139,21 @@ write.table(formatted_sample_data_table, file = filename_formatted_sample_data_t
 
 # The Figures titles are conditionally defined according to the user's choices and option in the parameters file
 
-#title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
-#title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-#title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
-#title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-#title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ") 
-#title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-#title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-#title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-#title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-#title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-#title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+# title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+# title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+# title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+# title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+# title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+# title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
+# title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+# title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+# title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+# title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
+# title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
 
 # title_PCA = paste("PCA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
-title_PCA = paste(
+title_PCA <- paste(
   paste("PCA", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1145,7 +1165,7 @@ title_PCA = paste(
 
 # title_PLSDA = paste("PLSDA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
-title_PLSDA = paste(
+title_PLSDA <- paste(
   paste("PLSDA", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1154,11 +1174,11 @@ title_PLSDA = paste(
   sep = "\n"
 )
 
-title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_PLSDA_VIP <- paste("PLSDA selected Features of Importance", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
 # title_PCA3D = paste("PCA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
-title_PCA3D = paste(
+title_PCA3D <- paste(
   paste("PCA3D", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1169,7 +1189,7 @@ title_PCA3D = paste(
 
 # title_PCoA = paste("PCoA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
-title_PCoA = paste(
+title_PCoA <- paste(
   paste("PCoA", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1180,7 +1200,7 @@ title_PCoA = paste(
 
 # title_PCoA3D = paste("PCoA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
-title_PCoA3D = paste(
+title_PCoA3D <- paste(
   paste("PCoA3D", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1190,14 +1210,14 @@ title_PCoA3D = paste(
 )
 
 # title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_treemap = paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_random_forest = paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
-title_heatmap_rf = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
+title_treemap <- paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
+title_random_forest <- paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
+title_box_plots <- paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
+title_heatmap_rf <- paste("Heatmap of", "top", params$heatmap$topN, "Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
 # title_heatmap_pval = paste("Heatmap of significant feature for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
-title_heatmap_pval = paste(
+title_heatmap_pval <- paste(
   paste("Heatmap of significant feature for dataset", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1206,7 +1226,7 @@ title_heatmap_pval = paste(
   sep = "<br>"
 )
 
-title_volcano = paste(
+title_volcano <- paste(
   paste("Volcano plot of significant feature for dataset", "for dataset", params$mapp_batch),
   paste("Comparison across:", params$target$sample_metadata_header, target_name),
   paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
@@ -1226,10 +1246,10 @@ factor_name_meta <- unlist(unique(DE$sample_meta[params$target$sample_metadata_h
 
 # We establish a named vector for the whole dataset
 if (params$actions$set_colors_manually == "TRUE") {
-custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
+  custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
 } else {
-custom_colors = wes_palettes_vec[sample(c(1:length(wes_palettes_vec)),length(factor_name_meta))]
-names(custom_colors) <- factor_name_meta
+  custom_colors <- wes_palettes_vec[sample(c(1:length(wes_palettes_vec)), length(factor_name_meta))]
+  names(custom_colors) <- factor_name_meta
 }
 
 #################################################################################################
@@ -1248,14 +1268,14 @@ pca_seq_model <- filter_na_count(threshold = 1, factor_name = "sample_type") +
   PCA(number_components = 3)
 
 # apply model sequence
-pca_seq_result = model_apply(pca_seq_model, DE)
+pca_seq_result <- model_apply(pca_seq_model, DE)
 
 # Fetching the PCA data object
-pca_object = pca_seq_result[length(pca_seq_result)]
+pca_object <- pca_seq_result[length(pca_seq_result)]
 pca_object@scores@value$sample_meta
 # PCA scores plot
 
-pca_scores_plot = pca_scores_plot(
+pca_scores_plot <- pca_scores_plot(
   factor_name = params$target$sample_metadata_header,
   label_factor = "sample_id",
   ellipse_type = "t",
@@ -1264,18 +1284,18 @@ pca_scores_plot = pca_scores_plot(
 )
 
 # plot
-pca_plot = chart_plot(pca_scores_plot, pca_object)
+pca_plot <- chart_plot(pca_scores_plot, pca_object)
 
 
 
-fig_PCA = pca_plot + 
-theme_classic() + 
-facet_wrap(~ pca_plot$labels$title) +
-ggtitle(title_PCA)
+fig_PCA <- pca_plot +
+  theme_classic() +
+  facet_wrap(~ pca_plot$labels$title) +
+  ggtitle(title_PCA)
 
 
-    fig_PCA = fig_PCA +
-        scale_colour_manual(name = "Groups", values = custom_colors)
+fig_PCA <- fig_PCA +
+  scale_colour_manual(name = "Groups", values = custom_colors)
 
 
 
@@ -1284,41 +1304,41 @@ ggtitle(title_PCA)
 
 # We merge PCA scores and metadata info in a single df
 
-PCA_meta = merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
+PCA_meta <- merge(x = pca_object$scores$sample_meta, y = pca_object$scores$data, by = 0, all = TRUE)
 
 
-fig_PCA3D = plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[,params$target$sample_metadata_header], colors = custom_colors)
+fig_PCA3D <- plot_ly(PCA_meta, x = ~PC1, y = ~PC2, z = ~PC3, color = PCA_meta[, params$target$sample_metadata_header], colors = custom_colors)
 
 
-fig_PCA3D = fig_PCA3D %>% add_markers()
-fig_PCA3D = fig_PCA3D %>% layout(scene = list(
-  xaxis = list(title = "PC1"),
-  yaxis = list(title = "PC2"),
-  zaxis = list(title = "PC3")
-),
-legend = list(title=list(text=params$target$sample_metadata_header)),
-title = title_PCA3D
+fig_PCA3D <- fig_PCA3D %>% add_markers()
+fig_PCA3D <- fig_PCA3D %>% layout(
+  scene = list(
+    xaxis = list(title = "PC1"),
+    yaxis = list(title = "PC2"),
+    zaxis = list(title = "PC3")
+  ),
+  legend = list(title = list(text = params$target$sample_metadata_header)),
+  title = title_PCA3D
 )
 
 
 # The files are exported
 
-ggsave(plot = fig_PCA, filename = filename_PCA , width = 10, height = 10)
+ggsave(plot = fig_PCA, filename = filename_PCA, width = 10, height = 10)
 
 
 if (params$operating_system$system == "unix") {
-### linux version
-fig_PCA3D %>%
+  ### linux version
+  fig_PCA3D %>%
     htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE)
 }
 
 if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-fig_PCA3D %>%
-    htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
+  ### windows version
+  Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+  fig_PCA3D %>%
+    htmlwidgets::saveWidget(file = filename_PCA3D, selfcontained = TRUE, libdir = "lib")
+  unlink("lib", recursive = FALSE)
 }
 
 # #################################################################################################
@@ -1328,76 +1348,74 @@ unlink("lib", recursive = FALSE)
 
 
 if (params$actions$run_PLSDA == "TRUE") {
+  message("Launching PLSDA calculations ...")
 
-message("Launching PLSDA calculations ...")
+  # First we make sure that the sample metadata variable of interest is a factor
+  # For now we use DE_original here ... check if this is correct
 
-# First we make sure that the sample metadata variable of interest is a factor
-# For now we use DE_original here ... check if this is correct
+  DE$sample_meta[, params$target$sample_metadata_header] <- as.factor(DE$sample_meta[, params$target$sample_metadata_header])
 
-DE$sample_meta[,params$target$sample_metadata_header] = as.factor(DE$sample_meta[,params$target$sample_metadata_header])
+  # glimpse(DE_filtered$sample_meta)
 
-# glimpse(DE_filtered$sample_meta)
-
-# check the outcome of a Pareto scaling methods
-
-
-# # prepare model sequence
-plsda_seq_model = # autoscale() + 
-                  filter_na_count(threshold=3,factor_name=params$target$sample_metadata_header) +
-                  # knn_impute() +
-                  PLSDA(factor_name=params$target$sample_metadata_header, number_components=2)
-
-plsda_seq_result = model_apply(plsda_seq_model,DE)
+  # check the outcome of a Pareto scaling methods
 
 
+  # # prepare model sequence
+  plsda_seq_model <- # autoscale() +
+    filter_na_count(threshold = 3, factor_name = params$target$sample_metadata_header) +
+    # knn_impute() +
+    PLSDA(factor_name = params$target$sample_metadata_header, number_components = 2)
 
-# Fetching the PLSDA data object
-plsda_object = plsda_seq_result[length(plsda_seq_result)]
-
-# We merge the plsda_object$vip object with the DE$variable_meta object. We use dplyr syntax and keep a new object called variable_meta_plsda. We keep the rownames of the plsda_object$vip.
-
-plsda_object_vip = plsda_object$vip  %>%
-rownames_to_column(var = "feature_id") %>%
-mutate(feature_id = as.numeric(feature_id))
-
-vip_variable_meta = plsda_object_vip  %>% 
-  left_join(DE$variable_meta, by = "feature_id")  %>% 
-  select(feature_id, feature_id_full_annotated)
-
-rownames(plsda_object$vip) = vip_variable_meta$feature_id_full
-
-
-C = pls_scores_plot(factor_name = params$target$sample_metadata_header)
-
-plsda_plot = structToolbox::chart_plot(C,plsda_object)
+  plsda_seq_result <- model_apply(plsda_seq_model, DE)
 
 
 
+  # Fetching the PLSDA data object
+  plsda_object <- plsda_seq_result[length(plsda_seq_result)]
 
-fig_PLSDA = plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
+  # We merge the plsda_object$vip object with the DE$variable_meta object. We use dplyr syntax and keep a new object called variable_meta_plsda. We keep the rownames of the plsda_object$vip.
 
+  plsda_object_vip <- plsda_object$vip %>%
+    rownames_to_column(var = "feature_id") %>%
+    mutate(feature_id = as.numeric(feature_id))
 
-    fig_PLSDA = fig_PLSDA +
-        scale_colour_manual(name = "Groups", values = custom_colors)
+  vip_variable_meta <- plsda_object_vip %>%
+    left_join(DE$variable_meta, by = "feature_id") %>%
+    select(feature_id, feature_id_full_annotated)
 
-
-# We output the feature importance
-
-C = plsda_feature_importance_plot(n_features=30, metric='vip')
-
-vip_plot <- chart_plot(C,plsda_object)
-
-
-
-fig_PLSDA_VIP = vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA_VIP)
+  rownames(plsda_object$vip) <- vip_variable_meta$feature_id_full
 
 
+  C <- pls_scores_plot(factor_name = params$target$sample_metadata_header)
 
-# The files are exported
+  plsda_plot <- structToolbox::chart_plot(C, plsda_object)
 
-ggsave(plot = fig_PLSDA, filename = filename_PLSDA , width = 10, height = 10)
-ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP , width = 20, height = 10)
 
+
+
+  fig_PLSDA <- plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
+
+
+  fig_PLSDA <- fig_PLSDA +
+    scale_colour_manual(name = "Groups", values = custom_colors)
+
+
+  # We output the feature importance
+
+  C <- plsda_feature_importance_plot(n_features = 30, metric = "vip")
+
+  vip_plot <- chart_plot(C, plsda_object)
+
+
+
+  fig_PLSDA_VIP <- vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA_VIP)
+
+
+
+  # The files are exported
+
+  ggsave(plot = fig_PLSDA, filename = filename_PLSDA, width = 10, height = 10)
+  ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP, width = 20, height = 10)
 }
 
 #################################################################################################
@@ -1501,7 +1519,7 @@ message("Launching PCoA calculations ...")
 # # apply model sequence
 # # Note that for the PCoA we need to use the original data, not the scaled one
 
-# DE_MS_PCOA = model_apply(MS_PCOA, DE_original) 
+# DE_MS_PCOA = model_apply(MS_PCOA, DE_original)
 # DE_MS_PCOA = DE_MS_PCOA[length(DE_MS_PCOA)]
 
 ######################################################
@@ -1510,55 +1528,57 @@ message("Launching PCoA calculations ...")
 # @Manu explain what is done below filters etc ....
 
 
-data_RF = DE# DE_filtered
-sample_name = data_RF$sample_meta$sample_id #### check
-data_subset_norm_rf = data_RF$data
-data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
-data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
+data_RF <- DE # DE_filtered
+sample_name <- data_RF$sample_meta$sample_id #### check
+data_subset_norm_rf <- data_RF$data
+data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] <- NA
+data_subset_norm_rf[is.na(data_subset_norm_rf)] <- 0
 
 
-dist_metabo = vegdist(data_subset_norm_rf, method = "bray") # method="man" # is a bit better
+dist_metabo <- vegdist(data_subset_norm_rf, method = "bray") # method="man" # is a bit better
 # Why dont we use it then ???
-D3_data_dist = cmdscale(dist_metabo, k = 3)
-D3_data_dist = data.frame(D3_data_dist)
-D3_data_dist$sample_name = sample_name
-D3_data_dist = D3_data_dist[order(D3_data_dist$sample_name), ]
-metadata_merge = data_RF$sample_meta[order(sample_name), ]
+D3_data_dist <- cmdscale(dist_metabo, k = 3)
+D3_data_dist <- data.frame(D3_data_dist)
+D3_data_dist$sample_name <- sample_name
+D3_data_dist <- D3_data_dist[order(D3_data_dist$sample_name), ]
+metadata_merge <- data_RF$sample_meta[order(sample_name), ]
 
-data_PCOA_merge = data.frame(cbind(D3_data_dist, metadata_merge))
+data_PCOA_merge <- data.frame(cbind(D3_data_dist, metadata_merge))
 
-cols = data_PCOA_merge[params$target$sample_metadata_header]
-cols = cols[, 1]
+cols <- data_PCOA_merge[params$target$sample_metadata_header]
+cols <- cols[, 1]
 
 
-fig_PCoA = ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
+fig_PCoA <- ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
   geom_point() +
   ggtitle(title_PCoA) +
   theme_classic()
 
 
 
-    fig_PCoA = fig_PCoA +
-        scale_colour_manual(name = "Groups", values = custom_colors)
+fig_PCoA <- fig_PCoA +
+  scale_colour_manual(name = "Groups", values = custom_colors)
 
 
 
 #### PCoA 3D
 
-    fig_PCoA3D = plot_ly(
-      x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
-      type = "scatter3d", mode = "markers", color = cols, colors = custom_colors, 
-      hoverinfo = "text",
-      text = ~ paste(
-        "</br> name: ", data_PCOA_merge$sample_name,
-        "</br> num: ", data_PCOA_merge$sample_id
-      )
-    ) 
+fig_PCoA3D <- plot_ly(
+  x = data_PCOA_merge$X1, y = data_PCOA_merge$X2, z = data_PCOA_merge$X3,
+  type = "scatter3d", mode = "markers", color = cols, colors = custom_colors,
+  hoverinfo = "text",
+  text = ~ paste(
+    "</br> name: ", data_PCOA_merge$sample_name,
+    "</br> num: ", data_PCOA_merge$sample_id
+  )
+)
 
 
 
-fig_PCoA3D = fig_PCoA3D %>% layout(title = title_PCoA3D,
-legend = list(title=list(text=params$target$sample_metadata_header)))
+fig_PCoA3D <- fig_PCoA3D %>% layout(
+  title = title_PCoA3D,
+  legend = list(title = list(text = params$target$sample_metadata_header))
+)
 
 
 # The files are exported
@@ -1567,18 +1587,17 @@ ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
 
 
 if (params$operating_system$system == "unix") {
-### linux version
-fig_PCoA3D %>%
+  ### linux version
+  fig_PCoA3D %>%
     htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE)
 }
 
 if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-fig_PCoA3D %>%
-    htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
+  ### windows version
+  Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+  fig_PCoA3D %>%
+    htmlwidgets::saveWidget(file = filename_PCoA3D, selfcontained = TRUE, libdir = "lib")
+  unlink("lib", recursive = FALSE)
 }
 
 #################################################################################################
@@ -1651,59 +1670,172 @@ message("Launching Fold Changes and Tukey’s Honest Significant Difference calc
 # params = yaml.load_file('/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/params/params.yaml')
 
 
-if (params$actions$calculate_multi_series_fc == 'TRUE') {
+if (params$actions$calculate_multi_series_fc == "TRUE") {
+  l <- list()
+
+  for (i in params$multi_series$points) {
+    print(i)
+    filter_smeta_model <- filter_smeta(
+      mode = "include",
+      factor_name = params$multi_series$colname,
+      levels = i
+    )
+
+    # apply model sequence
+    filter_smeta_result <- model_apply(filter_smeta_model, DE)
+
+    DE_tp <- filter_smeta_result@filtered
+    # assign(paste("DE_filtered", i, sep = "_"), filter_smeta_result@filtered)
+
+    # The formula is defined externally
+    formula <- as.formula(paste0(
+      "y", "~", params$target$sample_metadata_header, "+",
+      "Error(sample_id/",
+      params$target$sample_metadata_header,
+      ")"
+    ))
+
+    # DE$sample_meta
+
+    HSDEM_model <- HSDEM(
+      alpha = params$posthoc$p_value,
+      formula = formula, mtc = "none"
+    )
+
+    HSDEM_result <- model_apply(HSDEM_model, DE_tp)
+
+    HSDEM_result_p_value <- HSDEM_result$p_value
+
+    # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
+
+    colnames(HSDEM_result_p_value) <- plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_")
+
+    # We now add a specific suffix (`_p_value`) to each of the colnames
+
+    colnames(HSDEM_result_p_value) <- paste0("tp_", i, "_", colnames(HSDEM_result_p_value), "_p_value")
+
+    p_value_column <- colnames(HSDEM_result_p_value)
+
+    # We set the row names as columns row_id to be able to merge the two dataframes
+
+    HSDEM_result_p_value$row_id <- rownames(HSDEM_result_p_value)
 
 
-l <- list()
+    # We build a fold change model
 
-for (i in params$multi_series$points) {
+    fold_change_model <- fold_change(
+      factor_name = params$target$sample_metadata_header,
+      paired = FALSE,
+      sample_name = character(0),
+      threshold = 0.5,
+      control_group = character(0),
+      method = "mean",
+      conf_level = 0.95
+    )
 
-  print(i)
-  filter_smeta_model <- filter_smeta(mode = 'include',
-                            factor_name = params$multi_series$colname,
-                            levels = i)
 
-  # apply model sequence
-  filter_smeta_result = model_apply(filter_smeta_model, DE)
+    fold_change_result <- model_apply(fold_change_model, DE_tp)
 
-  DE_tp = filter_smeta_result@filtered
-  # assign(paste("DE_filtered", i, sep = "_"), filter_smeta_result@filtered)
+    # view(DE$data)
+    # DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
 
+    # We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
+
+    fold_change_result_fold_change <- fold_change_result$fold_change
+
+    # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
+    # n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
+
+    colnames(fold_change_result_fold_change) <- plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
+
+
+    # We now add a specific suffix (`_p_value`) to each of the colnames
+
+    colnames(fold_change_result_fold_change) <- paste0("tp_", i, "_", colnames(fold_change_result_fold_change), "_fold_change")
+
+
+    fc_column <- colnames(fold_change_result_fold_change)
+
+
+    # We set the row names as columns row_id to be able to merge the two dataframes
+
+    fold_change_result_fold_change$row_id <- rownames(fold_change_result_fold_change)
+
+    # # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
+
+    # fold_change_result_fold_change = pivot_longer(fold_change_result_fold_change, cols = -row_id, names_to = "pairs", values_to = "fold_change")
+
+
+    # We merge the two dataframes according to both the row_id and the pairs columns.
+
+    DE_foldchange_pvalues <- merge(HSDEM_result_p_value, fold_change_result_fold_change, by = "row_id")
+
+
+    # We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
+
+    message("Calculating logs ...")
+
+    DE_foldchange_pvalues <- DE_foldchange_pvalues %>%
+      mutate(across(contains("_fold_change"),
+        .fns = list(log2 = ~ log2(.)),
+        .names = "{col}_{fn}"
+      )) %>%
+      mutate(across(contains("_p_value"),
+        .fns = list(minus_log10 = ~ -log10(.)),
+        .names = "{col}_{fn}"
+      ))
+
+
+    l[[i]] <- DE_foldchange_pvalues
+  }
+
+  # We now merge the different dataframes in the list l
+
+  DE_foldchange_pvalues <- Reduce(function(x, y) merge(x, y, by = "row_id"), l)
+} else {
   # The formula is defined externally
-  formula = as.formula(paste0('y', '~', params$target$sample_metadata_header, '+' ,
-  'Error(sample_id/',
-  params$target$sample_metadata_header,
-  ')'
-  )
-  )
+  formula <- as.formula(paste0(
+    "y", "~", params$target$sample_metadata_header, "+",
+    "Error(sample_id/",
+    params$target$sample_metadata_header,
+    ")"
+  ))
+
 
   # DE$sample_meta
 
-  HSDEM_model = HSDEM(alpha = params$posthoc$p_value,
-  formula = formula, mtc = 'none')
+  HSDEM_model <- HSDEM(
+    alpha = params$posthoc$p_value,
+    formula = formula, mtc = "none"
+  )
 
-  HSDEM_result = model_apply(HSDEM_model,DE_tp)
+  HSDEM_result <- model_apply(HSDEM_model, DE)
 
-  HSDEM_result_p_value = HSDEM_result$p_value
+  HSDEM_result_p_value <- HSDEM_result$p_value
+
 
   # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
 
-  colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_")
+  colnames(HSDEM_result_p_value) <- plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_vs_")
 
   # We now add a specific suffix (`_p_value`) to each of the colnames
 
-  colnames(HSDEM_result_p_value) = paste0("tp_", i, "_", colnames(HSDEM_result_p_value), "_p_value")
+  colnames(HSDEM_result_p_value) <- paste0(colnames(HSDEM_result_p_value), "_p_value")
 
-  p_value_column = colnames(HSDEM_result_p_value)
+  p_value_column <- colnames(HSDEM_result_p_value)
+
 
   # We set the row names as columns row_id to be able to merge the two dataframes
 
-  HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
+  HSDEM_result_p_value$row_id <- rownames(HSDEM_result_p_value)
+
+  # # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
+
+  # HSDEM_result_p_value_long = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
 
 
-  # We build a fold change model
 
-  fold_change_model = fold_change(
+  fold_change_model <- fold_change(
     factor_name = params$target$sample_metadata_header,
     paired = FALSE,
     sample_name = character(0),
@@ -1711,179 +1843,70 @@ for (i in params$multi_series$points) {
     control_group = character(0),
     method = "mean",
     conf_level = 0.95
-    )
+  )
 
+  # Check if this can be important to apply.
 
-  fold_change_result = model_apply(fold_change_model, DE_tp)
+  DE_fc <- DE
 
-  #view(DE$data)
-  #DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
+  DE_fc$data <- DE_fc$data + 1
+
+  fold_change_result <- model_apply(fold_change_model, DE_fc)
+
+  # view(DE$data)
+  # DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
 
   # We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
 
-  fold_change_result_fold_change = fold_change_result$fold_change
+  fold_change_result_fold_change <- fold_change_result$fold_change
 
   # We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
-  #n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
+  # n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
 
-  colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_")
+
+  colnames(fold_change_result_fold_change) <- plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_vs_")
 
 
   # We now add a specific suffix (`_p_value`) to each of the colnames
 
-  colnames(fold_change_result_fold_change) = paste0("tp_", i, "_", colnames(fold_change_result_fold_change), "_fold_change")
+  colnames(fold_change_result_fold_change) <- paste0(colnames(fold_change_result_fold_change), "_fold_change")
 
 
-  fc_column = colnames(fold_change_result_fold_change)
+  fc_column <- colnames(fold_change_result_fold_change)
 
 
   # We set the row names as columns row_id to be able to merge the two dataframes
 
-  fold_change_result_fold_change$row_id = rownames(fold_change_result_fold_change)
+  fold_change_result_fold_change$row_id <- rownames(fold_change_result_fold_change)
 
   # # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
 
   # fold_change_result_fold_change = pivot_longer(fold_change_result_fold_change, cols = -row_id, names_to = "pairs", values_to = "fold_change")
 
 
-  # We merge the two dataframes according to both the row_id and the pairs columns. 
+  # We merge the two dataframes according to both the row_id and the pairs columns.
 
-  DE_foldchange_pvalues = merge(HSDEM_result_p_value, fold_change_result_fold_change,  by = "row_id")
+  DE_foldchange_pvalues <- merge(HSDEM_result_p_value, fold_change_result_fold_change, by = "row_id")
 
 
   # We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
 
   message("Calculating logs ...")
 
-  DE_foldchange_pvalues = DE_foldchange_pvalues %>%
-      mutate( across(contains('_fold_change'), 
-                      .fns = list(log2 = ~log2(.)),
-                      .names = "{col}_{fn}" ) )  %>% 
-      mutate( across(contains('_p_value'), 
-                      .fns = list(minus_log10 = ~-log10(.)),
-                      .names = "{col}_{fn}" ) )
-
-
-  l[[i]] <- DE_foldchange_pvalues
-
-}
-
-# We now merge the different dataframes in the list l
-
-DE_foldchange_pvalues = Reduce(function(x, y) merge(x, y, by = "row_id"), l)
-
-} else {
-
-# The formula is defined externally
-formula = as.formula(paste0('y', '~', params$target$sample_metadata_header, '+' ,
-'Error(sample_id/',
- params$target$sample_metadata_header,
- ')'
-)
-)
-
-
-# DE$sample_meta
-
-HSDEM_model = HSDEM(alpha = params$posthoc$p_value,
-formula = formula, mtc = 'none')
-
-HSDEM_result = model_apply(HSDEM_model,DE)
-
-HSDEM_result_p_value = HSDEM_result$p_value
-
-
-# We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
-
-colnames(HSDEM_result_p_value) = plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_vs_")
-
-# We now add a specific suffix (`_p_value`) to each of the colnames
-
-colnames(HSDEM_result_p_value) = paste0(colnames(HSDEM_result_p_value), "_p_value")
-
-p_value_column = colnames(HSDEM_result_p_value)
-
-
-# We set the row names as columns row_id to be able to merge the two dataframes
-
-HSDEM_result_p_value$row_id = rownames(HSDEM_result_p_value)
-
-# # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
-
-# HSDEM_result_p_value_long = pivot_longer(HSDEM_result_p_value, cols = -row_id, names_to = "pairs", values_to = "p_value")
-
-
-
-fold_change_model = fold_change(
-  factor_name = params$target$sample_metadata_header,
-  paired = FALSE,
-  sample_name = character(0),
-  threshold = 0.5,
-  control_group = character(0),
-  method = "mean",
-  conf_level = 0.95
-  )
-
-# Check if this can be important to apply.
-
-DE_fc = DE
-
-DE_fc$data = DE_fc$data + 1
-
-fold_change_result = model_apply(fold_change_model, DE_fc)
-
-#view(DE$data)
-#DE$data[,2]  <- c(-500,-500,-500,-500,500,500,500,500)
-
-# We suffix the column name of the dataframe with `_fold_change`, using dplyr rename function
-
-fold_change_result_fold_change = fold_change_result$fold_change
-
-# We split each colnames according to the `-` character. We then rebuild the colnames, alphabetically ordered.
-#n !!!! We need to make sure that the header of metadata variable is not in the colnames of the fold change result
-
-
-colnames(fold_change_result_fold_change) = plotrix::pasteCols(sapply(strsplit(colnames(fold_change_result_fold_change), "/"), sort), sep = "_vs_")
-
-
-# We now add a specific suffix (`_p_value`) to each of the colnames
-
-colnames(fold_change_result_fold_change) = paste0(colnames(fold_change_result_fold_change), "_fold_change")
-
-
-fc_column = colnames(fold_change_result_fold_change)
-
-
-# We set the row names as columns row_id to be able to merge the two dataframes
-
-fold_change_result_fold_change$row_id = rownames(fold_change_result_fold_change)
-
-# # We pivot the data from wide to long using the row_id as identifier and the colnames as variable
-
-# fold_change_result_fold_change = pivot_longer(fold_change_result_fold_change, cols = -row_id, names_to = "pairs", values_to = "fold_change")
-
-
-# We merge the two dataframes according to both the row_id and the pairs columns. 
-
-DE_foldchange_pvalues = merge(HSDEM_result_p_value, fold_change_result_fold_change,  by = "row_id")
-
-
-# We add columns corresponding to the Log2 of the fold change column (suffix by fold_change). For this we use mutate_at function from dplyr package. We save the results in new columns with a novel suffix `_log2_FC`.
-
-message("Calculating logs ...")
-
-DE_foldchange_pvalues = DE_foldchange_pvalues %>%
-     mutate( across(contains('_fold_change'), 
-                    .fns = list(log2 = ~log2(.)),
-                    .names = "{col}_{fn}" ) )  %>% 
-     mutate( across(contains('_p_value'), 
-                    .fns = list(minus_log10 = ~-log10(.)),
-                    .names = "{col}_{fn}" ) )
+  DE_foldchange_pvalues <- DE_foldchange_pvalues %>%
+    mutate(across(contains("_fold_change"),
+      .fns = list(log2 = ~ log2(.)),
+      .names = "{col}_{fn}"
+    )) %>%
+    mutate(across(contains("_p_value"),
+      .fns = list(minus_log10 = ~ -log10(.)),
+      .names = "{col}_{fn}"
+    ))
 }
 
 # We now merge the DE_foldchange_pvalues with the variable metadata using the row_ID column and the rownames of the variable metadata
 
-DE_foldchange_pvalues = merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "row_id", by.y = "row.names")
+DE_foldchange_pvalues <- merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "row_id", by.y = "row.names")
 
 
 # The file is exported
@@ -1904,13 +1927,13 @@ write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ","
 message("Launching Volcano Plots calculations ...")
 
 
-formatted_qids <- paste("wd:", distinct_qids, sep = "")  # Add "wd:" prefix
-target_taxa <- paste(formatted_qids, collapse = "%0A")  # Separate with "%0A" the URLencode equivalent of "\n"
+formatted_qids <- paste("wd:", distinct_qids, sep = "") # Add "wd:" prefix
+target_taxa <- paste(formatted_qids, collapse = "%0A") # Separate with "%0A" the URLencode equivalent of "\n"
 
 # 'nan' strings in the structure_smiles_metannot column are replaced by NA
-DE_foldchange_pvalues$structure_smiles_metannot[DE_foldchange_pvalues$structure_smiles_metannot == 'nan'] <- NA
+DE_foldchange_pvalues$structure_smiles_metannot[DE_foldchange_pvalues$structure_smiles_metannot == "nan"] <- NA
 
-# We first prepare the table for the dt export 
+# We first prepare the table for the dt export
 
 de4dt <- DE_foldchange_pvalues %>%
   select(
@@ -1960,39 +1983,43 @@ de4dt <- DE_foldchange_pvalues %>%
     organism_taxonomy_ottid_metannot,
     organism_wikidata_metannot,
     score_taxo_metannot,
-    contains('p_value_minus_log10'),
-    contains('p_value'),
-    contains('fold_change_log2'),
-    contains('fold_change')
-  )  %>% 
+    contains("p_value_minus_log10"),
+    contains("p_value"),
+    contains("fold_change_log2"),
+    contains("fold_change")
+  ) %>%
   # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
   mutate(chemical_structure_sirius = ifelse(!is.na(smiles_sirius),
-                                    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
-                                    ""))  %>%
+    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
+    ""
+  )) %>%
   mutate(chemical_structure_met_annot = ifelse(!is.na(structure_smiles_metannot),
-                                    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', structure_smiles_metannot),
-                                    ""))  %>%
-  mutate(structure_wikidata_metannot = ifelse(!is.na(structure_wikidata_metannot), sprintf('<a href="%s">%s</a>', structure_wikidata_metannot, structure_wikidata_metannot), ""))  %>%
-  mutate(organism_wikidata_metannot = ifelse(!is.na(organism_wikidata_metannot), sprintf('<a href="%s">%s</a>', organism_wikidata_metannot, organism_wikidata_metannot), ""))  %>%
-  mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps))  %>%
-  mutate(spectra_gnps_link = sprintf("<a href='%s'>gnps spectrum %s</a>", gnpslinkout_cluster_gnps, feature_id))  %>%
+    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', structure_smiles_metannot),
+    ""
+  )) %>%
+  mutate(structure_wikidata_metannot = ifelse(!is.na(structure_wikidata_metannot), sprintf('<a href="%s">%s</a>', structure_wikidata_metannot, structure_wikidata_metannot), "")) %>%
+  mutate(organism_wikidata_metannot = ifelse(!is.na(organism_wikidata_metannot), sprintf('<a href="%s">%s</a>', organism_wikidata_metannot, organism_wikidata_metannot), "")) %>%
+  mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps)) %>%
+  mutate(spectra_gnps_link = sprintf("<a href='%s'>gnps spectrum %s</a>", gnpslinkout_cluster_gnps, feature_id)) %>%
   # We first sanitize the name_sirius column and make it URL safe
-  mutate(name_sirius_url_safe = URLencode(name_sirius))  %>%
+  mutate(name_sirius_url_safe = URLencode(name_sirius)) %>%
   # We then build the link to the PubChem website
   mutate(name_sirius = ifelse(!is.na(smiles_sirius),
-                                    sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
-                                    ""))  %>%
+    sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
+    ""
+  )) %>%
   # We then build the link to the CheBI website
   mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
-                                    sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
-                                    ""))  %>%
+    sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
+    ""
+  )) %>%
   # We build a column for WD query
-  mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>% 
+  mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>%
   # We build a column for WD query
-  mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>% 
+  mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>%
   # We build a column for the gnps plotter for interactive box plots
   mutate(gnps_plotter_box_plot = str_glue('<a href="http://plotter.gnps2.org/?gnps_tall_table_usi=mzdata%3AGNPS%3ATASK-{params$gnps_job_id}-feature_statistics%2Fdata_long.csv&gnps_quant_table_usi=&gnps_metadata_table_usi=&feature={feature_id}&filter_metadata_column=None&filter_metadata_value=%5B%5D&metadata={params$options$gnps_column_for_boxplots$factor_name}&facet=&groups={params$options$gnps_column_for_boxplots$factor_name}&plot_type=box&color_column={params$options$gnps_column_for_boxplots$factor_name}&color_selection=%5B%5D&points_toggle=True&theme=ggplot2&animation_column=&lat_column=&long_column=&map_animation_column=&map_scope=world">Box plots for {feature_id}</a>')) %>%
-    select(
+  select(
     feature_id,
     feature_id_full,
     chebiasciiname_sirius,
@@ -2043,11 +2070,11 @@ de4dt <- DE_foldchange_pvalues %>%
     organism_taxonomy_ottid_metannot,
     organism_wikidata_metannot,
     score_taxo_metannot,
-    contains('p_value_minus_log10'),
-    contains('p_value'),
-    contains('fold_change_log2'),
-    contains('fold_change')
-  )  %>% 
+    contains("p_value_minus_log10"),
+    contains("p_value"),
+    contains("fold_change_log2"),
+    contains("fold_change")
+  ) %>%
   # We set the type of the confidencescore_sirius column to numeric
   mutate(confidencescore_sirius = as.numeric(confidencescore_sirius))
 
@@ -2347,22 +2374,25 @@ for (condition in conditions) {
 
     # Finally, we can organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
 
-      # plot adding up all layers we have seen so far
-      gg_volcano <- ggplot(data=de, aes(x=log2_fold_change, y=pvalue_minus_log10, col=diffexpressed, label=delabel)) +
-              geom_point() + 
-              theme_minimal() +
-              geom_label_repel() +
-              scale_colour_manual(name = "Differentially\nExpressed", values=cols) +
-              geom_vline(xintercept=c(-log2_fold_change_threshold, log2_fold_change_threshold), col="grey", linewidth = 0.2) +
-              geom_hline(yintercept=pvalue_minus_log10_threshold, col="grey", linewidth = 0.2) +
-              labs(title = title_volcano)  # Set the ggplot title
-              
-      # We save the plot in a pdf file
-      tryCatch({
-      ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf") , width = 10, height = 10)
-      }, error=function(e){})
-    }
+    # plot adding up all layers we have seen so far
+    gg_volcano <- ggplot(data = de, aes(x = log2_fold_change, y = pvalue_minus_log10, col = diffexpressed, label = delabel)) +
+      geom_point() +
+      theme_minimal() +
+      geom_label_repel() +
+      scale_colour_manual(name = "Differentially\nExpressed", values = cols) +
+      geom_vline(xintercept = c(-log2_fold_change_threshold, log2_fold_change_threshold), col = "grey", linewidth = 0.2) +
+      geom_hline(yintercept = pvalue_minus_log10_threshold, col = "grey", linewidth = 0.2) +
+      labs(title = title_volcano) # Set the ggplot title
+
+    # We save the plot in a pdf file
+    tryCatch(
+      {
+        ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".pdf"), width = 10, height = 10)
+      },
+      error = function(e) {}
+    )
   }
+}
 
 
 
@@ -2370,40 +2400,43 @@ for (condition in conditions) {
 ##############################################################################
 ############ Treemaps fold change ############################################
 ##############################################################################
-############################################################################## 
+##############################################################################
 
 
 
 treat_npclassifier_json <- function(taxonomy) {
-     taxonomy_classes <- taxonomy$Class %>%
-     rbind()
-     rownames(taxonomy_classes) <- "id_class"
-     taxonomy_classes <- taxonomy_classes %>%
-     t() %>%
-     data.frame() %>%
-     mutate(
-     class = rownames(.),
-     id_class = as.numeric(id_class))
+  taxonomy_classes <- taxonomy$Class %>%
+    rbind()
+  rownames(taxonomy_classes) <- "id_class"
+  taxonomy_classes <- taxonomy_classes %>%
+    t() %>%
+    data.frame() %>%
+    mutate(
+      class = rownames(.),
+      id_class = as.numeric(id_class)
+    )
 
   taxonomy_superclasses <- taxonomy$Superclass %>%
-      rbind()
-      rownames(taxonomy_superclasses) <- "id_superclass"
-      taxonomy_superclasses <- taxonomy_superclasses %>%
-      t() %>%
-      data.frame() %>%
-      mutate(
+    rbind()
+  rownames(taxonomy_superclasses) <- "id_superclass"
+  taxonomy_superclasses <- taxonomy_superclasses %>%
+    t() %>%
+    data.frame() %>%
+    mutate(
       superclass = rownames(.),
-      id_superclass = as.numeric(id_superclass))
+      id_superclass = as.numeric(id_superclass)
+    )
 
   taxonomy_pathways <- taxonomy$Pathway %>%
-      rbind()
-      rownames(taxonomy_pathways) <- "id_pathway"
-      taxonomy_pathways <- taxonomy_pathways %>%
-      t() %>%
-      data.frame() %>%
-      mutate(
+    rbind()
+  rownames(taxonomy_pathways) <- "id_pathway"
+  taxonomy_pathways <- taxonomy_pathways %>%
+    t() %>%
+    data.frame() %>%
+    mutate(
       pathway = rownames(.),
-      id_pathway = as.numeric(id_pathway))
+      id_pathway = as.numeric(id_pathway)
+    )
 
   taxonomy_hierarchy_class <- taxonomy$Class_hierarchy
 
@@ -2412,9 +2445,9 @@ treat_npclassifier_json <- function(taxonomy) {
   id_class <- list()
 
   for (i in seq_len(length(taxonomy_hierarchy_class))) {
-id_pathway[[i]] <- taxonomy_hierarchy_class[[i]]$Pathway
-id_superclass[[i]] <- taxonomy_hierarchy_class[[i]]$Superclass
-id_class[[i]] <- names(taxonomy_hierarchy_class[i])
+    id_pathway[[i]] <- taxonomy_hierarchy_class[[i]]$Pathway
+    id_superclass[[i]] <- taxonomy_hierarchy_class[[i]]$Superclass
+    id_class[[i]] <- names(taxonomy_hierarchy_class[i])
   }
 
   zu <- cbind(id_pathway, id_superclass, id_class) %>%
@@ -2449,19 +2482,19 @@ id_class[[i]] <- names(taxonomy_hierarchy_class[i])
 
 
 
-# ################################### function 
+# ################################### function
 # ################################# treemap shaper
 
-dt_for_treemap = function(datatable, parent_value, value, count) {
-  parent_value = enquo(parent_value)
-  value = enquo(value)
-  count = enquo(count)
+dt_for_treemap <- function(datatable, parent_value, value, count) {
+  parent_value <- enquo(parent_value)
+  value <- enquo(value)
+  count <- enquo(count)
 
-  datatable = data.frame(datatable %>%
+  datatable <- data.frame(datatable %>%
     group_by(!!parent_value, !!value, ) %>%
-    summarise(count = sum(as.numeric(!!count),na.rm=T)))
+    summarise(count = sum(as.numeric(!!count), na.rm = T)))
 
-  datatable = datatable %>%
+  datatable <- datatable %>%
     select(!!parent_value, !!value, count) %>% # create id labels for each row # Notre the !! to pass aruguments to a dplyr function
     rename(
       parent.value = !!parent_value,
@@ -2472,29 +2505,29 @@ dt_for_treemap = function(datatable, parent_value, value, count) {
     )) %>%
     select(ids, everything())
 
-  par_info = datatable %>% dplyr::group_by(parent.value) %>% # group by parent
-    dplyr::summarise(count = sum(as.numeric(count),na.rm=T)) %>% # parent total
+  par_info <- datatable %>% dplyr::group_by(parent.value) %>% # group by parent
+    dplyr::summarise(count = sum(as.numeric(count), na.rm = T)) %>% # parent total
     rename(value = parent.value) %>% # parent labels for the item field
     mutate(parent.value = "", ids = value) %>% # add missing fields for my_data
     select(names(datatable)) # put cols in same order as my_data
 
-  data_for_plot = rbind(datatable, par_info)
+  data_for_plot <- rbind(datatable, par_info)
 
   return(data_for_plot)
 }
 # ###################################################################################
 # ###################################################################################
 
-dt_for_treemap_mean = function(datatable, parent_value, value, count) {
-  parent_value = enquo(parent_value)
-  value = enquo(value)
-  count = enquo(count)
+dt_for_treemap_mean <- function(datatable, parent_value, value, count) {
+  parent_value <- enquo(parent_value)
+  value <- enquo(value)
+  count <- enquo(count)
 
-  datatable = data.frame(datatable %>%
+  datatable <- data.frame(datatable %>%
     group_by(!!parent_value, !!value, ) %>%
-    summarise(count = mean(as.numeric(!!count),na.rm=T)))
+    summarise(count = mean(as.numeric(!!count), na.rm = T)))
 
-  datatable = datatable %>%
+  datatable <- datatable %>%
     select(!!parent_value, !!value, count) %>% # create id labels for each row # Notre the !! to pass aruguments to a dplyr function
     rename(
       parent.value = !!parent_value,
@@ -2505,22 +2538,21 @@ dt_for_treemap_mean = function(datatable, parent_value, value, count) {
     )) %>%
     select(ids, everything())
 
-  par_info = datatable %>% dplyr::group_by(parent.value) %>% # group by parent
-    dplyr::summarise(count = mean(as.numeric(count),na.rm=T)) %>% # parent total
+  par_info <- datatable %>% dplyr::group_by(parent.value) %>% # group by parent
+    dplyr::summarise(count = mean(as.numeric(count), na.rm = T)) %>% # parent total
     rename(value = parent.value) %>% # parent labels for the item field
     mutate(parent.value = "", ids = value) %>% # add missing fields for my_data
     select(names(datatable)) # put cols in same order as my_data
 
-  data_for_plot = rbind(datatable, par_info)
+  data_for_plot <- rbind(datatable, par_info)
 
   return(data_for_plot)
 }
 
-if (params$actions$run_fc_treemaps == 'TRUE') {
-
+if (params$actions$run_fc_treemaps == "TRUE") {
   message("Great ! You decided to launch the fc treemaps calculations :) :\n")
-############################ version 2
-# Create a data frame
+  ############################ version 2
+  # Create a data frame
   library(jsonlite)
 
   # Specify the URL of the JSON file
@@ -2534,27 +2566,27 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
   # Aggregate rows by concatenating values in superclass and path columns
   npclassifier_newpath <- aggregate(cbind(superclass, pathway) ~ class, data = npclassifier_origin, FUN = function(x) paste(unique(unlist(strsplit(x, " x "))), collapse = " x "))
-  colnames(npclassifier_newpath) <-  c("npc_class_canopus","npc_superclass_canopus","npc_pathway_canopus")
-  npclassifier_newpath$npc_superclass_canopus[grep(" x ",npclassifier_newpath$npc_pathway_canopus)] <- paste(npclassifier_newpath$npc_superclass_canopus[grep(" x ",npclassifier_newpath$npc_pathway_canopus)],"x")
+  colnames(npclassifier_newpath) <- c("npc_class_canopus", "npc_superclass_canopus", "npc_pathway_canopus")
+  npclassifier_newpath$npc_superclass_canopus[grep(" x ", npclassifier_newpath$npc_pathway_canopus)] <- paste(npclassifier_newpath$npc_superclass_canopus[grep(" x ", npclassifier_newpath$npc_pathway_canopus)], "x")
 
   # Alternatively we generate a new df where all class-superclass pairs are distinct and we add a column with the corresponding pathway (we keep the first occurence). We rename the columns (npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway).We return a data.frame.
 
   npclassifier_newpath_simple <- npclassifier_origin %>%
     distinct(class, .keep_all = TRUE) %>%
     rename(npc_class_canopus = class, npc_superclass_canopus = superclass, npc_pathway_canopus = pathway) %>%
-    na.omit() %>% 
-    data.frame() 
+    na.omit() %>%
+    data.frame()
 
 
 
   # Here we list the distinct values in the npclassifier_newpath$npc_pathway_canopus and order them alphabetically
 
-  # npclassifier_newpath  %>%  
-  # distinct(npc_pathway_canopus)  %>% 
+  # npclassifier_newpath  %>%
+  # distinct(npc_pathway_canopus)  %>%
   # arrange(npc_pathway_canopus)
 
-# Check wether this line is used or not ?
-  index <- sort(unique(paste(npclassifier_newpath$npc_superclass_canopus,npclassifier_newpath$npc_pathway_canopus)))
+  # Check wether this line is used or not ?
+  index <- sort(unique(paste(npclassifier_newpath$npc_superclass_canopus, npclassifier_newpath$npc_pathway_canopus)))
 
 
   # DE_foldchange_pvalues_signi <- DE_foldchange_pvalues[DE_foldchange_pvalues$C_WT_p_value < 0.05,]
@@ -2569,13 +2601,12 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
   # Iterate over the prefixes
   for (condition in conditions) {
-
     message("Generating treemaps for condition: ", condition)
 
     # Perform filtering using the prefix as a condition
     DE_foldchange_pvalues_signi <- DE_foldchange_pvalues %>%
       filter(!!sym(paste0(condition, "_p_value")) < 0.05)
-    
+
     # Print the filtered data
     message("Filtered data for condition: ", condition, ":\n")
     # print(head(DE_foldchange_pvalues_signi))
@@ -2586,24 +2617,28 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     second_part <- condition_parts[2]
 
 
-    mydata_meta <- select(DE_foldchange_pvalues_signi, "inchikey2d_sirius", "row_id","name_sirius","smiles_sirius",
-    "cluster_index_gnps","feature_rt","feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius", "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "libraryid_gnps")
+    mydata_meta <- select(
+      DE_foldchange_pvalues_signi, "inchikey2d_sirius", "row_id", "name_sirius", "smiles_sirius",
+      "cluster_index_gnps", "feature_rt", "feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius", "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "libraryid_gnps"
+    )
     mydata_meta$name_comp <- "unknown"
     mydata_meta$name_comp[!is.na(mydata_meta$inchikey2d_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$inchikey2d_sirius)]
 
 
 
-    mydata1 <- select(DE_foldchange_pvalues_signi,
-    !!sym(paste0(condition, "_fold_change_log2")), "name_sirius", "row_id",
-    "npc_class_canopus")  %>% 
-    # this line remove rows with NA in the npc_class_canopus column using the filter function
-    filter(!is.na(npc_class_canopus))
+    mydata1 <- select(
+      DE_foldchange_pvalues_signi,
+      !!sym(paste0(condition, "_fold_change_log2")), "name_sirius", "row_id",
+      "npc_class_canopus"
+    ) %>%
+      # this line remove rows with NA in the npc_class_canopus column using the filter function
+      filter(!is.na(npc_class_canopus))
 
-    mydata1 <- merge(mydata1,npclassifier_newpath,by="npc_class_canopus")
+    mydata1 <- merge(mydata1, npclassifier_newpath, by = "npc_class_canopus")
 
 
-    # mydata1 <- mydata1 %>% 
-    # mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>% 
+    # mydata1 <- mydata1 %>%
+    # mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>%
     # mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
 
 
@@ -2624,7 +2659,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       # Data frame already has rows, no need to fill with zeros
       # You can add additional code here to perform operations on the existing data
     }
-        # Check if the data frame has zero rows
+    # Check if the data frame has zero rows
     if (nrow(mydata1_neg) == 0) {
       # Recycle the original column names and create a new data frame with zeros
       mydata1_neg <- tibble(
@@ -2636,7 +2671,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     }
 
     # Aggregate the data
-    #### 
+    ####
     # We protect the code with a tryCatch to avoid errors if the data is empty. This can hapen when no classified features are returned fopr a specific condition. This should return an empty treemap. Beware !!!!
 
     mydata1 <- mydata1[!is.na(mydata1$npc_pathway_canopus), ]
@@ -2655,7 +2690,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     #####################################################################
 
 
-    dt_se_prop_prep_count_tot = dt_for_treemap(
+    dt_se_prop_prep_count_tot <- dt_for_treemap(
       datatable = mydata1,
       parent_value = npc_pathway_canopus,
       value = npc_superclass_canopus,
@@ -2663,66 +2698,66 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     )
 
 
-    dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
+    dt_se_prop_prep_fold_tot <- dt_for_treemap_mean(
       datatable = mydata1,
       parent_value = npc_pathway_canopus,
       value = npc_superclass_canopus,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
 
-    dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>% 
-    select(-c("value","parent.value"))
-    matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
+    dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>%
+      select(-c("value", "parent.value"))
+    matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot, dt_se_prop_prep_fold_tot, by = "ids")
 
     #####################################################################
     #####################################################################
     #####################################################################
     #####################################################################
 
-    dt_se_prop_prep_count_pos = dt_for_treemap(
+    dt_se_prop_prep_count_pos <- dt_for_treemap(
       datatable = mydata1_pos,
       parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = counter
     )
 
-    dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
+    dt_se_prop_prep_fold_pos <- dt_for_treemap_mean(
       datatable = mydata1_pos,
       parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
 
-    dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
-    select(-c("value","parent.value"))
-    matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
+    dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>%
+      select(-c("value", "parent.value"))
+    matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos, dt_se_prop_prep_fold_pos, by = "ids")
 
 
-    matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
+    matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""), ]
     matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
 
     #####################################################################
     #####################################################################
 
-    dt_se_prop_prep_count_neg = dt_for_treemap(
+    dt_se_prop_prep_count_neg <- dt_for_treemap(
       datatable = mydata1_neg,
       parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = counter
     )
 
-    dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
+    dt_se_prop_prep_fold_neg <- dt_for_treemap_mean(
       datatable = mydata1_neg,
       parent_value = npc_superclass_canopus,
       value = fold_dir,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
 
-    dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>% 
-    select(-c("value","parent.value"))
-    matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
+    dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>%
+      select(-c("value", "parent.value"))
+    matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg, dt_se_prop_prep_fold_neg, by = "ids")
 
-    matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
+    matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""), ]
     matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
 
     #####################################################################
@@ -2730,50 +2765,50 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     #####################################################################
     #####################################################################
 
-    dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
+    dt_se_prop_prep_count_pos_sirius <- dt_for_treemap(
       datatable = mydata1_pos,
       parent_value = fold_dir,
       value = row_id,
       count = counter
     )
 
-    dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
+    dt_se_prop_prep_fold_pos_sirius <- dt_for_treemap_mean(
       datatable = mydata1_pos,
       parent_value = fold_dir,
       value = row_id,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
 
-    dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>% 
-    select(-c("value","parent.value"))
-    matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
+    dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>%
+      select(-c("value", "parent.value"))
+    matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius, dt_se_prop_prep_fold_pos_sirius, by = "ids")
 
-    matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""),]
+    matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""), ]
     matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
 
 
     #####################################################################
     #####################################################################
 
-    dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
+    dt_se_prop_prep_count_neg_sirius <- dt_for_treemap(
       datatable = mydata1_neg,
       parent_value = fold_dir,
       value = row_id,
       count = counter
     )
 
-    dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
+    dt_se_prop_prep_fold_neg_sirius <- dt_for_treemap_mean(
       datatable = mydata1_neg,
       parent_value = fold_dir,
       value = row_id,
       count = !!sym(paste0(condition, "_fold_change_log2"))
     )
 
-    dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>% 
-    select(-c("value","parent.value"))
-    matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
+    dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>%
+      select(-c("value", "parent.value"))
+    matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius, dt_se_prop_prep_fold_neg_sirius, by = "ids")
 
-    matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""),]
+    matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""), ]
     matt_class_fig_neg_dir_sirius <- na.omit(matt_class_fig_neg_dir_sirius)
 
 
@@ -2783,24 +2818,24 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     #####################################################################
     #####################################################################
 
-    matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir,matt_class_fig_pos_dir_sirius,matt_class_fig_neg_dir_sirius)
+    matttree <- rbind(matt_class_fig_tot, matt_class_fig_pos_dir, matt_class_fig_neg_dir, matt_class_fig_pos_dir_sirius, matt_class_fig_neg_dir_sirius)
     matttree$labels_adjusted <- matttree$value
-    matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- ""
-    matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- ""
-    matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
+    matttree$labels_adjusted[grep("pos_", matttree$labels_adjusted)] <- ""
+    matttree$labels_adjusted[grep("neg_", matttree$labels_adjusted)] <- ""
+    matttree$labels_adjusted <- gsub(" x", " ", matttree$labels_adjusted)
 
-  # We rename the count.x column as count and the count.y column as foldchange_log2
-    matttree <- matttree %>% 
-    rename(count = count.x)  %>% 
-    rename(foldchange_log2 = count.y)
+    # We rename the count.x column as count and the count.y column as foldchange_log2
+    matttree <- matttree %>%
+      rename(count = count.x) %>%
+      rename(foldchange_log2 = count.y)
 
 
 
-    matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
+    matttree <- merge(matttree, mydata_meta, by.x = "labels_adjusted", by.y = "row_id", all.x = T)
 
     matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
-    matttree$value[matttree$labels_adjusted== "unknown"] <- ""
-    matttree$value[matttree$labels_adjusted== "unknown"] <- ""
+    matttree$value[matttree$labels_adjusted == "unknown"] <- ""
+    matttree$value[matttree$labels_adjusted == "unknown"] <- ""
 
 
     #####################################################################
@@ -2827,44 +2862,50 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"
     )
 
-      # Generate hl URL only if inchikey2d_sirius is not NA
+    # Generate hl URL only if inchikey2d_sirius is not NA
     matttree$hl <- ifelse(!is.na(matttree$inchikey2d_sirius),
-                          paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$inchikey2d_sirius, "&sort=annothitcnt"),
-                          NA)
+      paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$inchikey2d_sirius, "&sort=annothitcnt"),
+      NA
+    )
 
     # Generate full_hl hyperlink only if hl is not NA
     matttree$full_hl <- paste0(
       "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
     )
 
-      # Generate hl URL only if inchikey2d_sirius is not NA
+    # Generate hl URL only if inchikey2d_sirius is not NA
     matttree$chebi_hl <- ifelse(!is.na(matttree$chebiid_sirius),
-                          paste0("https://www.ebi.ac.uk/chebi/searchId.do?chebiId=", matttree$chebiid_sirius),
-                          NA)
+      paste0("https://www.ebi.ac.uk/chebi/searchId.do?chebiId=", matttree$chebiid_sirius),
+      NA
+    )
 
     # Generate full_hl hyperlink only if hl is not NA
     matttree$chebi_hl_formatted <- ifelse(!is.na(matttree$chebiid_sirius),
-    paste0(
-      "<a href='", matttree$chebi_hl, "' target='_blank' style='color: black;'>", matttree$chebiid_sirius, "</a>"
-    ), "")
+      paste0(
+        "<a href='", matttree$chebi_hl, "' target='_blank' style='color: black;'>", matttree$chebiid_sirius, "</a>"
+      ), ""
+    )
 
     # Generate full_hl hyperlink only if hl is not NA
     matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$cluster_index_gnps),
-    paste0(
-      "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster_index_gnps, "</a>"
-    ), "")
+      paste0(
+        "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster_index_gnps, "</a>"
+      ), ""
+    )
 
     # Generate smiles_url only if smiles_sirius is not NA
     matttree$smiles_url <- ifelse(!is.na(matttree$smiles_sirius),
-                                  paste0("https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"),
-                                  NA)
+      paste0("https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$smiles_sirius, "&zoom=2.0&annotate=cip"),
+      NA
+    )
     # Generate clickable smiles_url only if smiles_url is not NA
     matttree$smiles_clickable_url <- ifelse(!is.na(matttree$smiles_url),
-                                  paste0("<a href='", matttree$smiles_url, "' target='_blank' style='color: black;'>", matttree$smiles_sirius, "</a>"),
-                                  NA)
+      paste0("<a href='", matttree$smiles_url, "' target='_blank' style='color: black;'>", matttree$smiles_sirius, "</a>"),
+      NA
+    )
 
 
-        # "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "LibraryID_GNPS"
+    # "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "LibraryID_GNPS"
     # mattree$smiles_clickable_url <- paste0("<a href=", matttree$smiles_url, " target='_blank' rel='noopener noreferrer'>", matttree$smiles_sirius, "</a>")
 
 
@@ -2876,7 +2917,7 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
     matttree$libraryid_gnps[is.na(matttree$libraryid_gnps)] <- ""
 
 
-      # Create a new column in the data frame to store the colors for each value
+    # Create a new column in the data frame to store the colors for each value
     matttree$colors <- NA
 
     # Assign specific colors to the classes
@@ -2895,22 +2936,23 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
 
     # To check what this is doing
-    matttree <- matttree[order(matttree$value),]
+    matttree <- matttree[order(matttree$value), ]
 
 
     #########################################################
     #########################################################
 
     txt <- as.character(paste0
-    ("feature id: ", matttree$cluster_index_gnps,"<br>",
-    "component id: ", matttree$componentindex_gnps,"<br>",
-    "name: ", matttree$labels_adjusted,"<br>",
-    "m/z: ", round(matttree$feature_mz,4),"<br>",
-    "RT: ", round(matttree$feature_rt,2),"<br>",
-    "MF: ", matttree$molecularformula_sirius,"<br>",
-    "adduct: ", matttree$adduct_sirius,"<br>",
-    "FC (log 2): ", round(matttree$foldchange_log2,2),
-    "<extra></extra>"
+    (
+      "feature id: ", matttree$cluster_index_gnps, "<br>",
+      "component id: ", matttree$componentindex_gnps, "<br>",
+      "name: ", matttree$labels_adjusted, "<br>",
+      "m/z: ", round(matttree$feature_mz, 4), "<br>",
+      "RT: ", round(matttree$feature_rt, 2), "<br>",
+      "MF: ", matttree$molecularformula_sirius, "<br>",
+      "adduct: ", matttree$adduct_sirius, "<br>",
+      "FC (log 2): ", round(matttree$foldchange_log2, 2),
+      "<extra></extra>"
     ))
 
 
@@ -2918,35 +2960,35 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
 
 
 
-    fig_treemap_qual = plot_ly(
+    fig_treemap_qual <- plot_ly(
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
-      maxdepth=3,
+      maxdepth = 3,
       hovertemplate = ~txt,
       marker = list(
-        colors = matttree$colors  # Use the colors column from the data frame
+        colors = matttree$colors # Use the colors column from the data frame
       )
-      ) %>% 
+    ) %>%
       layout(
         title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"),
-                   margin = list(
-    l = 100,  # Left margin in pixels, adjust as needed
-    r = 100,  # Right margin in pixels, adjust as needed
-    t = 100,  # Top margin in pixels, adjust as needed
-    b = 100   # Bottom margin in pixels, adjust as needed
-  )
+        margin = list(
+          l = 100, # Left margin in pixels, adjust as needed
+          r = 100, # Right margin in pixels, adjust as needed
+          t = 100, # Top margin in pixels, adjust as needed
+          b = 100 # Bottom margin in pixels, adjust as needed
+        )
       )
 
     fig_treemap_quan <- plot_ly(
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -2955,16 +2997,17 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
       marker = list(
         colors = matttree$foldchange_log2,
         colorscale = list(
-          c(0, 0.5, 1), 
-          c(custom_colors[first_part], "#FFFFFF", custom_colors[second_part])),
+          c(0, 0.5, 1),
+          c(custom_colors[first_part], "#FFFFFF", custom_colors[second_part])
+        ),
         cmin = max(abs(matttree$foldchange_log2)) * (-1),
         cmax = max(abs(matttree$foldchange_log2)),
         showscale = TRUE,
         colorbar = list(
-        # the title html is set to add a line return
-        title = '',
+          # the title html is set to add a line return
+          title = "",
           tickmode = "array",
-          tickvals = c((quantile(abs(matttree$foldchange_log2),probs=0.75)*(-1)), 0, (quantile(abs(matttree$foldchange_log2),probs=0.75))),
+          tickvals = c((quantile(abs(matttree$foldchange_log2), probs = 0.75) * (-1)), 0, (quantile(abs(matttree$foldchange_log2), probs = 0.75))),
           ticktext = c(
             paste0("<b>", first_part, "</b>"),
             "",
@@ -2975,44 +3018,44 @@ if (params$actions$run_fc_treemaps == 'TRUE') {
           outlinewidth = 1,
           tickangle = 270
         ),
-        reversescale = FALSE  # Set to FALSE to maintain the color gradient order
+        reversescale = FALSE # Set to FALSE to maintain the color gradient order
       )
-    )%>% 
+    ) %>%
       layout(
         title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"),
-            margin = list(
-    l = 100,  # Left margin in pixels, adjust as needed
-    r = 100,  # Right margin in pixels, adjust as needed
-    t = 100,  # Top margin in pixels, adjust as needed
-    b = 100   # Bottom margin in pixels, adjust as needed
-  )
+        margin = list(
+          l = 100, # Left margin in pixels, adjust as needed
+          r = 100, # Right margin in pixels, adjust as needed
+          t = 100, # Top margin in pixels, adjust as needed
+          b = 100 # Bottom margin in pixels, adjust as needed
+        )
       )
 
     # We now save the treemap as a html file locally
 
-  if (params$operating_system$system == "unix") {
-    ###linux version
-    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
-   
-    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
+    if (params$operating_system$system == "unix") {
+      ### linux version
+      htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+
+      htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
     }
 
 
-if (params$operating_system$system == "windows") {
-    ###windows version
-    Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-    htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
-    unlink("lib", recursive = FALSE)
-    
-    htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE,libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
-    unlink("lib", recursive = FALSE)
-    }
+    if (params$operating_system$system == "windows") {
+      ### windows version
+      Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+      htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE, libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+      unlink("lib", recursive = FALSE)
+
+      htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE, libdir = "lib") # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
+      unlink("lib", recursive = FALSE)
     }
   }
+}
 
 
 # mydata_meta <- select(DE_foldchange_pvalues, "inchikey2d_sirius", "row_id","name_sirius","smiles_sirius",
-# "cluster_index_gnps","feature_rt","feature_mz")  
+# "cluster_index_gnps","feature_rt","feature_mz")
 # mydata_meta$name_comp<- "unknown"
 # mydata_meta$name_comp[!is.na(mydata_meta$inchikey2d_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$inchikey2d_sirius)]
 
@@ -3021,9 +3064,9 @@ if (params$operating_system$system == "windows") {
 
 # mydata1 <- select(DE_foldchange_pvalues,
 # "C_WT_fold_change_log2","name_sirius", "row_id",
-# "npc_class_canopus")  %>% 
+# "npc_class_canopus")  %>%
 # # this line remove rows with NA in the npc_class_canopus column using the filter function
-# filter(!is.na(npc_class_canopus))  %>% 
+# filter(!is.na(npc_class_canopus))  %>%
 # filter(!is.na(C_WT_fold_change_log2))
 
 
@@ -3031,8 +3074,8 @@ if (params$operating_system$system == "windows") {
 
 
 
-# mydata1 <- mydata1 %>% 
-# mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>% 
+# mydata1 <- mydata1 %>%
+# mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>%
 # mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
 
 
@@ -3072,7 +3115,7 @@ if (params$operating_system$system == "windows") {
 #   count = C_WT_fold_change_log2
 # )
 
-# dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>% 
+# dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>%
 # select(-c("value","parent.value"))
 # matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
 
@@ -3095,7 +3138,7 @@ if (params$operating_system$system == "windows") {
 #   count = C_WT_fold_change_log2
 # )
 
-# dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>% 
+# dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>%
 # select(-c("value","parent.value"))
 # matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
 
@@ -3119,7 +3162,7 @@ if (params$operating_system$system == "windows") {
 #   count = C_WT_fold_change_log2
 # )
 
-# dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>% 
+# dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>%
 # select(-c("value","parent.value"))
 # matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
 
@@ -3145,7 +3188,7 @@ if (params$operating_system$system == "windows") {
 #   count = C_WT_fold_change_log2
 # )
 
-# dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>% 
+# dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>%
 # select(-c("value","parent.value"))
 # matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
 
@@ -3170,7 +3213,7 @@ if (params$operating_system$system == "windows") {
 #   count = C_WT_fold_change_log2
 # )
 
-# dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>% 
+# dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>%
 # select(-c("value","parent.value"))
 # matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
 
@@ -3221,7 +3264,7 @@ if (params$operating_system$system == "windows") {
 
 
 # matttree <- matttree[order(matttree$value),]
-# ####################### annoation structure 
+# ####################### annoation structure
 # #########################################################
 
 # ############# ad mol
@@ -3290,7 +3333,7 @@ if (params$operating_system$system == "windows") {
 # # library(magrittr)
 # # library(plotly)
 
-# # x <- 1:3 
+# # x <- 1:3
 # # y <- 1:3
 
 # # artists <- c("Bethoven", "Mozart", "Bach")
@@ -3305,7 +3348,7 @@ if (params$operating_system$system == "windows") {
 # # x <- 1:3
 # # y <- 1:3
 
-# # # hoverinfo = "none" will hide the plotly.js tooltip, but the 
+# # # hoverinfo = "none" will hide the plotly.js tooltip, but the
 # # # plotly_hover event will still fire
 # # p <- plot_ly(hoverinfo = "none") %>%
 # #   add_text(x = x, y = y, customdata = image_links, text = artists) %>%
@@ -3380,7 +3423,7 @@ if (params$operating_system$system == "windows") {
 # #     character=c("Homer","Marge", "Bart", "Lisa","Maggie", "Moe", "Blinky","Bumblebee Man","Duffman","Maude Flanders","Ned Flanders","Rod Flanders","Todd","Jimbo","Otto Mann","Snowball")
 # #     ,score=c(268,267,495, 432, 219, 373, 152, 356, 461, 116,107,165, 305,228, 461, 608)
 
-# # tm <- treemap( df, index = "character", vSize = "score" 
+# # tm <- treemap( df, index = "character", vSize = "score"
 # # svg <- grid.export()$sv
 # # # see http://stackoverflow.com/questions/10688516/fill-svg-path-with-a-background-image-without-knowing-heightwidth?rq=1
 # # pattern <- newXMLNode(
@@ -3406,7 +3449,7 @@ if (params$operating_system$system == "windows") {
 # #         )
 # #     )
 
-# # addChildren( svg, pattern 
+# # addChildren( svg, pattern
 # # homer <- getNodeSet(
 # #     getNodeSet( svg, "//*[contains(@id,'data.2')]")[[1]]
 # #     ,"//*[local-name()='rect']"
@@ -3425,7 +3468,7 @@ if (params$operating_system$system == "windows") {
 # #                       y = Petal.Length,
 # #                       color = Species,
 # #                       text = Species)) + geom_point()
-# # p <- ggplotly(g, tooltip = "text") %>% partial_bundle() 
+# # p <- ggplotly(g, tooltip = "text") %>% partial_bundle()
 
 
 # # p %>% htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip_adapted.js"))
@@ -3460,7 +3503,7 @@ if (params$operating_system$system == "windows") {
 #     ),
 #     reversescale = FALSE  # Set to FALSE to maintain the color gradient order
 #   )
-# )%>% 
+# )%>%
 #   layout(
 #     title = "<b>Metabolomic Variations Across Treatments</b>"
 #   )
@@ -3481,34 +3524,34 @@ if (params$operating_system$system == "windows") {
 #############################################################################
 #############################################################################
 
-message("Preparing Tree Map ...") 
+message("Preparing Tree Map ...")
 
 # glimpse(DE_foldchange_pvalues)
 
-# Here we select the features that are significant 
+# Here we select the features that are significant
 # for this we filter for values above the p_value threshold in the column selected using the `p_value_column` variable
 # We use the dplyr and pipes syntax to do this
 # Note the as.symbol() function to convert the string to a symbol As per https://stackoverflow.com/a/48219802/4908629
 
-matt_donust = DE_foldchange_pvalues %>%
-  filter(if_any(ends_with('_p_value'), ~ .x < params$posthoc$p_value))
+matt_donust <- DE_foldchange_pvalues %>%
+  filter(if_any(ends_with("_p_value"), ~ .x < params$posthoc$p_value))
 
 # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-matt_donust2 = matt_donust[!is.na(matt_donust$npc_superclass_canopus), ]
-matt_donust2$counter = 1
+matt_donust2 <- matt_donust[!is.na(matt_donust$npc_superclass_canopus), ]
+matt_donust2$counter <- 1
 
- 
 
-dt_for_treemap = function(datatable, parent_value, value, count) {
-  parent_value = enquo(parent_value)
-  value = enquo(value)
-  count = enquo(count)
 
-  datatable = data.frame(datatable %>%
+dt_for_treemap <- function(datatable, parent_value, value, count) {
+  parent_value <- enquo(parent_value)
+  value <- enquo(value)
+  count <- enquo(count)
+
+  datatable <- data.frame(datatable %>%
     group_by(!!parent_value, !!value, ) %>%
     summarise(count = sum(as.numeric(!!count))))
 
-  datatable = datatable %>%
+  datatable <- datatable %>%
     select(!!parent_value, !!value, count) %>% # create id labels for each row # Notre the !! to pass aruguments to a dplyr function
     rename(
       parent.value = !!parent_value,
@@ -3519,18 +3562,18 @@ dt_for_treemap = function(datatable, parent_value, value, count) {
     )) %>%
     select(ids, everything())
 
-  par_info = datatable %>% dplyr::group_by(parent.value) %>% # group by parent
+  par_info <- datatable %>% dplyr::group_by(parent.value) %>% # group by parent
     dplyr::summarise(count = sum(as.numeric(count))) %>% # parent total
     rename(value = parent.value) %>% # parent labels for the item field
     mutate(parent.value = "", ids = value) %>% # add missing fields for my_data
     select(names(datatable)) # put cols in same order as my_data
 
-  data_for_plot = rbind(datatable, par_info)
+  data_for_plot <- rbind(datatable, par_info)
 
   return(data_for_plot)
 }
 
-dt_se_prop_prep_tm = dt_for_treemap(
+dt_se_prop_prep_tm <- dt_for_treemap(
   datatable = matt_donust2,
   parent_value = npc_superclass_canopus,
   value = npc_class_canopus,
@@ -3538,7 +3581,7 @@ dt_se_prop_prep_tm = dt_for_treemap(
 )
 
 
-fig_treemap = plot_ly(
+fig_treemap <- plot_ly(
   data = dt_se_prop_prep_tm,
   type = "treemap",
   labels = ~value,
@@ -3549,28 +3592,27 @@ fig_treemap = plot_ly(
 
 # Why "significant ? According to what ?
 
-fig_treemap = fig_treemap %>% 
-layout(title = list(text = title_treemap, y = 0.02))
+fig_treemap <- fig_treemap %>%
+  layout(title = list(text = title_treemap, y = 0.02))
 
 
 # The files is exported
-# The title should be updated !!! 
+# The title should be updated !!!
 
 
 
 if (params$operating_system$system == "unix") {
-### linux version
-fig_treemap %>%
+  ### linux version
+  fig_treemap %>%
     htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE)
 }
 
 if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-fig_treemap %>%
-    htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
+  ### windows version
+  Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+  fig_treemap %>%
+    htmlwidgets::saveWidget(file = filename_treemap, selfcontained = TRUE, libdir = "lib")
+  unlink("lib", recursive = FALSE)
 }
 
 
@@ -3584,53 +3626,53 @@ message("Launching Random Forest calculations ...")
 
 
 
-# Here we traduce to fit Manu's inputs ... to be updated later 
+# Here we traduce to fit Manu's inputs ... to be updated later
 
-features_of_importance = DE_foldchange_pvalues %>%
-  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
+features_of_importance <- DE_foldchange_pvalues %>%
+  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value) %>%
   select(feature_id) %>%
   # we output the data as a vector
   pull()
 
 
-# We select all columns except the params$target$sample_metadata_header columns in 
+#  We select all columns except the params$target$sample_metadata_header columns in
 # data_subset_norm_rf_filter and we prefix the column names with an X.
 # We use the dplyr syntax to do this and the rename function to rename the columns
 # We then subset the data to keep only the columns that are in the imp_filter1 variable
 
-data_subset_for_RF = DE$data %>%
-  select(all_of(as.character(features_of_importance))) %>% 
-  rename_all(~ paste0("X", .))  %>% 
+data_subset_for_RF <- DE$data %>%
+  select(all_of(as.character(features_of_importance))) %>%
+  rename_all(~ paste0("X", .)) %>%
   # here we join the data with the associated sample metadata using the row.names as index
-  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  merge(DE$sample_meta, ., by = "row.names") %>%
   # We keep the row.names columnn as row.names
-  transform(row.names = Row.names)  %>%
+  transform(row.names = Row.names) %>%
   # We keep the params$target$sample_metadata_header column and the columns that start with X
-  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  select(params$target$sample_metadata_header, starts_with("X")) %>%
   # We set the params$target$sample_metadata_header column as a factor
   mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))
 
 # We define the formula externally to inject the external variable # params$target$sample_metadata_header
 
-formula = as.formula(paste0(params$target$sample_metadata_header," ~ ."))
+formula <- as.formula(paste0(params$target$sample_metadata_header, " ~ ."))
 
 # We launch the rfPermute function
 
-data.rp = rfPermute(formula, data = data_subset_for_RF, na.action = na.omit, ntree = 500, num.rep = 500)
+data.rp <- rfPermute(formula, data = data_subset_for_RF, na.action = na.omit, ntree = 500, num.rep = 500)
 
-imp_table_rf = data.frame(data.rp$pval)
-imp_table_rf = importance(data.rp)
-imp_table_rf = data.frame(imp_table_rf)
+imp_table_rf <- data.frame(data.rp$pval)
+imp_table_rf <- importance(data.rp)
+imp_table_rf <- data.frame(imp_table_rf)
 
 
 sink(filename_random_forest_model)
 summary(data.rp)
-#f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
+# f = plotImportance(data.rp, plot.type = "bar", plot = FALSE)
 
-sink() 
+sink()
 
 ########### plot importance
-# 
+#
 sorted_indices <- order(-imp_table_rf$MeanDecreaseGini)
 # Load the required libraries
 # Sort the data based on MeanDecreaseGini
@@ -3640,35 +3682,34 @@ imp_table_rf <- imp_table_rf[sorted_indices, ]
 fig_rf <- plot_ly(
   data = imp_table_rf,
   x = ~MeanDecreaseGini,
-  y = ~reorder(row.names(imp_table_rf), -MeanDecreaseGini,decreasing = TRUE),  # Use reorder to maintain sorting order
+  y = ~ reorder(row.names(imp_table_rf), -MeanDecreaseGini, decreasing = TRUE), # Use reorder to maintain sorting order
   type = "bar",
   orientation = "h"
 ) %>%
   layout(
     title = title_random_forest,
-    xaxis = list(title = "Importance", tickfont = list(size = 12)),   # Adjust the label size here (e.g., size = 12)
-    yaxis = list(title = "Features", tickfont = list(size = 5)),      # Adjust the label size here (e.g., size = 10)
+    xaxis = list(title = "Importance", tickfont = list(size = 12)), # Adjust the label size here (e.g., size = 12)
+    yaxis = list(title = "Features", tickfont = list(size = 5)), # Adjust the label size here (e.g., size = 10)
     margin = list(l = 100, r = 20, t = 50, b = 70),
     showlegend = FALSE
   )
 fig_rf
 # The file is exported
-# The title should be updated !!! 
+# The title should be updated !!!
 
 
 if (params$operating_system$system == "unix") {
-### linux version
-fig_rf %>%
-    htmlwidgets::saveWidget(file = filename_random_forest , selfcontained = TRUE)
+  ### linux version
+  fig_rf %>%
+    htmlwidgets::saveWidget(file = filename_random_forest, selfcontained = TRUE)
 }
 
 if (params$operating_system$system == "windows") {
-### windows version
-Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-fig_rf %>%
-    htmlwidgets::saveWidget(file = filename_random_forest, selfcontained = TRUE,libdir = "lib")
-unlink("lib", recursive = FALSE)
-
+  ### windows version
+  Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
+  fig_rf %>%
+    htmlwidgets::saveWidget(file = filename_random_forest, selfcontained = TRUE, libdir = "lib")
+  unlink("lib", recursive = FALSE)
 }
 
 
@@ -3707,7 +3748,7 @@ unlink("lib", recursive = FALSE)
 #   geom_boxplot() +
 #   facet_wrap(~ variable, ncol = 4) +
 #   theme_minimal()+
-#   ggtitle(title_box_plots) 
+#   ggtitle(title_box_plots)
 
 
 # fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
@@ -3723,7 +3764,7 @@ unlink("lib", recursive = FALSE)
 # #       layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
 # #       layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
 # #   }) %>%
-# #   subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>% 
+# #   subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>%
 # #   layout(title = title_box_plots,
 # #   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
 
@@ -3743,29 +3784,29 @@ unlink("lib", recursive = FALSE)
 
 message("Preparing p-value selected Box plots ...")
 
-features_of_importance_boxplots = DE_foldchange_pvalues %>%
+features_of_importance_boxplots <- DE_foldchange_pvalues %>%
   # we keep only the features that have a p-value lower than the threshold
-  # filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
+  # filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>%
   # We keep only the lowest top n = params$boxplot$topN in the p_value_column
-  top_n(-params$boxplot$topN, !!as.symbol(p_value_column))  %>%
+  top_n(-params$boxplot$topN, !!as.symbol(p_value_column)) %>%
   # we order the features by increasing p-value
-  arrange(!!as.symbol(p_value_column))  %>%
+  arrange(!!as.symbol(p_value_column)) %>%
   select(feature_id) %>%
   # we output the data as a vector
   pull()
 
 
-data_subset_for_boxplots = DE$data %>%
-  select(all_of(as.character(features_of_importance_boxplots))) %>% 
-  rename_all(~ paste0("X", .))  %>% 
+data_subset_for_boxplots <- DE$data %>%
+  select(all_of(as.character(features_of_importance_boxplots))) %>%
+  rename_all(~ paste0("X", .)) %>%
   # here we join the data with the associated sample metadata using the row.names as index
-  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  merge(DE$sample_meta, ., by = "row.names") %>%
   # We keep the row.names columnn as row.names
-  transform(row.names = Row.names)  %>%
+  transform(row.names = Row.names) %>%
   # We keep the params$target$sample_metadata_header column and the columns that start with X
-  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  select(params$target$sample_metadata_header, starts_with("X")) %>%
   # We set the params$target$sample_metadata_header column as a factor
-  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))  %>% 
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header))) %>%
   # Finally we remove the X from the columns names
   rename_all(~ gsub("X", "", .))
 
@@ -3781,35 +3822,35 @@ df_long <- tidyr::gather(data_subset_for_boxplots, key = "variable", value = "va
 df_long_informed <- merge(df_long, DE_foldchange_pvalues, by.x = "variable", by.y = "feature_id")
 
 
-p = ggplot(df_long_informed, aes(x = !!sym(params$target$sample_metadata_header), y = value, fill = !!sym(params$target$sample_metadata_header))) +
+p <- ggplot(df_long_informed, aes(x = !!sym(params$target$sample_metadata_header), y = value, fill = !!sym(params$target$sample_metadata_header))) +
   geom_boxplot() +
-  facet_wrap(~feature_id_full_annotated , ncol = 4) +
+  facet_wrap(~feature_id_full_annotated, ncol = 4) +
   # theme_minimal()+
   ggtitle(title_box_plots) +
-  geom_point(position = position_jitter(width = 0.2), size = 1.5, alpha = 0.3)  # Add data points with jitter for better visibility
+  geom_point(position = position_jitter(width = 0.2), size = 1.5, alpha = 0.3) # Add data points with jitter for better visibility
 
 
 ridiculous_strips <- strip_themed(
-     # Horizontal strips
-     background_x = elem_list_rect(),
-     text_x = elem_list_text(face = c("bold", "italic")),
-     by_layer_x = TRUE,
-     # Vertical strips
-     background_y = elem_list_rect(
-       fill = c("gold", "tomato", "deepskyblue")
-     ),
-     text_y = elem_list_text(angle = c(0, 90)),
-     by_layer_y = FALSE
+  # Horizontal strips
+  background_x = elem_list_rect(),
+  text_x = elem_list_text(face = c("bold", "italic")),
+  by_layer_x = TRUE,
+  # Vertical strips
+  background_y = elem_list_rect(
+    fill = c("gold", "tomato", "deepskyblue")
+  ),
+  text_y = elem_list_text(angle = c(0, 90)),
+  by_layer_y = FALSE
 )
 
-fig_boxplot = p + facet_wrap2(~ chebiasciiname_sirius + feature_id_full, labeller = label_value, strip = ridiculous_strips) + theme(
+fig_boxplot <- p + facet_wrap2(~ chebiasciiname_sirius + feature_id_full, labeller = label_value, strip = ridiculous_strips) + theme(
   legend.position = "top",
   legend.title = element_blank()
 )
 
 
-    fig_boxplot = fig_boxplot +
-        scale_fill_manual(name = "Groups", values = custom_colors)
+fig_boxplot <- fig_boxplot +
+  scale_fill_manual(name = "Groups", values = custom_colors)
 
 
 # Display the modified plot
@@ -3844,24 +3885,30 @@ for (var in features_of_importance_boxplots) {
   # Create the plot for the current variable (simple box plot)
   p <- ggplot(data_for_plot, aes(x = !!sym(params$target$sample_metadata_header), y = value, fill = !!sym(params$target$sample_metadata_header))) +
     geom_boxplot() +
-    geom_point(position = position_jitter(width = 0.2), size = 2, alpha = 0.5) +  # Add data points with jitter for better visibility
-    # ggtitle(paste("Box Plot for", "\n", 
+    geom_point(position = position_jitter(width = 0.2), size = 2, alpha = 0.5) + # Add data points with jitter for better visibility
+    # ggtitle(paste("Box Plot for", "\n",
     # "Compound name: ", data_for_plot$chebiasciiname_sirius[1], "\n",
     # "Feature details: ", data_for_plot$feature_id_full[1]))
-labs(x=params$target$sample_metadata_header,
-       y="Normalized Intensity",
-       title = paste("Compared intensities for feature:", var),
-       subtitle = paste("\n",
-       "Compound name: ", data_for_plot$chebiasciiname_sirius[1], "\n",
-       "Feature details: ", data_for_plot$feature_id_full[1]),
-       caption  = paste("Calculated p-value is ~ ", rounded_p_value)) +
-  theme(plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
-        plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
-        plot.caption.position =  "plot") #NEW parameter
+    labs(
+      x = params$target$sample_metadata_header,
+      y = "Normalized Intensity",
+      title = paste("Compared intensities for feature:", var),
+      subtitle = paste(
+        "\n",
+        "Compound name: ", data_for_plot$chebiasciiname_sirius[1], "\n",
+        "Feature details: ", data_for_plot$feature_id_full[1]
+      ),
+      caption = paste("Calculated p-value is ~ ", rounded_p_value)
+    ) +
+    theme(
+      plot.caption = element_text(hjust = 0, face = "italic"), # Default is hjust=1
+      plot.title.position = "plot", # NEW parameter. Apply for subtitle too.
+      plot.caption.position = "plot"
+    ) # NEW parameter
 
 
-  p = p +
-        scale_fill_manual(name = "Groups", values = custom_colors)
+  p <- p +
+    scale_fill_manual(name = "Groups", values = custom_colors)
 
 
   # Save the plot to a file with a unique filename for each variable
@@ -3876,37 +3923,37 @@ labs(x=params$target$sample_metadata_header,
 
 message("Preparing p-value filtered Heatmap ...")
 
-features_of_importance = DE_foldchange_pvalues %>%
-  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value)  %>% 
+features_of_importance <- DE_foldchange_pvalues %>%
+  filter((!!as.symbol(p_value_column)) < params$posthoc$p_value) %>%
   select(feature_id) %>%
   # we output the data as a vector
   pull()
 
-data_subset_for_pval_hm = DE$data %>%
-  select(all_of(as.character(features_of_importance))) %>% 
-  rename_all(~ paste0("X", .))  %>% 
+data_subset_for_pval_hm <- DE$data %>%
+  select(all_of(as.character(features_of_importance))) %>%
+  rename_all(~ paste0("X", .)) %>%
   # here we join the data with the associated sample metadata using the row.names as index
-  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  merge(DE$sample_meta, ., by = "row.names") %>%
   # We keep the row.names columnn as row.names
-  transform(row.names = Row.names)  %>%
+  transform(row.names = Row.names) %>%
   # We keep the params$target$sample_metadata_header column and the columns that start with X
-  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  select(params$target$sample_metadata_header, starts_with("X")) %>%
   # We set the params$target$sample_metadata_header column as a factor
-  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))  %>% 
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header))) %>%
   # Finally we remove the X from the columns names
   rename_all(~ gsub("X", "", .))
 
-data_subset_for_pval_hm_peak_height = DE_original$data %>%
-  select(all_of(as.character(features_of_importance))) %>% 
-  rename_all(~ paste0("X", .))  %>% 
+data_subset_for_pval_hm_peak_height <- DE_original$data %>%
+  select(all_of(as.character(features_of_importance))) %>%
+  rename_all(~ paste0("X", .)) %>%
   # here we join the data with the associated sample metadata using the row.names as index
-  merge(DE$sample_meta, ., by = "row.names")  %>% 
+  merge(DE$sample_meta, ., by = "row.names") %>%
   # We keep the row.names columnn as row.names
-  transform(row.names = Row.names)  %>%
+  transform(row.names = Row.names) %>%
   # We keep the params$target$sample_metadata_header column and the columns that start with X
-  select(params$target$sample_metadata_header, starts_with("X"))  %>% 
+  select(params$target$sample_metadata_header, starts_with("X")) %>%
   # We set the params$target$sample_metadata_header column as a factor
-  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header)))  %>% 
+  mutate(!!as.symbol(params$target$sample_metadata_header) := factor(!!as.symbol(params$target$sample_metadata_header))) %>%
   # Finally we remove the X from the columns names
   rename_all(~ gsub("X", "", .))
 
@@ -3914,51 +3961,51 @@ data_subset_for_pval_hm_peak_height = DE_original$data %>%
 # data_subset_for_pval_hm_sel = data_subset_for_pval_hm %>%
 #   select(params$target$sample_metadata_header)
 
-data_subset_for_pval_hm = data_subset_for_pval_hm[, colnames(data_subset_for_pval_hm) %in% features_of_importance]
+data_subset_for_pval_hm <- data_subset_for_pval_hm[, colnames(data_subset_for_pval_hm) %in% features_of_importance]
 
-data_subset_for_pval_hm_peak_height = data_subset_for_pval_hm_peak_height[, colnames(data_subset_for_pval_hm_peak_height) %in% features_of_importance]
+data_subset_for_pval_hm_peak_height <- data_subset_for_pval_hm_peak_height[, colnames(data_subset_for_pval_hm_peak_height) %in% features_of_importance]
 
 # my_sample_col = DE$sample_meta$sample_id
 
 # data_subset_for_Pval = data_subset_for_Pval[, colnames(data_subset_for_Pval) %in% imp_filter2X]
 # # my_sample_col = DE$sample_meta$sample_id
 
-my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
+my_sample_col <- paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
 
 
 # We filter the annotation table (DE$variable_meta) to keep only the features of interest identified in the (features_of_importance). We use dplyr
 
-selected_variable_meta = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance) 
-  # %>%
-  # select(feature_id, npc_pathway_canopus, npc_superclass_canopus) %>%
-  # mutate(npc_pathway_canopus = paste(npc_pathway_canopus, npc_superclass_canopus, sep = "_")) %>%
-  # select(feature_id, npc_pathway_canopus) %>%
-  # column_to_rownames("feature_id")
+selected_variable_meta <- DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance)
+# %>%
+# select(feature_id, npc_pathway_canopus, npc_superclass_canopus) %>%
+# mutate(npc_pathway_canopus = paste(npc_pathway_canopus, npc_superclass_canopus, sep = "_")) %>%
+# select(feature_id, npc_pathway_canopus) %>%
+# column_to_rownames("feature_id")
 
-selected_variable_meta_NPC = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance)  %>% 
+selected_variable_meta_NPC <- DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance) %>%
   select(feature_id, npc_superclass_canopus, npc_pathway_canopus, npc_class_canopus) %>%
   mutate(NPC.superclass_merged_canopus = paste(npc_pathway_canopus, npc_superclass_canopus, sep = "_")) %>%
   mutate(NPC.class_merged_canopus = paste(NPC.superclass_merged_canopus, npc_class_canopus, sep = "_")) %>%
   select(NPC.class_merged_canopus, NPC.superclass_merged_canopus, npc_pathway_canopus)
 
-selected_variable_meta_NPC_simple = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance)  %>% 
+selected_variable_meta_NPC_simple <- DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance) %>%
   select(npc_class_canopus, npc_superclass_canopus, npc_pathway_canopus)
 
-selected_variable_meta_NPC_simple_ordered = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance)  %>% 
+selected_variable_meta_NPC_simple_ordered <- DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance) %>%
   select(npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus)
 
-selected_variable_meta_NPC_simple = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance)  %>% 
+selected_variable_meta_NPC_simple <- DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance) %>%
   select(npc_class_canopus, npc_superclass_canopus, npc_pathway_canopus)
 
 
 
-npclassifier_origin_ordered = npclassifier_origin  %>% 
-select(pathway, superclass, class)
+npclassifier_origin_ordered <- npclassifier_origin %>%
+  select(pathway, superclass, class)
 
 # ByPal = colorRampPalette(c(wes_palette("Zissou1")))
 
@@ -3966,7 +4013,7 @@ select(pathway, superclass, class)
 # # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 
 
-data_subset_for_pval_hm_mat = apply(data_subset_for_pval_hm, 2, as.numeric)
+data_subset_for_pval_hm_mat <- apply(data_subset_for_pval_hm, 2, as.numeric)
 # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
 data_subset_for_pval_hm_mat <- data_subset_for_pval_hm
 data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
@@ -4017,7 +4064,7 @@ data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 # ### linux version
 
 # heatmap_filtered_pval %>%
-#     htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE) 
+#     htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE)
 # }
 
 # if (params$operating_system$system == "windows") {
@@ -4032,28 +4079,28 @@ data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 #### Iheatmapr
 
 
-target_metadata = as.factor(DE$sample_meta[[params$target$sample_metadata_header]])
+target_metadata <- as.factor(DE$sample_meta[[params$target$sample_metadata_header]])
 
 
 ##########################
 
 
-custom_colors_heatmap = custom_colors
+custom_colors_heatmap <- custom_colors
 
 
 # Define the vector of colors
-micro_cvd_gray     = rev(c(microshades_palette("micro_cvd_gray")))
-micro_cvd_purple   = rev(c(microshades_palette("micro_cvd_purple")))
-micro_cvd_blue     = rev(c(microshades_palette("micro_cvd_blue")))
-micro_cvd_orange   = rev(c(microshades_palette("micro_cvd_orange")))
-micro_cvd_green    = rev(c(microshades_palette("micro_cvd_green")))
-micro_cvd_turquoise= rev(c(microshades_palette("micro_cvd_turquoise")))
-micro_orange       = rev(c(microshades_palette("micro_orange")))
-micro_purple       = rev(c(microshades_palette("micro_purple")))
+micro_cvd_gray <- rev(c(microshades_palette("micro_cvd_gray")))
+micro_cvd_purple <- rev(c(microshades_palette("micro_cvd_purple")))
+micro_cvd_blue <- rev(c(microshades_palette("micro_cvd_blue")))
+micro_cvd_orange <- rev(c(microshades_palette("micro_cvd_orange")))
+micro_cvd_green <- rev(c(microshades_palette("micro_cvd_green")))
+micro_cvd_turquoise <- rev(c(microshades_palette("micro_cvd_turquoise")))
+micro_orange <- rev(c(microshades_palette("micro_orange")))
+micro_purple <- rev(c(microshades_palette("micro_purple")))
 
 # Choose the column to which you want to assign the vector of colors (e.g., "column4")
 
-hex_custom = data.frame(
+hex_custom <- data.frame(
   micro_cvd_gray = micro_cvd_gray,
   micro_cvd_purple = micro_cvd_purple,
   micro_cvd_blue = micro_cvd_blue,
@@ -4070,243 +4117,248 @@ hex_custom = data.frame(
 
 
 fixed_custom_create_color_dfs <- function(mdf,
-                             selected_groups = c("Proteobacteria",
-                                                 "Actinobacteria",
-                                                 "Bacteroidetes",
-                                                 "Firmicutes"),
-                             top_n_subgroups = 4,
-                             group_level = "Phylum",
-                             subgroup_level = "Genus",
-                             cvd = FALSE,
-                             top_orientation = FALSE)
-    {
-    # Throws error if too many subgroups
-    if (top_n_subgroups > 4) {
-        stop("'top_n_subgroups' exceeds MAX value 4")
-    }
+                                          selected_groups = c(
+                                            "Proteobacteria",
+                                            "Actinobacteria",
+                                            "Bacteroidetes",
+                                            "Firmicutes"
+                                          ),
+                                          top_n_subgroups = 4,
+                                          group_level = "Phylum",
+                                          subgroup_level = "Genus",
+                                          cvd = FALSE,
+                                          top_orientation = FALSE) {
+  # Throws error if too many subgroups
+  if (top_n_subgroups > 4) {
+    stop("'top_n_subgroups' exceeds MAX value 4")
+  }
 
-   if (class(mdf) != "data.frame")
-   {
-       stop("mdf argument must be a data frame")
-   }
-    if (!is.null(mdf$group)) {
-        stop("'group' column name already exists; consider renaming or removing")
-    }
+  if (class(mdf) != "data.frame") {
+    stop("mdf argument must be a data frame")
+  }
+  if (!is.null(mdf$group)) {
+    stop("'group' column name already exists; consider renaming or removing")
+  }
 
-    if (is.null(mdf[[group_level]])) {
-       stop("'group_level' does not exist")
-    }
+  if (is.null(mdf[[group_level]])) {
+    stop("'group_level' does not exist")
+  }
 
-    if (is.null(mdf[[subgroup_level]])) {
-       stop("'subgroup_level' does not exist")
-    }
+  if (is.null(mdf[[subgroup_level]])) {
+    stop("'subgroup_level' does not exist")
+  }
 
-    # Here we add a security check to make sure that the Others is present in mdf[[group_level]]. Else we add it directly to the mdf dataframe
+  # Here we add a security check to make sure that the Others is present in mdf[[group_level]]. Else we add it directly to the mdf dataframe
 
-    if ("Other" %in% mdf[[group_level]]) {
-      print("Other is present in the dataframe")
-    } else {
-      print("Other is not present in the dataframe. We add it directly to the dataframe")
-      row_to_insert = data.frame(npc_pathway_canopus = "Other",
+  if ("Other" %in% mdf[[group_level]]) {
+    print("Other is present in the dataframe")
+  } else {
+    print("Other is not present in the dataframe. We add it directly to the dataframe")
+    row_to_insert <- data.frame(
+      npc_pathway_canopus = "Other",
       npc_superclass_canopus = "Other",
       npc_class_canopus = "Other",
-      Abundance = 1)
-      mdf <- mdf %>% 
+      Abundance = 1
+    )
+    mdf <- mdf %>%
       rows_insert(row_to_insert)
-    }
+  }
 
-    # Create new column for group level -----
-    # Add "Other" category immediately
-    col_name_group <- paste0("Top_", group_level)
-    mdf[[col_name_group]] <- "Other"
+  # Create new column for group level -----
+  # Add "Other" category immediately
+  col_name_group <- paste0("Top_", group_level)
+  mdf[[col_name_group]] <- "Other"
 
-    # Index and find rows containing the selected groups
-    rows_to_change <- mdf[[group_level]] %in% selected_groups
-    taxa_names_mdf <- row.names(mdf[rows_to_change, ])
-    mdf[taxa_names_mdf, col_name_group] <-
-        as.character(mdf[taxa_names_mdf, group_level])
+  # Index and find rows containing the selected groups
+  rows_to_change <- mdf[[group_level]] %in% selected_groups
+  taxa_names_mdf <- row.names(mdf[rows_to_change, ])
+  mdf[taxa_names_mdf, col_name_group] <-
+    as.character(mdf[taxa_names_mdf, group_level])
 
-    if ("Other" %in% selected_groups) {
+  if ("Other" %in% selected_groups) {
     # Create factor for the group level column
     mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
-                                    levels = c(selected_groups))
-    } else {
+      levels = c(selected_groups)
+    )
+  } else {
     # Create factor for the group level column
     mdf[[col_name_group]] <- factor(mdf[[col_name_group]],
-                                    levels = c("Other", selected_groups))
-    }
+      levels = c("Other", selected_groups)
+    )
+  }
 
-    # Check to make sure the selected_groups specified all exist in the dataset
-    if(sum (selected_groups %in% as.character(unique(mdf[[col_name_group]]))) != length(selected_groups))
-    {
-      stop("some 'selected_groups' do not exist in the dataset. Consider SILVA 138 c('Proteobacteria', 'Actinobacteriota', 'Bacteroidota', 'Firmicutes')")
-    }
+  # Check to make sure the selected_groups specified all exist in the dataset
+  if (sum(selected_groups %in% as.character(unique(mdf[[col_name_group]]))) != length(selected_groups)) {
+    stop("some 'selected_groups' do not exist in the dataset. Consider SILVA 138 c('Proteobacteria', 'Actinobacteriota', 'Bacteroidota', 'Firmicutes')")
+  }
 
-    # Rename missing genera
-    mdf_unknown_subgroup <- mdf %>%
-        mutate(!!sym (subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown")) ## fct_na_value_to_level 
+  # Rename missing genera
+  mdf_unknown_subgroup <- mdf %>%
+    mutate(!!sym(subgroup_level) := fct_na_value_to_level(!!sym(subgroup_level), "Unknown")) ## fct_na_value_to_level
 
-    # Rank group-subgroup categories by ranked abundance and add order
-    # Ranked abundance aggregated using sum() function
-    col_name_subgroup <- paste0("Top_", subgroup_level)
-    subgroup_ranks <- mdf_unknown_subgroup %>%
-        group_by_at(c(paste(subgroup_level), paste(col_name_group))) %>%
-        summarise(rank_abundance = sum(Abundance)) %>%
-        arrange(desc(rank_abundance)) %>%
-        group_by_at(c(paste(col_name_group))) %>%
-        mutate(order = row_number()) %>%
-        ungroup()
+  # Rank group-subgroup categories by ranked abundance and add order
+  # Ranked abundance aggregated using sum() function
+  col_name_subgroup <- paste0("Top_", subgroup_level)
+  subgroup_ranks <- mdf_unknown_subgroup %>%
+    group_by_at(c(paste(subgroup_level), paste(col_name_group))) %>%
+    summarise(rank_abundance = sum(Abundance)) %>%
+    arrange(desc(rank_abundance)) %>%
+    group_by_at(c(paste(col_name_group))) %>%
+    mutate(order = row_number()) %>%
+    ungroup()
 
-    # Correctly keep "Other" for lower abundant genera
-    # Pseudocode:
-    # - set all (top) subgroups to "Other"
-    # - change subgroups back to actual subgroups (e.g., Genus) if it is in the
-    #   top N number of subgroups passed into `top_n_subgroups` (e.g., 4)
-    subgroup_ranks[[col_name_subgroup]] <- "Other"
-    rows_to_change <- subgroup_ranks$order <= top_n_subgroups
-    subgroup_ranks[rows_to_change, col_name_subgroup] <-
-        as.vector(subgroup_ranks[rows_to_change, subgroup_level])
+  # Correctly keep "Other" for lower abundant genera
+  # Pseudocode:
+  # - set all (top) subgroups to "Other"
+  # - change subgroups back to actual subgroups (e.g., Genus) if it is in the
+  #   top N number of subgroups passed into `top_n_subgroups` (e.g., 4)
+  subgroup_ranks[[col_name_subgroup]] <- "Other"
+  rows_to_change <- subgroup_ranks$order <= top_n_subgroups
+  subgroup_ranks[rows_to_change, col_name_subgroup] <-
+    as.vector(subgroup_ranks[rows_to_change, subgroup_level])
 
-    # Generate group-subgroup categories -----
-    # There are `top_n_subgroups` additional groups because each group level has
-    # an additional subgroup of "Other"
-    # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
-    group_info <- subgroup_ranks %>%
-        mutate(group = paste(!!sym(col_name_group),
-                             !!sym(col_name_subgroup),
-                             sep = "-"))
+  # Generate group-subgroup categories -----
+  # There are `top_n_subgroups` additional groups because each group level has
+  # an additional subgroup of "Other"
+  # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
+  group_info <- subgroup_ranks %>%
+    mutate(group = paste(!!sym(col_name_group),
+      !!sym(col_name_subgroup),
+      sep = "-"
+    ))
 
-    # Ensure that the "Other" subgroup is always the lightest shade
-    group_info$order[group_info[[col_name_subgroup]] == "Other"] <- top_n_subgroups +1
+  # Ensure that the "Other" subgroup is always the lightest shade
+  group_info$order[group_info[[col_name_subgroup]] == "Other"] <- top_n_subgroups + 1
 
-    # Merge group info back to df -----
-    # Get relevant columns from data frame with group info
-    group_info_to_merge <-
-        group_info[, c(col_name_group, subgroup_level,
-                       col_name_subgroup, "group")]
-    mdf_group <- mdf_unknown_subgroup %>%
-        left_join(group_info_to_merge, by = c(col_name_group, subgroup_level))
+  # Merge group info back to df -----
+  # Get relevant columns from data frame with group info
+  group_info_to_merge <-
+    group_info[, c(
+      col_name_group, subgroup_level,
+      col_name_subgroup, "group"
+    )]
+  mdf_group <- mdf_unknown_subgroup %>%
+    left_join(group_info_to_merge, by = c(col_name_group, subgroup_level))
 
-    # Get beginning of color data frame with top groups/subgroups
-    # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
-    prep_cdf <- group_info %>%
-        select(all_of(c("group", "order", col_name_group, col_name_subgroup))) %>%
-        filter(order <= top_n_subgroups + 1) %>%  # "+ 1" for other subgroup
-        arrange(!!sym(col_name_group), order)
+  # Get beginning of color data frame with top groups/subgroups
+  # E.g., 4 selected_groups + 1 Other, 4 top_n_groups + 1 Other => 25 groups
+  prep_cdf <- group_info %>%
+    select(all_of(c("group", "order", col_name_group, col_name_subgroup))) %>%
+    filter(order <= top_n_subgroups + 1) %>% # "+ 1" for other subgroup
+    arrange(!!sym(col_name_group), order)
 
-    # Prepare hex colors -----
+  # Prepare hex colors -----
 
-    # Generates default 5 row x 6 cols of 5 colors for 6 phylum categories
-    # Parameter for number of selected phylum
-    # "+ 1" is for "Other" group
-    num_group_colors <- length(selected_groups) + 1
+  # Generates default 5 row x 6 cols of 5 colors for 6 phylum categories
+  # Parameter for number of selected phylum
+  # "+ 1" is for "Other" group
+  num_group_colors <- length(selected_groups) + 1
 
-    # hex_df <- default_hex(num_group_colors, cvd)
+  # hex_df <- default_hex(num_group_colors, cvd)
 
-    hex_df = hex_custom  %>% 
-    rownames_to_column("order")  %>% 
+  hex_df <- hex_custom %>%
+    rownames_to_column("order") %>%
     mutate(order = as.numeric(order))
 
-     
-    # Add hex codes in ranked way
-    # creates nested data frame
-    # https://tidyr.tidyverse.org/articles/nest.html
-    # https://tidyr.tidyverse.org/reference/nest.html
-    cdf <- prep_cdf %>%
-        group_by_at(c(paste(col_name_group))) %>%
-        tidyr::nest() %>%
-        arrange(!!sym(col_name_group))
 
-    # Loop through top group and add colors by nested data frame
-    # Higher row number = less abundant = lighter color
+  # Add hex codes in ranked way
+  # creates nested data frame
+  # https://tidyr.tidyverse.org/articles/nest.html
+  # https://tidyr.tidyverse.org/reference/nest.html
+  cdf <- prep_cdf %>%
+    group_by_at(c(paste(col_name_group))) %>%
+    tidyr::nest() %>%
+    arrange(!!sym(col_name_group))
 
-    # if ("Other" %in% mdf[[col_name_group]])
-    # {
-    #   start <- 1
-    # } else
-    # {
-    #   start <- 2
-    #   num_group_colors <- num_group_colors -1
-    # }
+  # Loop through top group and add colors by nested data frame
+  # Higher row number = less abundant = lighter color
 
-    # for (i in 1:num_group_colors) {
-    #   cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
-    #   start = start + 1
-    # }
-    # 1 is micro_cvd_gray 
+  # if ("Other" %in% mdf[[col_name_group]])
+  # {
+  #   start <- 1
+  # } else
+  # {
+  #   start <- 2
+  #   num_group_colors <- num_group_colors -1
+  # }
 
-    # Define a function to create a pathway tibble
-    create_pathway_tibble <- function(pathway_name, hex_column_name) {
-      cdf %>%
-        filter(Top_npc_pathway_canopus == pathway_name) %>%
-        pull(data) %>%
-        as.data.frame() %>% 
-        left_join(hex_df, by = "order") %>%
-        select(group, order, Top_npc_superclass_canopus, !!hex_column_name := !!sym(hex_column_name)) %>%
-        rename(hex = !!sym(hex_column_name)) %>%
-        as_tibble()  %>% 
-        distinct()
-    }
+  # for (i in 1:num_group_colors) {
+  #   cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
+  #   start = start + 1
+  # }
+  # 1 is micro_cvd_gray
 
-
-    # List of pathway names and corresponding hex column names
-    pathway_data <- list(
-      "Terpenoids" = "micro_cvd_purple",
-      "Fatty acids" = "micro_cvd_blue",
-      "Polyketides" = "micro_cvd_orange",
-      "Alkaloids" = "micro_cvd_green",
-      "Shikimates and Phenylpropanoids" = "micro_cvd_turquoise",
-      "Amino acids and Peptides" = "micro_orange",
-      "Carbohydrates" = "micro_purple",
-      "Other" = "micro_cvd_gray"
-    )
-    # Subset pathway_data to match the levels in cdf$Top_npc_pathway_canopus
-    valid_pathway_names <- levels(cdf$Top_npc_pathway_canopus)
-    valid_pathway_data <- pathway_data[names(pathway_data) %in% valid_pathway_names]
+  # Define a function to create a pathway tibble
+  create_pathway_tibble <- function(pathway_name, hex_column_name) {
+    cdf %>%
+      filter(Top_npc_pathway_canopus == pathway_name) %>%
+      pull(data) %>%
+      as.data.frame() %>%
+      left_join(hex_df, by = "order") %>%
+      select(group, order, Top_npc_superclass_canopus, !!hex_column_name := !!sym(hex_column_name)) %>%
+      rename(hex = !!sym(hex_column_name)) %>%
+      as_tibble() %>%
+      distinct()
+  }
 
 
-    # Loop through the pathway_data and create tibbles
-    pathway_tibbles <- list()
-    for (pathway_name in names(valid_pathway_data)) {
-      hex_column_name <- valid_pathway_data[[pathway_name]]
-      pathway_tibbles[[pathway_name]] <- create_pathway_tibble(pathway_name, hex_column_name)
-    }
-
-    # Convert the list of tibbles to a tibble
-    cdf <- tibble(
-      Top_npc_pathway_canopus = names(pathway_tibbles),
-      data = map(pathway_tibbles, as_tibble)
-    )
-
-    # Unnest colors and groups and polish for output
-    cdf <- cdf %>%
-        ungroup() %>%
-        arrange(desc(row_number())) %>%
-        tidyr::unnest(data) %>%
-        select(!!sym(col_name_group),
-               !!sym(col_name_subgroup),
-               group, hex, order) %>%
-        mutate_all(as.character)  # Remove factor from hex codes
-
-    cdf <- cdf %>% filter( !is.na(hex))
-
-    if (top_orientation)
-    {
-      level_assign = unique(cdf$group)
-    }
-    else
-    {
-      level_assign = unique(rev(cdf$group))
-    }
-
-    mdf_group$group <- factor(mdf_group$group, levels = level_assign)
+  # List of pathway names and corresponding hex column names
+  pathway_data <- list(
+    "Terpenoids" = "micro_cvd_purple",
+    "Fatty acids" = "micro_cvd_blue",
+    "Polyketides" = "micro_cvd_orange",
+    "Alkaloids" = "micro_cvd_green",
+    "Shikimates and Phenylpropanoids" = "micro_cvd_turquoise",
+    "Amino acids and Peptides" = "micro_orange",
+    "Carbohydrates" = "micro_purple",
+    "Other" = "micro_cvd_gray"
+  )
+  # Subset pathway_data to match the levels in cdf$Top_npc_pathway_canopus
+  valid_pathway_names <- levels(cdf$Top_npc_pathway_canopus)
+  valid_pathway_data <- pathway_data[names(pathway_data) %in% valid_pathway_names]
 
 
-    # Return final objects -----
-    list(
-        mdf = mdf_group,
-        cdf = cdf
-    )
+  # Loop through the pathway_data and create tibbles
+  pathway_tibbles <- list()
+  for (pathway_name in names(valid_pathway_data)) {
+    hex_column_name <- valid_pathway_data[[pathway_name]]
+    pathway_tibbles[[pathway_name]] <- create_pathway_tibble(pathway_name, hex_column_name)
+  }
+
+  # Convert the list of tibbles to a tibble
+  cdf <- tibble(
+    Top_npc_pathway_canopus = names(pathway_tibbles),
+    data = map(pathway_tibbles, as_tibble)
+  )
+
+  # Unnest colors and groups and polish for output
+  cdf <- cdf %>%
+    ungroup() %>%
+    arrange(desc(row_number())) %>%
+    tidyr::unnest(data) %>%
+    select(
+      !!sym(col_name_group),
+      !!sym(col_name_subgroup),
+      group, hex, order
+    ) %>%
+    mutate_all(as.character) # Remove factor from hex codes
+
+  cdf <- cdf %>% filter(!is.na(hex))
+
+  if (top_orientation) {
+    level_assign <- unique(cdf$group)
+  } else {
+    level_assign <- unique(rev(cdf$group))
+  }
+
+  mdf_group$group <- factor(mdf_group$group, levels = level_assign)
+
+
+  # Return final objects -----
+  list(
+    mdf = mdf_group,
+    cdf = cdf
+  )
 }
 
 # mdf = selected_variable_meta_NPC_simple_resolved
@@ -4320,60 +4372,60 @@ fixed_custom_create_color_dfs <- function(mdf,
 
 
 
-selected_variable_meta_NPC_simple_resolved = DE$variable_meta %>%
-  filter(feature_id %in% features_of_importance)  %>% 
+selected_variable_meta_NPC_simple_resolved <- DE$variable_meta %>%
+  filter(feature_id %in% features_of_importance) %>%
   select(npc_class_canopus) %>%
-  rownames_to_column('index') %>%
-  left_join(npclassifier_newpath_simple,by="npc_class_canopus") %>% 
-  column_to_rownames('index') %>%
-  select(npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>% 
+  rownames_to_column("index") %>%
+  left_join(npclassifier_newpath_simple, by = "npc_class_canopus") %>%
+  column_to_rownames("index") %>%
+  select(npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>%
   # We convert NA in the npc_pathway_canopus column to "Other"
   mutate(npc_pathway_canopus = ifelse(is.na(npc_pathway_canopus), "Other", npc_pathway_canopus))
 
 
-selected_variable_meta_NPC_simple_resolved$Abundance = 1
+selected_variable_meta_NPC_simple_resolved$Abundance <- 1
 
 
 # show_col(cdf_variable_meta_NPC_simple_resolved_colored$hex, cex_label = 0.5)
 
 ### Selected dataset
 
-selected_variable_meta_NPC_simple_resolved_count = selected_variable_meta_NPC_simple_resolved %>%
+selected_variable_meta_NPC_simple_resolved_count <- selected_variable_meta_NPC_simple_resolved %>%
   group_by(npc_pathway_canopus) %>%
   summarise(count = n()) %>%
-  arrange(desc(count)) %>% 
+  arrange(desc(count)) %>%
   select(npc_pathway_canopus) %>%
   pull()
 
 
-selected_variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_variable_meta_NPC_simple_resolved_count, group_level = "npc_pathway_canopus" , subgroup_level = "npc_superclass_canopus", cvd = TRUE)
+selected_variable_meta_NPC_simple_resolved_colored <- fixed_custom_create_color_dfs(selected_variable_meta_NPC_simple_resolved, selected_groups = selected_variable_meta_NPC_simple_resolved_count, group_level = "npc_pathway_canopus", subgroup_level = "npc_superclass_canopus", cvd = TRUE)
 
 # Extract
 mdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$mdf
 cdf_selected_variable_meta_NPC_simple_resolved_colored <- selected_variable_meta_NPC_simple_resolved_colored$cdf
 
 
-col_order_np_pathway = mdf_selected_variable_meta_NPC_simple_resolved_colored %>% 
-distinct(group, .keep_all = TRUE) %>%
-# we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
-# with the Top_npc_pathway_canopus column on the left and the npc_pathway_canopus column on the right 
-left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
-# arrange(npc_pathway_canopus, order)  %>% 
-arrange(ifelse(npc_pathway_canopus == "Other", 2, 1), npc_pathway_canopus, order) %>% 
-# left_join(df_col_np_pathway, by.x = "Top_npc_pathway_canopus", by.x = "npc_pathway_canopus") %>% 
-select(hex, group)
+col_order_np_pathway <- mdf_selected_variable_meta_NPC_simple_resolved_colored %>%
+  distinct(group, .keep_all = TRUE) %>%
+  # we now merge the df with the cdf_selected_variable_meta_NPC_simple_resolved_colored_plus df to get the hex color code
+  # with the Top_npc_pathway_canopus column on the left and the npc_pathway_canopus column on the right
+  left_join(cdf_selected_variable_meta_NPC_simple_resolved_colored, by = "group") %>%
+  # arrange(npc_pathway_canopus, order)  %>%
+  arrange(ifelse(npc_pathway_canopus == "Other", 2, 1), npc_pathway_canopus, order) %>%
+  # left_join(df_col_np_pathway, by.x = "Top_npc_pathway_canopus", by.x = "npc_pathway_canopus") %>%
+  select(hex, group)
 
 
-col_np_pathway = col_order_np_pathway %>%
+col_np_pathway <- col_order_np_pathway %>%
   select(hex) %>%
   as.vector() %>%
-  unlist() %>% 
+  unlist() %>%
   rev()
 
-order_np_pathway = col_order_np_pathway %>%
+order_np_pathway <- col_order_np_pathway %>%
   select(group) %>%
   as.vector() %>%
-  unlist() %>% 
+  unlist() %>%
   rev()
 
 
@@ -4381,43 +4433,47 @@ mdf_selected_variable_meta_NPC_simple_resolved_colored$group <- factor(mdf_selec
 
 # The grid parameters are defined
 
-grid_params <- setup_colorbar_grid(nrows = 2, 
-                                   y_length = 0.4, 
-                                   x_spacing = 0.3,
-                                   y_spacing = 0.5, 
-                                   x_start = 1.1, 
-                                   y_start = 0.8)
+grid_params <- setup_colorbar_grid(
+  nrows = 2,
+  y_length = 0.4,
+  x_spacing = 0.3,
+  y_spacing = 0.5,
+  x_start = 1.1,
+  y_start = 0.8
+)
 
 # We create the hover text for the heatmap
 
-dt = as.data.frame(t(data_subset_for_pval_hm_mat))
+dt <- as.data.frame(t(data_subset_for_pval_hm_mat))
 
-values_mat = dt  %>% 
-rownames_to_column('feature_id') %>%
-select(feature_id) %>%
-mutate(feature_id = as.numeric(feature_id)) %>%
-left_join(DE$variable_meta, by = 'feature_id') %>%
-select(feature_id, componentindex_gnps, adduct_sirius, chebiasciiname_sirius, name_sirius, npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>%
-mutate(hover_text = paste0('<br>' , 'feature_id: ', feature_id,
-                           '<br>' , 'componentindex_gnps: ', componentindex_gnps,
-                           '<br>' , 'Adduct sirius: ', adduct_sirius,
-                           '<br>' , 'CheBI name: ', chebiasciiname_sirius,
-                           '<br>' , 'Sirius name: ', name_sirius,
-                           '<br>' , 'Pathway: ', npc_pathway_canopus,
-                           '<br>' , 'Superclass: ', npc_superclass_canopus,
-                           '<br>' , 'Class: ', npc_class_canopus)) %>%
-select(feature_id, hover_text) %>%
-pivot_wider(names_from = feature_id, values_from = hover_text)  %>% 
-# we now repeat the hover_text for each row of the matrix. We use dplyr to do that
-mutate(count = nrow(data_subset_for_pval_hm_mat)) %>%
-uncount(count) %>% 
-as.matrix()
+values_mat <- dt %>%
+  rownames_to_column("feature_id") %>%
+  select(feature_id) %>%
+  mutate(feature_id = as.numeric(feature_id)) %>%
+  left_join(DE$variable_meta, by = "feature_id") %>%
+  select(feature_id, componentindex_gnps, adduct_sirius, chebiasciiname_sirius, name_sirius, npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>%
+  mutate(hover_text = paste0(
+    "<br>", "feature_id: ", feature_id,
+    "<br>", "componentindex_gnps: ", componentindex_gnps,
+    "<br>", "Adduct sirius: ", adduct_sirius,
+    "<br>", "CheBI name: ", chebiasciiname_sirius,
+    "<br>", "Sirius name: ", name_sirius,
+    "<br>", "Pathway: ", npc_pathway_canopus,
+    "<br>", "Superclass: ", npc_superclass_canopus,
+    "<br>", "Class: ", npc_class_canopus
+  )) %>%
+  select(feature_id, hover_text) %>%
+  pivot_wider(names_from = feature_id, values_from = hover_text) %>%
+  # we now repeat the hover_text for each row of the matrix. We use dplyr to do that
+  mutate(count = nrow(data_subset_for_pval_hm_mat)) %>%
+  uncount(count) %>%
+  as.matrix()
 
 
 # We change the numeric into E-notation and we round the values to 2 decimals.
 
 
-data_subset_for_pval_hm_peak_height = format(data_subset_for_pval_hm_peak_height, digits = 2, scientific = TRUE)
+data_subset_for_pval_hm_peak_height <- format(data_subset_for_pval_hm_peak_height, digits = 2, scientific = TRUE)
 
 
 combined_matrix <- matrix(paste(as.matrix(data_subset_for_pval_hm_peak_height), values_mat, sep = "<br>"), nrow = nrow(data_subset_for_pval_hm_peak_height), ncol = ncol(data_subset_for_pval_hm_peak_height))
@@ -4490,7 +4546,7 @@ iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)), #
     font = list(size = 10)
   )
 
-#iheatmap
+# iheatmap
 
 # library(iheatmapr)
 # data(measles, package = "iheatmapr")
@@ -4502,15 +4558,15 @@ iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)), #
 #                   title = "Vaccine?",
 #                   colors = c("lightgray","blue")) %>%
 #   add_col_labels(ticktext = seq(1930,2000,10),font = list(size = 8)) %>%
-#   add_row_labels(size = 0.3,font = list(size = 6)) %>% 
+#   add_row_labels(size = 0.3,font = list(size = 6)) %>%
 #   add_col_summary(layout = list(title = "Average<br>across<br>states"),
-#                   yname = "summary")  %>%                 
+#                   yname = "summary")  %>%
 #   add_col_title("Measles Cases from 1930 to 2001", side= "top") %>%
-#   add_row_summary(groups = TRUE, 
+#   add_row_summary(groups = TRUE,
 #                   type = "bar",
 #                   layout = list(title = "Average<br>per<br>year",
 #                                 font = list(size = 8)))
-              
+
 
 
 # The file is exported
@@ -4524,8 +4580,8 @@ iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
 # col_np_superclass
 
 
-# hex_values <-c(microshades_palette("micro_green", 5, lightest = FALSE), 
-#                microshades_palette("micro_blue", 3, lightest = FALSE), 
+# hex_values <-c(microshades_palette("micro_green", 5, lightest = FALSE),
+#                microshades_palette("micro_blue", 3, lightest = FALSE),
 #                microshades_palette("micro_purple", 3, lightest = FALSE))
 
 
@@ -4561,7 +4617,7 @@ iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
 
 # npclassifier_origin_ordered
 
-# # we drop the row with the NA value in all columns 
+# # we drop the row with the NA value in all columns
 
 # npclassifier_origin_ordered = npclassifier_origin_ordered[complete.cases(npclassifier_origin_ordered), ]
 
@@ -4684,7 +4740,7 @@ iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
 
 message("Outputing Summary Table ...")
 
-# Output is not clean. Feature id are repeated x times. 
+# Output is not clean. Feature id are repeated x times.
 # To tidy ---
 
 # feature_id = DE$variable_meta$feature_id_full
@@ -4713,34 +4769,34 @@ message("Outputing Summary Table ...")
 
 # summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all = TRUE)
 
-summary_stat_output_full = DE_foldchange_pvalues
+summary_stat_output_full <- DE_foldchange_pvalues
 
 # We filter the DE_foldchange_pvalues table to only keep the top N features (any column ending with _p_value string should have a value < 0.05)
 # We use the dplyr synthax to filter the table
 # We need to make sure to remove the rwonames() before exporting
 
 
-summary_stat_output_selected = DE_foldchange_pvalues %>% 
-  filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value))  %>% 
+summary_stat_output_selected <- DE_foldchange_pvalues %>%
+  filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value)) %>%
   arrange(across(ends_with("_p_value"))) %>%
   select(
-  feature_id_full,
-  feature_id,
-  feature_mz,
-  feature_rt,
-  contains("p_value"), 
-  contains("fold"), 
-  npc_pathway_canopus,
-  npc_superclass_canopus,
-  npc_class_canopus,
-  name_sirius,
-  libraryid_gnps, 
-  contains("smiles", ignore.case = TRUE), 
-  contains("inchi_", ignore.case = TRUE),
-  contains("inchikey", ignore.case = TRUE)
+    feature_id_full,
+    feature_id,
+    feature_mz,
+    feature_rt,
+    contains("p_value"),
+    contains("fold"),
+    npc_pathway_canopus,
+    npc_superclass_canopus,
+    npc_class_canopus,
+    name_sirius,
+    libraryid_gnps,
+    contains("smiles", ignore.case = TRUE),
+    contains("inchi_", ignore.case = TRUE),
+    contains("inchikey", ignore.case = TRUE)
   )
 
-summary_stat_output_selected_cytoscape = DE_foldchange_pvalues %>%
+summary_stat_output_selected_cytoscape <- DE_foldchange_pvalues %>%
   select(
     feature_id,
     feature_id_full,
@@ -4794,49 +4850,49 @@ summary_stat_output_selected_cytoscape = DE_foldchange_pvalues %>%
     score_taxo_metannot
   )
 
-#### ad rf importance 
+#### ad rf importance
 
-imp_table_rf$feature_id <- gsub("X","",row.names(imp_table_rf))
-summary_stat_output_selected_cytoscape<- merge(summary_stat_output_selected_cytoscape,imp_table_rf,by="feature_id")
+imp_table_rf$feature_id <- gsub("X", "", row.names(imp_table_rf))
+summary_stat_output_selected_cytoscape <- merge(summary_stat_output_selected_cytoscape, imp_table_rf, by = "feature_id")
 # glimpse(summary_stat_output_selected)
 
 
 # We also prepare Metaboverse outputs from the fc and pvalues tables
 
 
-metaboverse_table = DE_foldchange_pvalues
+metaboverse_table <- DE_foldchange_pvalues
 
 # We then keep the keep the first occurence of the chebiasciiname_sirius
 
-metaboverse_table = metaboverse_table %>%
+metaboverse_table <- metaboverse_table %>%
   distinct(chebiasciiname_sirius, .keep_all = TRUE)
 
 # We now format the table for Metaboverse
 # For this we apply the foillowing steps:
 # 1. We select the columns we want to keep (chebiasciiname_sirius, Co_KO_p_value, Co_KO_fold_change_log2)
 # 2. We rename the columns to the names Metaboverse expects. Using the rename_with and gsub we replace the the _p_value and _fold_change_log2 suffixes to _stat and _fc
-# 3. We reorganize the columns to the order Metaboverse expects (chebiasciiname_sirius, _stat, _fc) 
+# 3. We reorganize the columns to the order Metaboverse expects (chebiasciiname_sirius, _stat, _fc)
 # 4. We remove any rows containing NA values in the dataframe
 # 5. We replace the name of the `chebiasciiname_sirius` column by an empty string
 
 
-metaboverse_table = metaboverse_table %>%
-  select(chebiasciiname_sirius, ends_with('_fold_change_log2'), ends_with('_p_value')) %>%
+metaboverse_table <- metaboverse_table %>%
+  select(chebiasciiname_sirius, ends_with("_fold_change_log2"), ends_with("_p_value")) %>%
   # rename_with(~gsub("_p_value", "_stat", .)) %>%
   # rename_with(~gsub("_fold_change_log2", "_fc", .)) %>%
   # select(chebiasciiname_sirius, Co_KO_fc, Co_KO_stat) %>%
-  # We remove row containing the `Inf` value  
-  # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>% 
+  # We remove row containing the `Inf` value
+  # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>%
   # We remove any row containing the `Inf` value across all columns of the dataframe
-  filter(if_any(everything(), ~!str_detect(., "Inf")))  %>% 
-  # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>% 
+  filter(if_any(everything(), ~ !str_detect(., "Inf"))) %>%
+  # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>%
   na.omit()
 
-colnames(metaboverse_table)[1] <-""
+colnames(metaboverse_table)[1] <- ""
 
 # We now sort columns alphabetically
 
-metaboverse_table = metaboverse_table[,order(colnames(metaboverse_table))]
+metaboverse_table <- metaboverse_table[, order(colnames(metaboverse_table))]
 
 
 
@@ -4854,18 +4910,18 @@ write.table(metaboverse_table, file = filename_metaboverse_table, sep = "\t", ro
 ######################################## summmary table with structure
 
 
-summary_stat_output_selected_simple = DE_foldchange_pvalues %>% 
-  filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value))  %>% 
+summary_stat_output_selected_simple <- DE_foldchange_pvalues %>%
+  filter(if_any(ends_with("_p_value"), ~ . < params$posthoc$p_value)) %>%
   arrange(across(ends_with("_p_value"))) %>%
   select(
-  feature_id,
-  feature_id_full,
-  contains("p_value"), 
-  npc_pathway_canopus,
-  npc_superclass_canopus,
-  npc_class_canopus,
-  name_sirius,
-  smiles_sirius
+    feature_id,
+    feature_id_full,
+    contains("p_value"),
+    npc_pathway_canopus,
+    npc_superclass_canopus,
+    npc_class_canopus,
+    name_sirius,
+    smiles_sirius
   )
 
 
@@ -4914,16 +4970,16 @@ summary_stat_output_selected_simple = DE_foldchange_pvalues %>%
 message("Generating GraphML output ...")
 
 
-# We first load the GNPS graphml file 
+# We first load the GNPS graphml file
 
-graphml_file = file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml", params$filenames$gnps_graphml)
+graphml_file <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml", params$filenames$gnps_graphml)
 
 
-g = read.graph(file = graphml_file, format = "graphml")
+g <- read.graph(file = graphml_file, format = "graphml")
 # net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
 
-df_from_graph_edges_original = igraph::as_data_frame(g, what = c("edges"))
-df_from_graph_vertices_original = igraph::as_data_frame(g, what = c("vertices"))
+df_from_graph_edges_original <- igraph::as_data_frame(g, what = c("edges"))
+df_from_graph_vertices_original <- igraph::as_data_frame(g, what = c("vertices"))
 
 
 # We define drop the from and to columns from the edges dataframe
@@ -4931,7 +4987,7 @@ df_from_graph_vertices_original = igraph::as_data_frame(g, what = c("vertices"))
 # These columns are placed at the beginning of the dataframe
 # and converted to numerics
 
-df_from_graph_edges = df_from_graph_edges_original  %>%
+df_from_graph_edges <- df_from_graph_edges_original %>%
   select(-from, -to) %>%
   rename(from = node1, to = node2) %>%
   select(from, to, everything()) %>%
@@ -4939,14 +4995,14 @@ df_from_graph_edges = df_from_graph_edges_original  %>%
 
 # the id column of the vertices dataframe is converted to numerics
 
-df_from_graph_vertices = df_from_graph_vertices_original %>%
+df_from_graph_vertices <- df_from_graph_vertices_original %>%
   mutate_at(vars(id), as.numeric)
 
 
 # We then add the attributes to the vertices dataframe
 # For this we merge the vertices dataframe with the VM output using the id column and the feature_id column, respectively
 
-# vm_minus_gnps = DE_original$variable_meta  %>% 
+# vm_minus_gnps = DE_original$variable_meta  %>%
 # select(-contains("_gnps"))
 
 
@@ -4965,22 +5021,22 @@ df_from_graph_vertices = df_from_graph_vertices_original %>%
 #   select(-contains("_sirius")) %>%
 #   select(-contains("_canopus")) %>%
 #   select(-contains("_metannot")) %>%
-#   select(-contains("_gnps"))  %>% 
-#   #select(-ends_with("_id"))  %>% 
+#   select(-contains("_gnps"))  %>%
+#   #select(-ends_with("_id"))  %>%
 #   select(-ends_with("_mz"))  %>%
 #   select(-ends_with("_rt"))
 
-DE_original_features = DE_original$variable_meta  %>% 
-select(feature_id)
+DE_original_features <- DE_original$variable_meta %>%
+  select(feature_id)
 
 
 
-df_from_graph_vertices_plus = merge(DE_original_features, summary_stat_output_selected_cytoscape, by.x = "feature_id", by.y = "feature_id", all.x = T)
+df_from_graph_vertices_plus <- merge(DE_original_features, summary_stat_output_selected_cytoscape, by.x = "feature_id", by.y = "feature_id", all.x = T)
 
 
 # We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
 
-merged_D_SM = merge(DE_original$sample_meta, DE_original$data, by = 'row.names', all = TRUE)
+merged_D_SM <- merge(DE_original$sample_meta, DE_original$data, by = "row.names", all = TRUE)
 
 # We replace NA values with 0 in the merged dataframe
 # Check why we dont do this before ??
@@ -5000,41 +5056,41 @@ for (i in params$to_mean$factor_name) {
     ) %>%
     select(!!all_of(i), colnames(DE_original$data)) %>%
     pivot_longer(-!!i) %>%
-    pivot_wider(names_from = all_of(i), values_from = value)  %>% 
+    pivot_wider(names_from = all_of(i), values_from = value) %>%
     # We prefix all columns with the factor name
-    rename_with(.cols=-name, ~paste0("mean_int", "_", i, "_", .x))
+    rename_with(.cols = -name, ~ paste0("mean_int", "_", i, "_", .x))
 }
 
 
-flat_dfList = reduce(dfList, full_join, by = "name")
+flat_dfList <- reduce(dfList, full_join, by = "name")
 
 # We now add the raw feature list to the dataframe
 
-full_flat_dfList = merge(flat_dfList, t(DE_original$data), by.x = 'name', by.y = 'row.names', all = TRUE)
+full_flat_dfList <- merge(flat_dfList, t(DE_original$data), by.x = "name", by.y = "row.names", all = TRUE)
 
 
-# We add the raw feature list
+#  We add the raw feature list
 
-df_from_graph_vertices_plus_plus = merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id", by.y = "name", all.x = T)
+df_from_graph_vertices_plus_plus <- merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id", by.y = "name", all.x = T)
 
 
 # We set back the id column as the first column of the dataframe
 
-df_from_graph_vertices_plus_plus = df_from_graph_vertices_plus_plus %>%
+df_from_graph_vertices_plus_plus <- df_from_graph_vertices_plus_plus %>%
   select(feature_id, everything())
 
 node_size <- df_from_graph_vertices_plus_plus$MeanDecreaseGini
-node_size[is.na(node_size)] <- min(node_size,na.rm=T)
+node_size[is.na(node_size)] <- min(node_size, na.rm = T)
 
 df_from_graph_vertices_plus_plus$node_size <- node_size
 # We then add the attributes to the edges dataframe and generate the igraph object
 
-# In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging. 
+# In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging.
 
 
 
 
-generated_g = graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
+generated_g <- graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
 
 
 ################################################################################
@@ -5073,50 +5129,56 @@ get_filename <- function() {
 
 script_name <- get_filename()
 
-file.copy(script_name, file.path(output_directory,filename_R_script), overwrite = TRUE)
+file.copy(script_name, file.path(output_directory, filename_R_script), overwrite = TRUE)
 
 
 message("Done !")
 
 
 ######### run cytoscape
-library(RCy3)
+######### Mind that here you need to have a Cytoscape instance up and running in parralel !
+library(RCy3) # Should be launched at the end as else it will cause conflicts with the previously loaded packages.
 library(pdftools)
 setwd(output_directory)
 cytoscapePing()
 
-createNetworkFromIgraph(generated_g,"myIgraph")  
+createNetworkFromIgraph(generated_g, "myIgraph")
 
-colnames_piechart <- paste("mean_int",params$target$sample_metadata_header,names(custom_colors), sep="_")
-colnames_piechart <- gsub(" ",".",colnames_piechart)
+colnames_piechart <- paste("mean_int", params$target$sample_metadata_header, names(custom_colors), sep = "_")
+colnames_piechart <- gsub(" ", ".", colnames_piechart)
 
 
- setNodeCustomPieChart(colnames_piechart,
- colors = custom_colors,style.name = "Solid")
+setNodeCustomPieChart(colnames_piechart,
+  colors = custom_colors, style.name = "Solid"
+)
 
- setNodeSizeMapping('node_size', sizes=c(60,120),style.name = "Solid")
+setNodeSizeMapping("node_size", sizes = c(60, 120), style.name = "Solid")
 
 
 saveSession("cytoscape_piechart")
- exportPDF(filename = "cytoscape_piechart",pageSize = "Auto")
+exportPDF(filename = "cytoscape_piechart", pageSize = "Auto")
 
 
- size_gradient <- c(1:4)
- pdf("color_legend.pdf")
- # Create a legend
- plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
- legend("topleft", legend =names(custom_colors), pch=15, pt.cex=2, cex=1, bty='n',
-     col = custom_colors)
- mtext(params$target$sample_metadata_header, at=0, cex=1)
- legend("topright", legend =size_gradient, pch=16, pt.cex=size_gradient*0.7, cex=1, bty='n',
- col = "black")
- mtext("Importance", at=0.95, cex=1)
- dev.off()
+size_gradient <- c(1:4)
+pdf("color_legend.pdf")
+# Create a legend
+plot(NULL, xaxt = "n", yaxt = "n", bty = "n", ylab = "", xlab = "", xlim = 0:1, ylim = 0:1)
+legend("topleft",
+  legend = names(custom_colors), pch = 15, pt.cex = 2, cex = 1, bty = "n",
+  col = custom_colors
+)
+mtext(params$target$sample_metadata_header, at = 0, cex = 1)
+legend("topright",
+  legend = size_gradient, pch = 16, pt.cex = size_gradient * 0.7, cex = 1, bty = "n",
+  col = "black"
+)
+mtext("Importance", at = 0.95, cex = 1)
+dev.off()
 
 
- files <- c("cytoscape_piechart.pdf","color_legend.pdf")          #get pdf filenames
- pdfs <- Reduce(c, lapply(files, image_read_pdf)) #read in and combine
- montage <- image_montage(pdfs, tile = '1x2', geometry = "x1200") #create pages of 4
-image_write(montage, format = "pdf", "cytoscape_piechart.pdf") #save as single pdf
+files <- c("cytoscape_piechart.pdf", "color_legend.pdf") # get pdf filenames
+pdfs <- Reduce(c, lapply(files, image_read_pdf)) # read in and combine
+montage <- image_montage(pdfs, tile = "1x2", geometry = "x1200") # create pages of 4
+image_write(montage, format = "pdf", "cytoscape_piechart.pdf") # save as single pdf
 
 file.remove("color_legend.pdf")

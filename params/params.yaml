@@ -1,24 +1,24 @@
-mapp_project : mapp_project_00038
-mapp_batch : mapp_batch_00082
-met_annot_enhancer_folder : mapp_batch_00082
-gnps_job_id : 11807d43c10848df883747a102817222
+mapp_project : mapp_project_00016
+mapp_batch : mapp_batch_00060
+met_annot_enhancer_folder : mapp_batch_00060
+gnps_job_id : 0be2c009a2c1459abb15ea4b41ec9d50
 
 dataset_experiment : 
-  name: "mapp_batch_00082 LCMS metabolomics dataset"
-  description: "Rat plasma - Losartan Captopril"
+  name: "mapp_batch_00060 LCMS metabolomics dataset"
+  description: "Ola's actinomycota dataset"
 
 ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: e3a445eacb324d26838dda304b6b47e8.graphml
+  gnps_graphml: 0a1b30e33a5a45d7bf2ebf67ddc441c1.graphml
 
 
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : TRUE
+  filter_sample_metadata_one : FALSE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
@@ -35,7 +35,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'source_taxon'
+    factor_name : 'biological_source'
 
 
 filter_sample_type :
@@ -46,10 +46,9 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : 'attribute_timepoint'
+  factor_name : ''
   levels :
-    - 'D0'
-    - 'D14'
+
 
 
 filter_sample_metadata_two :
@@ -76,7 +75,7 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'confidencescore_sirius'
-  level : 0.8
+  level : 0.2
 
 
 target:
@@ -131,8 +130,8 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "source_taxon"
-    - "source_taxon_simplified"
+    - "biological_source"
+
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
@@ -142,7 +141,7 @@ to_mean:
 
 to_combine_vertically: 
   column1: 
-    factor_name: "source_taxon"
+    factor_name: "biological_source"
     groups:
       group1:
         levels: 
@@ -169,7 +168,7 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-     - "source_taxon"
+     - "biological_source"
 
 
 
