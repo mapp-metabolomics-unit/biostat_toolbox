@@ -1,18 +1,18 @@
-mapp_project : mapp_project_00016
-mapp_batch : mapp_batch_00060
-met_annot_enhancer_folder : mapp_batch_00060
-gnps_job_id : 0be2c009a2c1459abb15ea4b41ec9d50
+mapp_project : mapp_project_000028
+mapp_batch : mapp_batch_000052
+met_annot_enhancer_folder : mapp_batch_000052
+gnps_job_id : e43ae833558a427284343f7aa7e59719
 
 dataset_experiment : 
-  name: "mapp_batch_00060 LCMS metabolomics dataset"
-  description: "Ola's actinomycota dataset"
+  name: "mapp_batch_000052 LCMS metabolomics dataset"
+  description: "Vincent Jassey Sphagnum dataset"
 
-ms_files_extension: ".mzML"
+ms_files_extension: ".mzXML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 0a1b30e33a5a45d7bf2ebf67ddc441c1.graphml
+  gnps_graphml: 2aa80b805e414bd8bf230257f16b7b9b.graphml
 
 
 actions:
@@ -23,19 +23,19 @@ actions:
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : FALSE
+  filter_variable_metadata_num : TRUE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
-  set_colors_manually : TRUE
+  set_colors_manually : FALSE
   run_with_gap_filled: FALSE
   short_path : TRUE
 
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'biological_source'
+    factor_name : 'source_taxon'
 
 
 filter_sample_type :
@@ -75,13 +75,13 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'confidencescore_sirius'
-  level : 0.2
+  level : 0.5
 
 
 target:
-  sample_metadata_header: "attribute_timepoint" # This variable will be used throughout the whole script
+  sample_metadata_header: "attribute_receptor_site" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "attribute_timepoint"
+  target_path_name: "attribute_receptor_site"
 
 
 
@@ -130,7 +130,8 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "biological_source"
+    - "source_taxon"
+    - "attribute_receptor_site"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
@@ -141,7 +142,7 @@ to_mean:
 
 to_combine_vertically: 
   column1: 
-    factor_name: "biological_source"
+    factor_name: "source_taxon"
     groups:
       group1:
         levels: 
@@ -168,7 +169,8 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-     - "biological_source"
+     - "source_taxon"
+     - "attribute_receptor_site"
 
 
 

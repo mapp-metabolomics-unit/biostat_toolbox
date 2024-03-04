@@ -5026,12 +5026,23 @@ df_from_graph_vertices <- df_from_graph_vertices_original %>%
 #   select(-ends_with("_mz"))  %>%
 #   select(-ends_with("_rt"))
 
-DE_original_features <- DE_original$variable_meta %>%
-  select(feature_id)
+DE_original_features <- DE_original$variable_meta 
+# %>%
+#   select(feature_id)
+
+# We merge DE_original_features and summary_stat_output_selected_cytoscape but make sure to drop duplicated columns from the summary_stat_output_selected_cytoscape dataframe
+
+# Identify the names of columns that are duplicated between the two data frames, excluding the merging key column.
+common_cols <- setdiff(intersect(names(DE_original_features), names(summary_stat_output_selected_cytoscape)), "feature_id")
+
+# Remove Duplicated Columns from One DataFrame
+summary_stat_output_selected_cytoscape <- summary_stat_output_selected_cytoscape %>%
+  select(-all_of(common_cols))
 
 
+df_from_graph_vertices_plus <- DE_original_features %>%
+  left_join(summary_stat_output_selected_cytoscape, by = "feature_id")
 
-df_from_graph_vertices_plus <- merge(DE_original_features, summary_stat_output_selected_cytoscape, by.x = "feature_id", by.y = "feature_id", all.x = T)
 
 
 # We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
@@ -5088,6 +5099,10 @@ df_from_graph_vertices_plus_plus$node_size <- node_size
 # In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging.
 
 
+# We then make sure to have the df_from_graph_vertices_plus_plus dataframe ordered by decreasing value of the MeanDecreaseGini column
+
+df_from_graph_vertices_plus_plus <- df_from_graph_vertices_plus_plus %>%
+  arrange(desc(MeanDecreaseGini))
 
 
 generated_g <- graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
@@ -5140,19 +5155,34 @@ message("Done !")
 library(RCy3) # Should be launched at the end as else it will cause conflicts with the previously loaded packages.
 library(pdftools)
 setwd(output_directory)
+
 cytoscapePing()
 
 createNetworkFromIgraph(generated_g, "myIgraph")
 
+
+
+setNodeSizeMapping("node_size", sizes = c(20, 150), style.name = "Solid")
+
+
 colnames_piechart <- paste("mean_int", params$target$sample_metadata_header, names(custom_colors), sep = "_")
 colnames_piechart <- gsub(" ", ".", colnames_piechart)
 
+# Note that since we have a named vectors. The vector needs to be unnamed when passed to the colors argument
 
 setNodeCustomPieChart(colnames_piechart,
-  colors = custom_colors, style.name = "Solid"
+  colors = unname(custom_colors)
+, style.name = "Solid"
 )
 
-setNodeSizeMapping("node_size", sizes = c(60, 120), style.name = "Solid")
+# The edge label is set 
+
+setEdgeLabelMapping('EdgeAnnotation', style.name = "Solid")
+
+# The Node label is set
+
+setNodeLabelMapping('parent_mass_gnps', style.name = "Solid")
+
 
 
 saveSession("cytoscape_piechart")
@@ -5179,6 +5209,23 @@ dev.off()
 files <- c("cytoscape_piechart.pdf", "color_legend.pdf") # get pdf filenames
 pdfs <- Reduce(c, lapply(files, image_read_pdf)) # read in and combine
 montage <- image_montage(pdfs, tile = "1x2", geometry = "x1200") # create pages of 4
-image_write(montage, format = "pdf", "cytoscape_piechart.pdf") # save as single pdf
+image_write(montage, format = "pdf", "cytoscape_piechart_legend.pdf") # save as single pdf
 
 file.remove("color_legend.pdf")
+
+
+
+# Read the PDF files individually
+cytoscape_piechart <- image_read_pdf("cytoscape_piechart.pdf", density = 300)
+color_legend <- image_read_pdf("color_legend.pdf", density = 300)
+
+# Check the number of images/pages in each file
+print(image_info(cytoscape_piechart))
+print(image_info(color_legend))
+
+montage <- image_montage(c(cytoscape_piechart, color_legend), tile = "1x2")
+# Example with a simple border specified, adjust values as needed
+montage <- image_montage(c(cytoscape_piechart, color_legend))
+
+# Save the combined content as a single PDF
+image_write(montage, path = "cytoscape_piechart_legend4.pdf", format = "pdf")
