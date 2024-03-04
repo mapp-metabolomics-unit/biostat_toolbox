@@ -5150,8 +5150,17 @@ file.copy(script_name, file.path(output_directory, filename_R_script), overwrite
 message("Done !")
 
 
+
+
 ######### run cytoscape
 ######### Mind that here you need to have a Cytoscape instance up and running in parralel !
+
+# We launch the Cytoscape connector conditionally 
+
+if (params$actions$run_cytoscpae_connector == TRUE) {
+  message("Running Cytoscape connector ...")
+  # We launch the Cytoscape connector
+
 library(RCy3) # Should be launched at the end as else it will cause conflicts with the previously loaded packages.
 library(pdftools)
 setwd(output_directory)
@@ -5229,3 +5238,6 @@ montage <- image_montage(c(cytoscape_piechart, color_legend))
 
 # Save the combined content as a single PDF
 image_write(montage, path = "cytoscape_piechart_legend4.pdf", format = "pdf")
+
+
+}

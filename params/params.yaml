@@ -31,6 +31,7 @@ actions:
   set_colors_manually : FALSE
   run_with_gap_filled: FALSE
   short_path : TRUE
+  run_cytoscape_connector : FALSE
 
 
 options:
