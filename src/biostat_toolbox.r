@@ -1362,7 +1362,7 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   # # prepare model sequence
   plsda_seq_model <- # autoscale() +
-    filter_na_count(threshold = 3, factor_name = params$target$sample_metadata_header) +
+    filter_na_count(threshold = 1, factor_name = params$target$sample_metadata_header) +
     # knn_impute() +
     PLSDA(factor_name = params$target$sample_metadata_header, number_components = 2)
 

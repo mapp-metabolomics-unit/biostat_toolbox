@@ -1,29 +1,29 @@
-mapp_project : mapp_project_000028
-mapp_batch : mapp_batch_000052
-met_annot_enhancer_folder : mapp_batch_000052
-gnps_job_id : e43ae833558a427284343f7aa7e59719
+mapp_project : mapp_project_00016
+mapp_batch : mapp_batch_00060
+met_annot_enhancer_folder : mapp_batch_00060
+gnps_job_id : 0be2c009a2c1459abb15ea4b41ec9d50
 
 dataset_experiment : 
-  name: "mapp_batch_000052 LCMS metabolomics dataset"
-  description: "Vincent Jassey Sphagnum dataset"
+  name: "mapp_batch_00060 LCMS metabolomics dataset"
+  description: "Ola's actinomycota non gap filled dataset"
 
-ms_files_extension: ".mzXML"
+ms_files_extension: ".mzML"
 
 filenames:
   sirius_annotations: compound_identifications.tsv
   canopus_annotations: canopus_compound_summary.tsv
-  gnps_graphml: 2aa80b805e414bd8bf230257f16b7b9b.graphml
+  gnps_graphml: 0a1b30e33a5a45d7bf2ebf67ddc441c1.graphml
 
 
 actions:
   scale_data : TRUE
   filter_sample_type : TRUE
-  filter_sample_metadata_one : FALSE
+  filter_sample_metadata_one : TRUE
   filter_sample_metadata_two : FALSE
   filter_variable_metadata_one : FALSE
   filter_variable_metadata_two : FALSE
   filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : TRUE
+  filter_variable_metadata_num : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -46,8 +46,10 @@ filter_sample_type :
 
 filter_sample_metadata_one :
   mode : 'include'
-  factor_name : ''
+  factor_name : 'attribute_code_simplified'
   levels :
+    - 'B108_B113'
+    - 'B126_B129_B130_B132_B148_B54'
 
 
 
@@ -75,13 +77,13 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above'
   factor_name : 'confidencescore_sirius'
-  level : 0.5
+  level : 0.8
 
 
 target:
-  sample_metadata_header: "attribute_receptor_site" # This variable will be used throughout the whole script
+  sample_metadata_header: "attribute_code_simplified" # This variable will be used throughout the whole script
    ## XXX_simplified  for combined horizontally
-  target_path_name: "attribute_receptor_site"
+  target_path_name: "attribute_code_simplified"
 
 
 
@@ -131,7 +133,6 @@ colors:
 to_mean:
   factor_name:
     - "source_taxon"
-    - "attribute_receptor_site"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
@@ -140,19 +141,23 @@ to_mean:
 # E.g. if you choose to combine Ag and Ab the resulting level will be Ab_Ag. These will appear in a new column which will be name by the name of the original colum suffixed by '_simplified'
 
 
+
 to_combine_vertically: 
   column1: 
-    factor_name: "source_taxon"
+    factor_name: "attribute_code"
     groups:
       group1:
         levels: 
-        #- "Argon"
-        # - "HN"
-        #- "NifH"
-      # group2: 
-      #   levels:
-      #   - "HN"
-      #   - "C"
+        - "B113"
+        - "B108"
+      group2: 
+        levels:
+        - "B54"
+        - "B129"
+        - "B130"
+        - "B132"
+        - "B126"
+        - "B148"
   # # column2: 
   #   name: "sample_type"
   #   groups:
@@ -170,7 +175,6 @@ to_combine_vertically:
 to_combine_horizontally:
   factor_name: 
      - "source_taxon"
-     - "attribute_receptor_site"
 
 
 
