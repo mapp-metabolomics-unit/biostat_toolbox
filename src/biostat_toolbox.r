@@ -1451,7 +1451,7 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   # We export the loadings
 
-  write.table(loadings, file = filename_PLSDA_loadings, sep = "\t", row.names = FALSE)
+  # write.table(loadings, file = filename_PLSDA_loadings, sep = "\t", row.names = FALSE)
 
   # We export the vip
 
