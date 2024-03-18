@@ -50,7 +50,7 @@ filter_sample_metadata_one :
   mode : 'include'
   factor_name : 'process'
   levels : 
-      - 'Empty'
+      - 'Food'
       # - 'X2'
       # - 'X3'
 

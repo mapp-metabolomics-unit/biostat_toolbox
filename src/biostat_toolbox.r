@@ -1447,7 +1447,7 @@ if (params$actions$run_PLSDA == "TRUE") {
   # The plots are exported
 
   ggsave(plot = fig_PLSDA, filename = filename_PLSDA, width = 10, height = 10)
-  ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP, width = 20, height = 10)
+  ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP_plot, width = 20, height = 10)
 
   # We export the loadings
 
