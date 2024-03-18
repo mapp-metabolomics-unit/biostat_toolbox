@@ -5157,7 +5157,7 @@ message("Done !")
 
 # We launch the Cytoscape connector conditionally 
 
-if (params$actions$run_cytoscpae_connector == TRUE) {
+if (params$actions$run_cytoscape_connector == TRUE) {
   message("Running Cytoscape connector ...")
   # We launch the Cytoscape connector
 
