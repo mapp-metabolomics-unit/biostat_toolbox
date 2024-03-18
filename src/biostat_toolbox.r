@@ -38,7 +38,7 @@ rm(r)
 
 # Package organized alphabetically
 
-usePackage("ape")
+usePackage("ape") ### super package
 usePackage("base")
 usePackage("BiocFileCache")
 usePackage("cowplot")
