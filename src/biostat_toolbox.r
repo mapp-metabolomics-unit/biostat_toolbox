@@ -322,7 +322,9 @@ filename_PCA3D <- paste(file_prefix, "PCA3D.html", sep = "")
 filename_PCoA <- paste(file_prefix, "PCoA.pdf", sep = "")
 filename_PCoA3D <- paste(file_prefix, "PCoA3D.html", sep = "")
 filename_PLSDA <- paste(file_prefix, "PLSDA.pdf", sep = "")
-filename_PLSDA_VIP <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
+filename_PLSDA_loadings <- paste(file_prefix, "PLSDA_loadings.tsv", sep = "")
+filename_PLSDA_VIP_plot <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
+filename_PLSDA_VIP_table <- paste(file_prefix, "PLSDA_VIP.tsv", sep = "")
 filename_R_script <- paste(file_prefix, "R_script_backup.R", sep = "")
 filename_random_forest <- paste(file_prefix, "RF_importance.html", sep = "")
 filename_random_forest_model <- paste(file_prefix, "RF_model.txt", sep = "")
@@ -1410,12 +1412,51 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   fig_PLSDA_VIP <- vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA_VIP)
 
+  # We keep the loadings
+
+  loadings <- plsda_object$loadings
+
+  # The rownames of the loadings are the feature names, we keep them as a column
+  # We also keep these as integers
+
+  loadings <- loadings %>%
+    rownames_to_column(var = "feature_id") %>%
+    mutate(feature_id = as.numeric(feature_id))
+
+  # The process is repeated for the vip
 
 
-  # The files are exported
+  vip <- plsda_object$vip %>%
+    # We keep the first column and rename it to VIP
+    select(1) %>%
+    rename(VIP = 1) %>%
+    rownames_to_column(var = "feature")
+
+  # We now merge this vip object with the loading to fetch the correct feature names
+  # We assume that the row are in the same order. We use cbind()
+
+  vip <- cbind(vip, loadings)
+
+  # We reorganize the columns to keep feature_id and feature at the beginning. We use dplyr syntax
+  # We order by decreasing value of the VIP column
+
+  vip <- vip %>%
+    select(feature_id, feature, everything()) %>%
+    arrange(desc(VIP))
+
+  # The plots are exported
 
   ggsave(plot = fig_PLSDA, filename = filename_PLSDA, width = 10, height = 10)
   ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP, width = 20, height = 10)
+
+  # We export the loadings
+
+  write.table(loadings, file = filename_PLSDA_loadings, sep = "\t", row.names = FALSE)
+
+  # We export the vip
+
+  write.table(vip, file = filename_PLSDA_VIP_table, sep = "\t", row.names = FALSE)
+
 }
 
 #################################################################################################
