@@ -46,6 +46,7 @@ usePackage("crosstalk")
 usePackage("data.table")
 usePackage("datasets")
 usePackage("dbscan")
+usePackage("digest")
 usePackage("dplyr")
 usePackage("DT")
 usePackage("emmeans")
@@ -114,6 +115,17 @@ usePackage("yaml")
 # install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
 library(MAPPstructToolbox)
 
+############################################################################################
+############################################################################################
+################################ LOAD REQUIRED FUNCTIONS  ##################################
+############################################################################################
+############################################################################################
+
+# We load the required functions from the MAPPstructToolbox package
+# these are in the helpers.r file
+
+source("src/helpers.r")
+
 
 ############################################################################################
 ############################################################################################
@@ -142,6 +154,7 @@ path_to_params_user <- "./params/params_user.yaml"
 params <- yaml.load_file(path_to_params)
 params_user <- yaml.load_file(path_to_params_user)
 
+
 # Here we load the user params if they exist
 
 params$paths$docs <- params_user$paths$docs
@@ -149,9 +162,28 @@ params$paths$output <- params_user$paths$output
 params$operating_system$system <- params_user$operating_system$system
 params$operating_system$pandoc <- params_user$operating_system$pandoc
 
+
+# We generate a hash from the params.yaml file
+
+yaml_hash <- generate_hash_from_yaml(path_to_params)
+
+# Description of this configuration
+# Here we output a fully formatted description of the configuration using the params.yaml file and it's set parameters
+
+
 # We set the working directory
 
 working_directory <- file.path(params$paths$docs, params$mapp_project, params$mapp_batch)
+
+
+# Path to your mapping file
+mapping_file_path <- file.path(params$paths$output, "mapping_file.tsv")
+
+update_mapping_file(params, yaml_hash, mapping_file_path)
+
+
+
+
 
 # We set the output directory
 
@@ -1093,6 +1125,14 @@ if (params$actions$scale_data == "FALSE") {
   # dir.create(output_directory)
 
   # output_directory <- tools::file_path_as_absolute(output_directory)
+
+
+  if (params$paths$output != "") {
+    output_directory <- file.path(params$paths$output, yaml_hash)
+  } else {
+    output_directory <- file.path(working_directory, "results", "stats", yaml_hash)
+  }
+
 
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
