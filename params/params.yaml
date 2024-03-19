@@ -5,7 +5,7 @@ gnps_job_id : d53d09cdd2c04fd2961724cb136cfe61
 
 dataset_experiment : 
   name: "mapp_batch_00044 LCMS metabolomics dataset"
-  description: "Simon Blanchoud  Tunicate"
+  description: "Simon Blanchoud - Tunicate metabolomics"
 
 ms_files_extension: ".mzML"
 
@@ -50,7 +50,7 @@ filter_sample_metadata_one :
   mode : 'include'
   factor_name : 'process'
   levels : 
-      - 'Empty'
+      - 'Food'
       # - 'X2'
       # - 'X3'
 
@@ -84,7 +84,7 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "origin" # This variable will be used throughout the whole script
+  sample_metadata_header: "origin" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
   target_path_name: "origin"
 
@@ -208,3 +208,4 @@ heatmap:
 
 
 feature_to_filter :
+

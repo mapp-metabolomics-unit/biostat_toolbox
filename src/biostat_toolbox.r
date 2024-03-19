@@ -67,6 +67,7 @@ usePackage("htmltools")
 usePackage("igraph")
 usePackage("iheatmapr")
 usePackage("janitor")
+usePackage("jsonlite")
 usePackage("magick")
 usePackage("manhattanly")
 usePackage("microshades") ### remotes::install_github("KarstensLab/microshades", dependencies=TRUE)
@@ -165,7 +166,7 @@ params$operating_system$pandoc <- params_user$operating_system$pandoc
 
 # We generate a hash from the params.yaml file
 
-yaml_hash <- generate_hash_from_yaml(path_to_params)
+# yaml_hash <- generate_hash_from_yaml(path_to_params)
 
 # Description of this configuration
 # Here we output a fully formatted description of the configuration using the params.yaml file and it's set parameters
@@ -176,12 +177,19 @@ yaml_hash <- generate_hash_from_yaml(path_to_params)
 working_directory <- file.path(params$paths$docs, params$mapp_project, params$mapp_batch)
 
 
-# Path to your mapping file
-mapping_file_path <- file.path(params$paths$output, "mapping_file.tsv")
+# # Path to your mapping file
+# mapping_file_path <- file.path(params$paths$output, "mapping_file.tsv")
 
-update_mapping_file(params, yaml_hash, mapping_file_path)
+# update_mapping_file(params, yaml_hash, mapping_file_path)
+
+# Specify the path to the JSON configuration file
+json_file_path <- file.path(params$paths$output, "configurations.json") 
 
 
+
+
+# Call the function to update the JSON configuration file
+config_hash <- update_configuration_json(path_to_params, json_file_path)
 
 
 
@@ -1128,9 +1136,9 @@ if (params$actions$scale_data == "FALSE") {
 
 
   if (params$paths$output != "") {
-    output_directory <- file.path(params$paths$output, yaml_hash)
+    output_directory <- file.path(params$paths$output, config_hash)
   } else {
-    output_directory <- file.path(working_directory, "results", "stats", yaml_hash)
+    output_directory <- file.path(working_directory, "results", "stats", config_hash)
   }
 
 
