@@ -1,0 +1,3 @@
+mapp_project	mapp_batch	dataset_experiment.name	dataset_experiment.description	actions.scale_data	actions.filter_sample_type	actions.filter_sample_metadata_one	factor_name	filter_sample_type.mode	filter_sample_type.factor_name	filter_sample_type.levels
+mapp_project_00017	mapp_batch_00044	mapp_batch_00044 LCMS metabolomics dataset	Simon Blanchoud - Tunicate metabolomics	TRUE	TRUE	TRUE	process	include	sample_type	BK
+mapp_project_00017	mapp_batch_00044	mapp_batch_00044 LCMS metabolomics dataset	Simon Blanchoud - Tunicate metabolomics	TRUE	TRUE	TRUE	process	include	sample_type	BLANK

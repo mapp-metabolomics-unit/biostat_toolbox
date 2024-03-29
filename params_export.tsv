@@ -1,0 +1,3 @@
+X.mapp_project_00017.	X.mapp_batch_00044.	dataset_experiment..mapp_batch_00044.LCMS.metabolomics.dataset.	dataset_experiment..Simon.Blanchoud...Tunicate.metabolomics.	actions.TRUE	actions.TRUE.1	actions.TRUE.2	X.process.	filter_sample_type..include.	filter_sample_type..sample_type.	filter_sample_type.c..BK....BLANK..
+mapp_project_00017	mapp_batch_00044	mapp_batch_00044 LCMS metabolomics dataset	Simon Blanchoud - Tunicate metabolomics	TRUE	TRUE	TRUE	process	include	sample_type	BK
+mapp_project_00017	mapp_batch_00044	mapp_batch_00044 LCMS metabolomics dataset	Simon Blanchoud - Tunicate metabolomics	TRUE	TRUE	TRUE	process	include	sample_type	BLANK

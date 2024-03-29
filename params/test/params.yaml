@@ -12,10 +12,11 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 
-    - 'process'
-    - 'sample_type'
-    - 'sample_group'
+    factor_name :
+        - 'process'
+        - 'sample_type'
+        - 'instrument'
+        - 'sample_group'
 
 filter_sample_type :
   mode : 'include'
@@ -23,4 +24,6 @@ filter_sample_type :
   levels :
    - 'BK' 
    - 'BLANK'
+   - 'Alors'
+   - 'QC'
 

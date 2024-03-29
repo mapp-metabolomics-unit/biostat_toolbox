@@ -1,0 +1,39 @@
+file_path	yaml_content	hash
+params/test//params.yaml	mapp_project: mapp_project_00017
+mapp_batch: mapp_batch_00044
+dataset_experiment:
+  name: mapp_batch_00044 LCMS metabolomics dataset
+  description: Simon Blanchoud - Tunicate metabolomics
+actions:
+  scale_data: yes
+  filter_sample_type: yes
+  filter_sample_metadata_one: yes
+options:
+  gnps_column_for_boxplots:
+    factor_name: process
+filter_sample_type:
+  mode: include
+  factor_name: sample_type
+  levels:
+  - BK
+  - BLANK
+	8ef776d881432b3f7140b36b2992091c8963aad36f27f86649f59a48da200d2d
+params/test//params2.yaml	mapp_project: mapp_project_00017
+mapp_batch: mapp_batch_00044
+dataset_experiment:
+  name: mapp_batch_00044 LCMS metabolomics dataset
+  description: Simon Blanchoud - Tunicate metabolomics
+actions:
+  scale_data: yes
+  filter_sample_type: yes
+  filter_sample_metadata_one: yes
+options:
+  gnps_column_for_boxplots:
+    factor_name: process
+filter_sample_type:
+  mode: include
+  factor_name: sample_type
+  levels:
+  - BK
+  - QC
+	5dbc93be764f5f1ffd7c1134bf0e7442b01223486d1453cfbf2eb1bceb6083cb

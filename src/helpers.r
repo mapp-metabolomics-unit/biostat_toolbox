@@ -81,7 +81,7 @@ update_configuration_json <- function(yaml_file_path, json_file_path) {
   # Serialize the R object (YAML content without comments) to a JSON string
   # Using jsonlite::toJSON for consistent ordering and representation
   # auto_unbox and pretty are used to ensure consistency in the string representation
-  params_json_str <- toJSON(params, auto_unbox = TRUE, pretty = TRUE)
+  params_json_str <- toJSON(params, auto_unbox = FALSE, pretty = TRUE)
 
   # Generate hash from the JSON string representation of the parameters
   config_hash <- digest(params_json_str, algo = "md5")
