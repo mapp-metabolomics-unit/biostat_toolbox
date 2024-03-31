@@ -78,3 +78,20 @@ append_to_common_df_and_save <- function(new_row_df, common_df_path, common_tsv_
     message("Content hash already exists in the dataframe. No new row added.")
   }
 }
+
+# String sanitization function
+
+sanitize_string <- function(string) {
+  # We make sure that no multiple _ exists in the filter_variable_metadata_status string
+  string <- gsub("_{2,}", "_", string)
+  # We also make sure that the string doesn not start or finish with an underscore
+  string <- gsub("^_|_$", "", string)
+  return(string)
+}
+
+
+# The previous lines are functionalized in
+
+formatted_filter_status <- function(filter) {
+  return(paste(filter$mode, filter$factor_name, paste(filter$levels, collapse = "_"), sep = "_"))
+}

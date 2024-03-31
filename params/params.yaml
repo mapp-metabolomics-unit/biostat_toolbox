@@ -17,13 +17,6 @@ filenames:
 
 actions:
   scale_data : TRUE
-  filter_sample_type : TRUE
-  filter_sample_metadata_one : TRUE
-  filter_sample_metadata_two : FALSE
-  filter_variable_metadata_one : FALSE
-  filter_variable_metadata_two : FALSE
-  filter_variable_metadata_annotated : FALSE
-  filter_variable_metadata_num : FALSE
   filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
@@ -54,30 +47,31 @@ filter_sample_metadata_one :
       - 'Seawater'
 
 filter_sample_metadata_two :
-  mode : 'exclude'
-  factor_name : 'origin'
-  levels :
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : '' 
+  levels : 
+      - ''
 
 filter_variable_metadata_one :
-  mode : 'include'
-  factor_name : 'npc_pathway_canopus'
+  mode : ''
+  factor_name : '' # E.g. 'npc_pathway_canopus'
   levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
 
 filter_variable_metadata_two :
-  mode : 'include'
-  factor_name : 'npc_pathway_canopus'
-  levels : 'Fatty acids' 
+  mode : ''
+  factor_name : '' # E.g. 'npc_pathway_canopus'
+  levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
 
 
 filter_variable_metadata_annotated :
-  mode : 'exclude'
-  factor_name : 'chebiasciiname_sirius'
-  levels : 'NA'
+  mode : ''
+  factor_name : '' # E.g. 'npc_pathway_canopus'
+  levels : '' # E.g. 'NA' 
 
 filter_variable_metadata_num :
-  mode : 'above'
-  factor_name : 'confidencescore_sirius'
-  level : 0.5
+  mode : '' # 'above' or 'below', if '', the filter is not applied
+  factor_name : '' # e.g 'confidencescore_sirius'
+  level :  # Numerical value. E.g 0.5
 
 
 target:

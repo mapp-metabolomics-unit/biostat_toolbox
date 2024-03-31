@@ -200,122 +200,29 @@ if (params$actions$scale_data == "TRUE") {
   scaling_status <- "raw"
 }
 
-
-if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
-filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
-params$filter_sample_metadata_one$factor_name,
-paste(params$filter_sample_metadata_one$levels, collapse = "_"),
-params$filter_sample_metadata_two$mode,
-params$filter_sample_metadata_two$factor_name,
-paste(params$filter_sample_metadata_two$levels, collapse = "_"),
-sep = "_")
-} else if (params$actions$filter_sample_metadata_one == "TRUE") {
-filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
-params$filter_sample_metadata_one$factor_name,
-paste(params$filter_sample_metadata_one$levels, collapse = "_"),
-sep = "_")
-} else { filter_sample_metadata_status = "" }
-
-
-if (params$actions$filter_sample_type == "TRUE") {
-  filter_sample_type_status <- paste(params$filter_sample_type$mode,
-    params$filter_sample_type$factor_name,
-    paste(params$filter_sample_type$levels, collapse = "_"),
-    sep = "_"
-  )
-} else {
-  filter_sample_type_status <- ""
-}
-
-if (params$actions$filter_sample_metadata_one == "TRUE") {
-  filter_sample_metadata_one_status <- paste(params$filter_sample_metadata_one$mode,
-    params$filter_sample_metadata_one$factor_name,
-    paste(params$filter_sample_metadata_one$levels, collapse = "_"),
-    sep = "_"
-  )
-} else {
-  filter_sample_metadata_one_status <- ""
-}
-
-if (params$actions$filter_sample_metadata_two == "TRUE") {
-  filter_sample_metadata_two_status <- paste(params$filter_sample_metadata_two$mode,
-    params$filter_sample_metadata_two$factor_name,
-    paste(params$filter_sample_metadata_two$levels, collapse = "_"),
-    sep = "_"
-  )
-} else {
-  filter_sample_metadata_two_status <- ""
-}
+possible_modes <- c("exclude", "include")
 
 
 
-filter_sample_metadata_status <- paste(filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, sep = "_")
+filter_sample_type_status = formatted_filter_status(params$filter_sample_type)
+filter_sample_metadata_one_status = formatted_filter_status(params$filter_sample_metadata_one)
+filter_sample_metadata_two_status = formatted_filter_status(params$filter_sample_metadata_two)
 
-# We make sure that no multiple _ exists in the filter_variable_metadata_status string
-filter_sample_metadata_status <- gsub("_{2,}", "_", filter_sample_metadata_status)
-# We also make sure that the string doesn not start or finish with an underscore
-filter_sample_metadata_status <- gsub("^_|_$", "", filter_sample_metadata_status)
+filter_variable_metadata_one_status = formatted_filter_status(params$filter_variable_metadata_one)
+filter_variable_metadata_two_status = formatted_filter_status(params$filter_variable_metadata_two)
+filter_variable_metadata_annotated_status = formatted_filter_status(params$filter_variable_metadata_annotated)
+filter_variable_metadata_num_status = formatted_filter_status(params$filter_variable_metadata_num)
 
-# Finally, if filter_sample_metadata_status is '_' we set it to an empty string.
+filter_sample_metadata_status = paste(filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, sep = "_")
 
-if (filter_sample_metadata_status == "_") {
-  filter_sample_metadata_status <- ""
-}
+filter_variable_metadata_status = paste(filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, sep = "_")
+
+# We make sure that no multiple _ exists using the sanitize_string function
+
+filter_sample_metadata_status = sanitize_string(filter_sample_metadata_status)
+filter_variable_metadata_status = sanitize_string(filter_variable_metadata_status)
 
 
-
-if (params$actions$filter_variable_metadata_one == "TRUE") {
-  filter_variable_metadata_one_status <- paste(params$filter_variable_metadata_one$mode,
-    params$filter_variable_metadata_one$factor_name,
-    paste(params$filter_variable_metadata_one$levels, collapse = "_"),
-    sep = "_"
-  )
-} else {
-  filter_variable_metadata_one_status <- ""
-}
-
-if (params$actions$filter_variable_metadata_two == "TRUE") {
-  filter_variable_metadata_two_status <- paste(params$filter_variable_metadata_two$mode,
-    params$filter_variable_metadata_two$factor_name,
-    paste(params$filter_variable_metadata_two$levels, collapse = "_"),
-    sep = "_"
-  )
-} else {
-  filter_variable_metadata_two_status <- ""
-}
-
-if (params$actions$filter_variable_metadata_annotated == "TRUE") {
-  filter_variable_metadata_annotated_status <- paste(params$filter_variable_metadata_annotated$mode,
-    paste(params$filter_variable_metadata_annotated$factor_name, sep = "_"),
-    params$filter_variable_metadata_annotated$levels,
-    sep = "_"
-  )
-} else {
-  filter_variable_metadata_annotated_status <- ""
-}
-
-if (params$actions$filter_variable_metadata_num == "TRUE") {
-  filter_variable_metadata_num_status <- paste(params$filter_variable_metadata_num$mode,
-    paste(params$filter_variable_metadata_num$level, sep = "_"),
-    params$filter_variable_metadata_num$factor_name,
-    sep = "_"
-  )
-} else {
-  filter_variable_metadata_num_status <- ""
-}
-
-filter_variable_metadata_status <- paste(filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, sep = "_")
-
-# We make sure that no multiple _ exists in the filter_variable_metadata_status string
-filter_variable_metadata_status <- gsub("_{2,}", "_", filter_variable_metadata_status)
-# We also make sure that the string doesn not start or finish with an underscore
-filter_variable_metadata_status <- gsub("^_|_$", "", filter_variable_metadata_status)
-
-# Finally, if filter_variable_metadata_status is '_' we set it to an empty string.
-
-if (filter_variable_metadata_status == "_") {
-  filter_variable_metadata_status <- ""
-}
 
 #################################################################################################
 #################################################################################################
@@ -865,7 +772,9 @@ if (params$actions$filter_features == "TRUE") {
 
 ## Filtering steps
 
-if (params$actions$filter_sample_type == "TRUE") {
+
+
+if (params$filter_sample_type$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_type$mode,
     factor_name = params$filter_sample_type$factor_name,
@@ -880,7 +789,7 @@ if (params$actions$filter_sample_type == "TRUE") {
   DE_filtered <- DE_filtered_name
 }
 
-if (params$actions$filter_sample_metadata_one == "TRUE") {
+if (params$filter_sample_metadata_one$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_metadata_one$mode,
     factor_name = params$filter_sample_metadata_one$factor_name,
@@ -893,7 +802,7 @@ if (params$actions$filter_sample_metadata_one == "TRUE") {
   DE_filtered <- filter_smeta_result@filtered
 }
 
-if (params$actions$filter_sample_metadata_two == "TRUE") {
+if (params$filter_sample_metadata_two$mode %in% possible_modes) {
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_metadata_two$mode,
     factor_name = params$filter_sample_metadata_two$factor_name,
@@ -907,8 +816,7 @@ if (params$actions$filter_sample_metadata_two == "TRUE") {
 }
 
 
-
-if (params$actions$filter_variable_metadata_one == "TRUE") {
+if (params$filter_variable_metadata_one$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_one$mode,
     factor_name = params$filter_variable_metadata_one$factor_name,
@@ -921,7 +829,7 @@ if (params$actions$filter_variable_metadata_one == "TRUE") {
   DE_filtered <- filter_vmeta_result@filtered
 }
 
-if (params$actions$filter_variable_metadata_two == "TRUE") {
+if (params$filter_variable_metadata_two$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_two$mode,
     factor_name = params$filter_variable_metadata_two$factor_name,
@@ -936,7 +844,7 @@ if (params$actions$filter_variable_metadata_two == "TRUE") {
 
 
 
-if (params$actions$filter_variable_metadata_annotated == "TRUE") {
+if (params$filter_variable_metadata_annotated$mode %in% possible_modes) {
   # Convert the "levels" value to NA if it is "NA" as a character string
   if (params$filter_variable_metadata_annotated$levels == "NA") {
     params$filter_variable_metadata_annotated$levels <- NA
@@ -955,7 +863,7 @@ if (params$actions$filter_variable_metadata_annotated == "TRUE") {
 }
 
 
-if (params$actions$filter_variable_metadata_num == "TRUE") {
+if (params$filter_variable_metadata_num$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta_num(
     mode = params$filter_variable_metadata_num$mode,
     factor_name = params$filter_variable_metadata_num$factor_name,
@@ -1009,173 +917,7 @@ if (params$actions$scale_data == "FALSE") {
 
   # DE$data[DE$data == 0] = min_sec
 
-  ################################################################################################
-  ################################################################################################
-  ######################## structool box formatted data export
-
-  message("Outputting X, VM and SM ...")
-
-  formatted_peak_table <- DE$data
-
-  formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
-
-
-  # col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","inchikey2d_sirius","InChI_sirius",
-  # "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "npc_pathway_canopus","NPC.pathway.Probability_canopus",
-  # "npc_superclass_canopus", "npc_class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
-  # "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
-  # "structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
-  # "short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
-  # "structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
-  # "organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
-  # "organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
-  # "matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
-  # "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
-  # "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
-  # "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
-
-
-  col_filter <- c("feature_id_full", "feature_id", "feature_mz", "feature_rt", "molecularformula_sirius", "freq_structure_taxonomy_npclassifier_03class_metannot")
-
-  formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
-
-  formatted_sample_metadata <- DE$sample_meta
-
-  formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
-
-
-  # We work on an export for MetaboAnalyst Pathways analysis
-
-  # DE$sample_meta
-
-
-  # DE$data
-
-  # # First we merge the sample metadata and the data
-
-  # sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
-
-  # # We now drop the useless columns. We use the dplyr syntax
-
-  # colnames_to_drop = c("Row.names","condition_detailed","condition_simplified","filename","id","internal_id","sample_type","source_taxon","source_taxon_qid")
-
-  # sample_data_table = sample_data_table %>%
-  #   select(-one_of(colnames_to_drop))  %>%
-  #   # reorganize the columns
-  #   select(sample_id, condition, everything())
-
-  # # We now filter the variable metadata to keep only the columns and rows we need
-
-  # colnames(DE$variable_meta)
-
-  # DE$variable_meta$chebiasciiname_sirius
-
-  # compound_names = DE$variable_meta  %>%
-  # select(chebiasciiname_sirius)  %>%
-  # # NA are dropped by default
-  # filter(!is.na(chebiasciiname_sirius))
-
-  # # We now replace the column names in the sample_data_table with the compound names
-  # # For this we transpose the sample_data_table and then match
-
-  # sample_data_table_transposed = as.data.frame(t(sample_data_table))
-
-  # # We now merge the compound names with the sample_data_table_transposed
-
-  # merged = merge(sample_data_table_transposed, compound_names, by = "row.names", all = TRUE)
-
-  # as.data.frame(merged)
-
-  # # We now transpose the merged dataframe defining the rownames column as the first row
-
-
-  # sample_compounds = as.data.frame(t(merged))
-
-  # rownames(sample_compounds)
-
-  # # Row "chebiasciiname_sirius" is now the first row. We now rename it to "compound_name"
-
-
-
-  ###################################################################################################
-  ######################### rename main folder - short version
-  # Here we check if the params$paths$out value exist and use it else we use the default output_directory
-
-  target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
-
-  # if (params$actions$short_path == TRUE) {
-  #   target_name <- params$target$target_path_name
-  # }
-
-
-  # # if (params$paths$output != "") {
-  # #   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-  # # } else {
-  # #   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-  # # }
-
-
-  # if (params$paths$output != "") {
-  #   output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-  # } else {
-  #   output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-  # }
-
-
-  # # output_directory <- gsub("//","/",output_directory)
-  # output_directory <- gsub("/{2,}", "/", output_directory)
-
-  # We make sure that the pathe is correct and convert any double, triple, our higher number of slashes to a single slash
-
-
-  # dir.create(output_directory)
-
-  # output_directory <- tools::file_path_as_absolute(output_directory)
-  
-  common_df_path <- file.path(params$paths$output, "params_log.rds")
-  common_tsv_path <- file.path(params$paths$output, "params_log.tsv")
-
-
-    # Convert the YAML content to a dataframe row
-  new_row_df <- convert_yaml_to_single_row_df_with_hash(params)
-
-  # Append this row to the common dataframe and save
-  append_to_common_df_and_save(new_row_df, common_df_path, common_tsv_path)
-
-
-
-
-
-  if (params$paths$output != "") {
-    output_directory <- file.path(params$paths$output, new_row_df$hash)
-  } else {
-    output_directory <- file.path(working_directory, "results", "stats", new_row_df$hash)
-  }
-
-
-  if (!dir.exists(output_directory)) {
-    dir.create(output_directory, recursive = TRUE)
-    message("Directory created:", output_directory, "\n")
-  } else {
-    message("Directory already exists:", output_directory, "\n")
-  }
-
-  #################################################################################
-  #################################################################################
-  ##### write raw data and param
-
-  ## We save the used params.yaml
-
-  message("Writing params.yaml ...")
-
-  file.copy(path_to_params, file.path(output_directory, filename_params), overwrite = TRUE)
-  file.copy(path_to_params_user, file.path(output_directory, filename_params_user), overwrite = TRUE)
-
-  # We move to the output directory
-
-  setwd(output_directory)
-
-  # We display the properties of the DatasetExperiment object to the user.
+    # We display the properties of the DatasetExperiment object to the user.
   message("DatasetExperiment object properties: ")
 
   sink(filename_DE_model)
@@ -1183,10 +925,176 @@ if (params$actions$scale_data == "FALSE") {
   print(DE)
 
   sink()
+
 } else {
-  stop("Please check the value of the 'scale_data' parameter in the params file.")
+stop("Please check the value of the 'scale_data' parameter in the params file.")
 }
 
+################################################################################################
+################################################################################################
+######################## structool box formatted data export
+
+message("Outputting X, VM and SM ...")
+
+formatted_peak_table <- DE$data
+
+formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
+
+
+# col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "molecularformula_sirius","inchikey2d_sirius","InChI_sirius",
+# "name_sirius","smiles_sirius", "pubchemids_sirius", "molecularFormula_canopus", "npc_pathway_canopus","NPC.pathway.Probability_canopus",
+# "npc_superclass_canopus", "npc_class_canopus","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
+# "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
+# "structure_wikidata_metannot","structure_inchikey_metannot","structure_inchi_metannot","structure_smiles_metannot","structure_molecular_formula_metannot",
+# "short_inchikey_metannot","structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_metannot",
+# "structure_taxonomy_npclassifier_03class_metannot","organism_wikidata_metannot","organism_name_metannot","organism_taxonomy_ottid_metannot","organism_taxonomy_01domain_metannot",
+# "organism_taxonomy_02kingdom_metannot","organism_taxonomy_03phylum_metannot","organism_taxonomy_04class_metannot","organism_taxonomy_05order_metannot",
+# "organism_taxonomy_06family_metannot","organism_taxonomy_07tribe_metannot","organism_taxonomy_08genus_metannot","organism_taxonomy_09species_metannot","organism_taxonomy_10varietas_metannot",
+# "matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
+# "matched_genus_metannot","matched_species_metannot","score_taxo_metannot","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
+# "structure_taxonomy_npclassifier_01pathway_consensus_metannot","freq_structure_taxonomy_npclassifier_01pathway_metannot","structure_taxonomy_npclassifier_02superclass_consensus_metannot",
+# "freq_structure_taxonomy_npclassifier_02superclass_metannot","structure_taxonomy_npclassifier_03class_consensus_metannot","freq_structure_taxonomy_npclassifier_03class_metannot")
+
+
+col_filter <- c("feature_id_full", "feature_id", "feature_mz", "feature_rt", "molecularformula_sirius", "freq_structure_taxonomy_npclassifier_03class_metannot")
+
+formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
+
+formatted_sample_metadata <- DE$sample_meta
+
+formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
+
+
+# We work on an export for MetaboAnalyst Pathways analysis
+
+# DE$sample_meta
+
+
+# DE$data
+
+# # First we merge the sample metadata and the data
+
+# sample_data_table = merge(DE$sample_meta, DE$data, by="row.names")
+
+# # We now drop the useless columns. We use the dplyr syntax
+
+# colnames_to_drop = c("Row.names","condition_detailed","condition_simplified","filename","id","internal_id","sample_type","source_taxon","source_taxon_qid")
+
+# sample_data_table = sample_data_table %>%
+#   select(-one_of(colnames_to_drop))  %>%
+#   # reorganize the columns
+#   select(sample_id, condition, everything())
+
+# # We now filter the variable metadata to keep only the columns and rows we need
+
+# colnames(DE$variable_meta)
+
+# DE$variable_meta$chebiasciiname_sirius
+
+# compound_names = DE$variable_meta  %>%
+# select(chebiasciiname_sirius)  %>%
+# # NA are dropped by default
+# filter(!is.na(chebiasciiname_sirius))
+
+# # We now replace the column names in the sample_data_table with the compound names
+# # For this we transpose the sample_data_table and then match
+
+# sample_data_table_transposed = as.data.frame(t(sample_data_table))
+
+# # We now merge the compound names with the sample_data_table_transposed
+
+# merged = merge(sample_data_table_transposed, compound_names, by = "row.names", all = TRUE)
+
+# as.data.frame(merged)
+
+# # We now transpose the merged dataframe defining the rownames column as the first row
+
+
+# sample_compounds = as.data.frame(t(merged))
+
+# rownames(sample_compounds)
+
+# # Row "chebiasciiname_sirius" is now the first row. We now rename it to "compound_name"
+
+
+
+###################################################################################################
+######################### rename main folder - short version
+# Here we check if the params$paths$out value exist and use it else we use the default output_directory
+
+target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
+
+# if (params$actions$short_path == TRUE) {
+#   target_name <- params$target$target_path_name
+# }
+
+
+# # if (params$paths$output != "") {
+# #   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+# # } else {
+# #   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+# # }
+
+
+# if (params$paths$output != "") {
+#   output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
+# } else {
+#   output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
+# }
+
+
+# # output_directory <- gsub("//","/",output_directory)
+# output_directory <- gsub("/{2,}", "/", output_directory)
+
+# We make sure that the pathe is correct and convert any double, triple, our higher number of slashes to a single slash
+
+
+# dir.create(output_directory)
+
+# output_directory <- tools::file_path_as_absolute(output_directory)
+
+common_df_path <- file.path(params$paths$output, "params_log.rds")
+common_tsv_path <- file.path(params$paths$output, "params_log.tsv")
+
+
+  # Convert the YAML content to a dataframe row
+new_row_df <- convert_yaml_to_single_row_df_with_hash(params)
+
+# Append this row to the common dataframe and save
+append_to_common_df_and_save(new_row_df, common_df_path, common_tsv_path)
+
+
+
+
+
+if (params$paths$output != "") {
+  output_directory <- file.path(params$paths$output, new_row_df$hash)
+} else {
+  output_directory <- file.path(working_directory, "results", "stats", new_row_df$hash)
+}
+
+
+if (!dir.exists(output_directory)) {
+  dir.create(output_directory, recursive = TRUE)
+  message("Directory created:", output_directory, "\n")
+} else {
+  message("Directory already exists:", output_directory, "\n")
+}
+
+#################################################################################
+#################################################################################
+##### write raw data and param
+
+## We save the used params.yaml
+
+message("Writing params.yaml ...")
+
+file.copy(path_to_params, file.path(output_directory, filename_params), overwrite = TRUE)
+file.copy(path_to_params_user, file.path(output_directory, filename_params_user), overwrite = TRUE)
+
+# We move to the output directory
+
+setwd(output_directory)
 
 #######################
 
