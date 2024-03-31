@@ -152,6 +152,14 @@ if (exists("params")) {
 path_to_params <- "./params/params.yaml"
 path_to_params_user <- "./params/params_user.yaml"
 
+# Ensure newlines at the end of the YAML files
+
+
+ensure_newline(path_to_params)
+ensure_newline(path_to_params_user)
+
+# Load the params.yaml file
+
 params <- yaml.load_file(path_to_params)
 params_user <- yaml.load_file(path_to_params_user)
 
@@ -182,227 +190,6 @@ working_directory <- file.path(params$paths$docs, params$mapp_project, params$ma
 
 # update_mapping_file(params, yaml_hash, mapping_file_path)
 
-# Specify the path to the JSON configuration file
-json_file_path <- file.path(params$paths$output, "configurations.json") 
-
-
-# Call the function to update the JSON configuration file
-config_hash <- update_configuration_json(path_to_params, json_file_path)
-
-# We flatten the newly written configuration file
-
-configurations <- fromJSON(json_file_path, flatten = TRUE)
-
-
-# Assuming `json_string` contains your JSON data.
-json_data <- fromJSON(json_file_path, flatten = TRUE)
-
-
-library(jsonlite)
-library(dplyr)
-library(tidyr)
-
-# Assuming json_data is already defined
-
-
-flatten_json_proper <- function(json_list, parent_name = "") {
-  # Initialize an empty data frame for the output
-  output_df <- tibble()
-  
-  for (key in names(json_list)) {
-    # Construct the full key name based on the hierarchy
-    full_key <- if (nchar(parent_name) == 0) { key } else { paste(parent_name, key, sep = "_") }
-    
-    # Check if the value is a list that needs further expansion
-    if (is.list(json_list[[key]])) {
-      # Recursive call for nested lists, passing the constructed key name as the new parent name
-      nested_df <- flatten_json_proper(json_list[[key]], full_key)
-      # Bind the nested data frame to the output data frame
-      output_df <- bind_cols(output_df, nested_df)
-    } else {
-      # Handle non-list values by directly adding them to the output data frame
-      temp_col <- setNames(as.data.frame(t(json_list[[key]]), stringsAsFactors = FALSE), full_key)
-      output_df <- bind_cols(output_df, temp_col)
-    }
-  }
-  
-  return(output_df)
-}
-
-# Apply the function to each element in the JSON data and combine the results into a single data frame
-flattened_dfs <- lapply(json_data, flatten_json_proper)
-combined_df <- bind_rows(flattened_dfs)
-
-# Optional: View the structure of the combined data frame
-str(combined_df)
-
-# Save the combined data frame to a TSV file
-write.table(combined_df, "flattened_data.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
-
-
-
-library(tidyjson)
-
-test <- json_data %>% spread_all(recursive=TRUE)
-
-out <- json_data %>% gather_object %>% json_types %>% count(name, type)
-
-json_data %>%
-  enter_object(colors) %>%
-  gather_array %>%
-  spread_all %>%
-  select(-document.id, -array.index)
-
-
-wb <- worldbank %>% spread_all
-
-wb_mp <- worldbank %>%
-  enter_object(majorsector_percent) %>%
-  gather_array %>%
-  spread_all %>%
-  select(-document.id, -array.index)
-
-worldbank %>% gather_object %>% json_types %>% count(name, type)
-
-
-
-
-write.table(test, "flattened_data.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
-
-
-
-
-# Preprocess the JSON data to ensure consistency
-preprocess_configurations <- configurations %>%
-  map_depth(2, unlist) %>%  # Flatten nested lists
-  map_depth(2, ~ if (length(.x) == 0) NA else .x) %>%  # Convert empty lists to NA
-  map_depth(2, as.character)  # Convert all elements to character
-
-flat_configurations <- bind_rows(preprocess_configurations, .id = "key")
-
-
-write_delim(flat_configurations, "flattened_configurations.tsv", delim = "\t")
-
-
-library(yaml)
-library(digest)
-
-# Function to serialize YAML content and generate a hash
-generate_hash_from_yaml <- function(yaml_content) {
-  serialized_content <- serialize(yaml_content, NULL)
-  hash <- digest(serialized_content, algo = "md5")
-  return(hash)
-}
-
-# Function to convert YAML content to a structured string representation
-yaml_to_structured_string <- function(yaml_content, prefix = "") {
-  structured_strings <- c()
-  
-  for (key in names(yaml_content)) {
-    value <- yaml_content[[key]]
-    
-    if (is.list(value)) {
-      # Recursive call for nested lists
-      structured_strings <- c(structured_strings, yaml_to_structured_string(value, paste(prefix, key, sep = "_")))
-    } else {
-      # Directly add scalar values with their path as the key
-      structured_string <- paste(prefix, key, sep = "")
-      structured_strings[structured_string] <- as.character(value)
-    }
-  }
-  
-  return(structured_strings)
-}
-
-# Function to save parameters to TSV
-# Function to save parameters to TSV
-save_params_to_tsv <- function(params_yaml_path, output_tsv_path) {
-  yaml_content <- yaml::yaml.load_file(params_yaml_path)
-  
-  # Generate a unique hash for the YAML content
-  params_hash <- generate_hash_from_yaml(yaml_content)
-  
-  # Convert YAML content to a structured string representation
-  structured_params <- yaml_to_structured_string(yaml_content)
-  
-  # Prepend the hash to the structured parameters
-  params_with_hash <- c(Hash=params_hash, structured_params)
-  
-  # Create a data frame for easy writing to TSV
-  params_df <- as.data.frame(t(params_with_hash), stringsAsFactors = FALSE)
-  
-  # Write the data frame to TSV, creating or appending as needed
-  if (!file.exists(output_tsv_path)) {
-    write.table(params_df, file = output_tsv_path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
-  } else {
-    write.table(params_df, file = output_tsv_path, sep = "\t", row.names = FALSE, col.names = FALSE, append = TRUE, quote = FALSE)
-  }
-}
-
-
-
-
-
-library(yaml)
-library(digest)
-library(readr)
-
-# Function to parse YAML file and flatten it into a list
-parse_and_flatten_yaml <- function(yaml_path) {
-  params <- yaml::yaml.load_file(yaml_path)
-  
-  # Function to flatten nested lists into a single-level list
-  flatten_params <- function(params, prefix = "") {
-    flattened <- list()
-    for (name in names(params)) {
-      current_key <- if (prefix == "") name else paste(prefix, name, sep = ".")
-      if (is.list(params[[name]])) {
-        inner_flat <- flatten_params(params[[name]], current_key)
-        flattened <- c(flattened, inner_flat)
-      } else {
-        flattened[[current_key]] <- params[[name]]
-      }
-    }
-    return(flattened)
-  }
-  
-  # Flatten the parameters
-  flat_params <- flatten_params(params)
-  return(flat_params)
-}
-
-# Function to append parameters to the TSV file
-append_params_to_tsv <- function(params_flat, tsv_path) {
-  # Generate hash for uniqueness
-  params_hash <- digest(params_flat, algo = "md5")
-  
-  # Check if the TSV file exists
-  if (file.exists(tsv_path)) {
-    # Append hash to the first column
-    params_flat <- c(params_hash, params_flat)
-    # Transpose the list to convert it to a data frame
-    params_df <- as.data.frame(t(params_flat), stringsAsFactors = FALSE)
-    # Append the data frame to the TSV file
-    readr::write_tsv(params_df, tsv_path, append = TRUE, col_names = FALSE)
-  } else {
-    # If the TSV file does not exist, create it
-    params_flat <- c(params_hash, params_flat)
-    # Transpose the list to convert it to a data frame
-    params_df <- as.data.frame(t(params_flat), stringsAsFactors = FALSE)
-    # Write the data frame to the TSV file
-    readr::write_tsv(params_df, tsv_path, append = FALSE, col_names = FALSE)
-  }
-}
-
-# Example usage
-yaml_path <- "params/params.yaml"  # Adjust path as necessary
-tsv_path <- "pparams_with_hash.tsv"  # Adjust path as necessary
-
-flat_params <- parse_and_flatten_yaml(yaml_path)
-append_params_to_tsv(flat_params, tsv_path)
-
-
-
 
 
 # We set the output directory
@@ -414,20 +201,20 @@ if (params$actions$scale_data == "TRUE") {
 }
 
 
-# if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
-# filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
-# params$filter_sample_metadata_one$factor_name,
-# paste(params$filter_sample_metadata_one$levels, collapse = "_"),
-# params$filter_sample_metadata_two$mode,
-# params$filter_sample_metadata_two$factor_name,
-# paste(params$filter_sample_metadata_two$levels, collapse = "_"),
-# sep = "_")
-# } else if (params$actions$filter_sample_metadata_one == "TRUE") {
-# filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
-# params$filter_sample_metadata_one$factor_name,
-# paste(params$filter_sample_metadata_one$levels, collapse = "_"),
-# sep = "_")
-# } else { filter_sample_metadata_status = "" }
+if (params$actions$filter_sample_metadata_one == "TRUE" & params$actions$filter_sample_metadata_two == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
+params$filter_sample_metadata_one$factor_name,
+paste(params$filter_sample_metadata_one$levels, collapse = "_"),
+params$filter_sample_metadata_two$mode,
+params$filter_sample_metadata_two$factor_name,
+paste(params$filter_sample_metadata_two$levels, collapse = "_"),
+sep = "_")
+} else if (params$actions$filter_sample_metadata_one == "TRUE") {
+filter_sample_metadata_status = paste(params$filter_sample_metadata_one$mode,
+params$filter_sample_metadata_one$factor_name,
+paste(params$filter_sample_metadata_one$levels, collapse = "_"),
+sep = "_")
+} else { filter_sample_metadata_status = "" }
 
 
 if (params$actions$filter_sample_type == "TRUE") {
@@ -1314,30 +1101,29 @@ if (params$actions$scale_data == "FALSE") {
   ######################### rename main folder - short version
   # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
+  target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
 
-  target_name <- paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
-
-  if (params$actions$short_path == TRUE) {
-    target_name <- params$target$target_path_name
-  }
-
-
-  # if (params$paths$output != "") {
-  #   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-  # } else {
-  #   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  # if (params$actions$short_path == TRUE) {
+  #   target_name <- params$target$target_path_name
   # }
 
 
-  if (params$paths$output != "") {
-    output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-  } else {
-    output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-  }
+  # # if (params$paths$output != "") {
+  # #   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  # # } else {
+  # #   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
+  # # }
 
 
-  # output_directory <- gsub("//","/",output_directory)
-  output_directory <- gsub("/{2,}", "/", output_directory)
+  # if (params$paths$output != "") {
+  #   output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
+  # } else {
+  #   output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
+  # }
+
+
+  # # output_directory <- gsub("//","/",output_directory)
+  # output_directory <- gsub("/{2,}", "/", output_directory)
 
   # We make sure that the pathe is correct and convert any double, triple, our higher number of slashes to a single slash
 
@@ -1345,12 +1131,25 @@ if (params$actions$scale_data == "FALSE") {
   # dir.create(output_directory)
 
   # output_directory <- tools::file_path_as_absolute(output_directory)
+  
+  common_df_path <- file.path(params$paths$output, "params_log.rds")
+  common_tsv_path <- file.path(params$paths$output, "params_log.tsv")
+
+
+    # Convert the YAML content to a dataframe row
+  new_row_df <- convert_yaml_to_single_row_df_with_hash(params)
+
+  # Append this row to the common dataframe and save
+  append_to_common_df_and_save(new_row_df, common_df_path, common_tsv_path)
+
+
+
 
 
   if (params$paths$output != "") {
-    output_directory <- file.path(params$paths$output, config_hash)
+    output_directory <- file.path(params$paths$output, new_row_df$hash)
   } else {
-    output_directory <- file.path(working_directory, "results", "stats", config_hash)
+    output_directory <- file.path(working_directory, "results", "stats", new_row_df$hash)
   }
 
 
