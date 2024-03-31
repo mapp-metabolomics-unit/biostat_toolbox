@@ -10,20 +10,15 @@ dataset_experiment :
 ms_files_extension: ".mzML"
 
 filenames:
-  sirius_annotations: compound_identifications.tsv
-  canopus_annotations: canopus_compound_summary.tsv
   gnps_graphml: e1369f2f08f041218f24d0cf4b085f7c.graphml
 
 
 actions:
   scale_data : TRUE
-  filter_features : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
-  set_colors_manually : FALSE
   run_with_gap_filled: FALSE
-  short_path : FALSE
   run_cytoscape_connector : FALSE
 
 
@@ -39,8 +34,8 @@ filter_sample_type :
    - 'BK'
 
 filter_sample_metadata_one :
-  mode : 'include'
-  factor_name : 'process'
+  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'process' 
   levels : 
       - 'Empty'
       - 'Food'
@@ -82,18 +77,12 @@ target:
 colors:
   all:
    key:
-      - 'zero'
-      - 'one'
-      # - 'two'
-      # - 'NA'
-
+      - 'CH'
+      - 'TR'
 
    value:
       - "cadetblue" # 'X1'
       - "goldenrod" # 'X2'
-      # - "darkolivegreen" # 'X3'
-      # - "magenta" # NA (QC)
-
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -139,7 +128,6 @@ to_mean:
 # E.g. if you choose to combine Ag and Ab the resulting level will be Ab_Ag. These will appear in a new column which will be name by the name of the original colum suffixed by '_simplified'
 
 
-
 to_combine_vertically: 
   # column1: 
   #   factor_name: "attribute_code"
@@ -173,7 +161,6 @@ to_combine_vertically:
 to_combine_horizontally:
   factor_name: 
     #  - "source_taxon"
-
 
 
 multi_series:

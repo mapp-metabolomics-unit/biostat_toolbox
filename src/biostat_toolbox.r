@@ -282,6 +282,11 @@ filename_treemap <- paste(file_prefix, "Treemap_interactive.html", sep = "")
 filename_volcano <- paste(file_prefix, "Volcano.pdf", sep = "")
 filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", sep = "")
 
+# Sirius filenames
+
+sirius_annotations_filename = "compound_identifications.tsv"
+canopus_annotations_filename = "canopus_compound_summary.tsv"
+
 ################################### load peak table ########################################
 ############################################################################################
 
@@ -364,13 +369,13 @@ feature_metadata <- feature_table %>%
 # The Sirius data is loaded
 # First we check if a chebied version exists, if not we create it
 
-if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied", params$filenames$sirius_annotations, sep = "_")))) {
-  data_sirius <- read_delim(file.path(working_directory, "results", "sirius", paste("chebied", params$filenames$sirius_annotations, sep = "_")),
+if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied", sirius_annotations_filename, sep = "_")))) {
+  data_sirius <- read_delim(file.path(working_directory, "results", "sirius", paste("chebied", sirius_annotations_filename, sep = "_")),
     delim = "\t", escape_double = FALSE,
     trim_ws = TRUE
   )
 } else {
-  data_sirius <- read_delim(file.path(working_directory, "results", "sirius", params$filenames$sirius_annotations),
+  data_sirius <- read_delim(file.path(working_directory, "results", "sirius", sirius_annotations_filename),
     delim = "\t", escape_double = FALSE,
     trim_ws = TRUE
   )
@@ -401,12 +406,12 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
 
   # Since this step takes time we save the output locally
 
-  write.table(data_sirius, file = file.path(working_directory, "results", "sirius", paste("chebied", params$filenames$sirius_annotations, sep = "_")), sep = "\t", row.names = FALSE)
+  write.table(data_sirius, file = file.path(working_directory, "results", "sirius", paste("chebied", sirius_annotations_filename, sep = "_")), sep = "\t", row.names = FALSE)
 }
 
 # The CANOPUS data is loaded
 
-data_canopus <- read_delim(file.path(working_directory, "results", "sirius", params$filenames$canopus_annotations),
+data_canopus <- read_delim(file.path(working_directory, "results", "sirius", canopus_annotations_filename),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
@@ -422,7 +427,7 @@ data_canopus$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$id_can
 data_canopus$feature_id <- as.numeric(data_canopus$feature_id)
 
 
-write.table(data_canopus, file = file.path(working_directory, "results", "sirius", paste("featured", params$filenames$canopus_annotations, sep = "_")), sep = "\t", row.names = FALSE)
+write.table(data_canopus, file = file.path(working_directory, "results", "sirius", paste("featured", canopus_annotations_filename, sep = "_")), sep = "\t", row.names = FALSE)
 
 # The MetAnnot data is loaded
 
@@ -759,7 +764,7 @@ DE_original <- DatasetExperiment(
 
 ## Filtering steps
 
-if (params$actions$filter_features == "TRUE") {
+if (length(params$feature_to_filter) > 0) {
   filter_by_name_model <- filter_by_name(mode = "exclude", dimension = "variable", names = params$feature_to_filter)
 
   # apply model sequence
@@ -1024,34 +1029,6 @@ formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
 
 target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
 
-# if (params$actions$short_path == TRUE) {
-#   target_name <- params$target$target_path_name
-# }
-
-
-# # if (params$paths$output != "") {
-# #   output_directory <- file.path(params$paths$output, paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status, filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-# # } else {
-# #   output_directory <- file.path(working_directory, "results", "stats", paste(params$target$sample_metadata_header, target_name, filter_variable_metadata_status,filter_sample_metadata_status, scaling_status, sep = "_"), sep = "")
-# # }
-
-
-# if (params$paths$output != "") {
-#   output_directory <- file.path(params$paths$output, params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-# } else {
-#   output_directory <- file.path(working_directory, "results", "stats", params$target$sample_metadata_header, target_name, filter_sample_type_status, filter_sample_metadata_one_status, filter_sample_metadata_two_status, filter_variable_metadata_one_status, filter_variable_metadata_two_status, filter_variable_metadata_annotated_status, filter_variable_metadata_num_status, scaling_status)
-# }
-
-
-# # output_directory <- gsub("//","/",output_directory)
-# output_directory <- gsub("/{2,}", "/", output_directory)
-
-# We make sure that the pathe is correct and convert any double, triple, our higher number of slashes to a single slash
-
-
-# dir.create(output_directory)
-
-# output_directory <- tools::file_path_as_absolute(output_directory)
 
 common_df_path <- file.path(params$paths$output, "params_log.rds")
 common_tsv_path <- file.path(params$paths$output, "params_log.tsv")
@@ -1062,8 +1039,6 @@ new_row_df <- convert_yaml_to_single_row_df_with_hash(params)
 
 # Append this row to the common dataframe and save
 append_to_common_df_and_save(new_row_df, common_df_path, common_tsv_path)
-
-
 
 
 
@@ -1213,13 +1188,27 @@ wes_palettes_vec <- sample(sort(unique(unlist(wes_palettes[names(wes_palettes)])
 
 factor_name_meta <- unlist(unique(DE$sample_meta[params$target$sample_metadata_header]))
 
+
+# Check that alll members of params$colors$all$key are present in factor_name_meta.
+# If not, return the values of params$colors$all$key that are not present in factor_name_meta.
+
+if (!all(params$colors$all$key %in% factor_name_meta)) {
+  missing_colors <- params$colors$all$key[!params$colors$all$key %in% factor_name_meta]
+  factor_name_meta_str <- paste(unique(factor_name_meta), collapse=", ")
+  stop(paste("The following values in params$colors$all$key are not present in the sample metadata:", paste(missing_colors, collapse=", "), "Check the spelling of values in params$colors$all$key, they should match the following available values:", factor_name_meta_str))
+}
+
 # We establish a named vector for the whole dataset
-if (params$actions$set_colors_manually == "TRUE") {
+if (length(params$colors$all$key) > 0) {
   custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
 } else {
   custom_colors <- wes_palettes_vec[sample(c(1:length(wes_palettes_vec)), length(factor_name_meta))]
   names(custom_colors) <- factor_name_meta
 }
+
+
+
+
 
 #################################################################################################
 #################################################################################################
@@ -4980,10 +4969,15 @@ message("Generating GraphML output ...")
 
 # We first load the GNPS graphml file
 
-graphml_file <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml", params$filenames$gnps_graphml)
+graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
+
+graphml_file <- list.files(path = graphml_dir, pattern = "\\.graphml$")
+
+graphml_file_path <- file.path(graphml_dir, graphml_file)
 
 
-g <- read.graph(file = graphml_file, format = "graphml")
+
+g <- read.graph(file = graphml_file_path, format = "graphml")
 # net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
 
 df_from_graph_edges_original <- igraph::as_data_frame(g, what = c("edges"))
