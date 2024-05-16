@@ -61,7 +61,7 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above' # 'above' or 'below', if '', the filter is not applied
   factor_name : 'confidencescore_sirius' # e.g 'confidencescore_sirius'
-  level : 0.8 # Numerical value. E.g 0.5
+  level : 0.7 # Numerical value. E.g 0.5
 
 
 target:
