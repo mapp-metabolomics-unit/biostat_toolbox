@@ -200,7 +200,7 @@ if (params$actions$scale_data == "TRUE") {
   scaling_status <- "raw"
 }
 
-possible_modes <- c("exclude", "include")
+possible_modes <- c("exclude", "include", "above", "below")
 
 
 
@@ -453,15 +453,42 @@ data_metannot$feature_id <- as.numeric(data_metannot$feature_id)
 
 # The GNPS data is loaded. Note that we use the `Sys.glob` function to get the path to the file and expand the wildcard
 
-# data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
-#   delim = "\t", escape_double = FALSE,
-#   trim_ws = TRUE
-# )
+# At this point we check wether we have to deal with a GNPS2 job or a job from the GNPS legacy interface
+# For this we check for the presence of a directory named `nf_output` in file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id)
+# If their is such directory then we set the variable gnps2_job to TRUE, else it is FALSE
+# Check if the directory exists
+gnps2_job <- file.exists(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id)))
 
-data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking", "clustersummary_with_network.tsv")),
-  delim = "\t", escape_double = FALSE,
-  trim_ws = TRUE
-)
+# Print the result
+if (gnps2_job) {
+  print("This is a GNPS2 job.")
+} else {
+  print("This is a job from the GNPS legacy interface.")
+}
+
+
+if (gnps2_job) {
+  data_gnps_mn <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking", "clustersummary_with_network.tsv")),
+    delim = "\t", escape_double = FALSE,
+    trim_ws = TRUE
+  )
+  # The GNPS `Compound_Name` is dropped
+  data_gnps_mn <- data_gnps_mn %>%
+    select(-contains("Compound_Name"))
+  data_gnps_lib <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "library", "merged_results_with_gnps.tsv")),
+    delim = "\t", escape_double = FALSE,
+    trim_ws = TRUE
+  )
+  # Both df are mergeq using the `#Scan#` column
+  data_gnps <- merge(data_gnps_mn, data_gnps_lib, by = "#Scan#")
+} else {
+  data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+    delim = "\t", escape_double = FALSE,
+    trim_ws = TRUE
+  )
+}
+
+
 # The column names are modified to include the source of the data
 
 colnames(data_gnps) <- paste(colnames(data_gnps), "gnps", sep = "_")
@@ -892,14 +919,6 @@ if (params$filter_variable_metadata_num$mode %in% possible_modes) {
 if (params$actions$scale_data == "FALSE") {
   DE <- DE_filtered
 
-  # We display the properties of the DatasetExperiment object to the user.
-  message("DatasetExperiment object properties: ")
-
-  sink(filename_DE_model)
-
-  print(DE)
-
-  sink()
 } else if (params$actions$scale_data == "TRUE") {
   # Overall Pareto scaling (test)
 
@@ -929,14 +948,6 @@ if (params$actions$scale_data == "FALSE") {
 
   # DE$data[DE$data == 0] = min_sec
 
-    # We display the properties of the DatasetExperiment object to the user.
-  message("DatasetExperiment object properties: ")
-
-  sink(filename_DE_model)
-
-  print(DE)
-
-  sink()
 
 } else {
 stop("Please check the value of the 'scale_data' parameter in the params file.")
@@ -1963,151 +1974,290 @@ target_taxa <- paste(formatted_qids, collapse = "%0A") # Separate with "%0A" the
 # 'nan' strings in the structure_smiles_metannot column are replaced by NA
 DE_foldchange_pvalues$structure_smiles_metannot[DE_foldchange_pvalues$structure_smiles_metannot == "nan"] <- NA
 
-# We first prepare the table for the dt export
+if (gnps2_job) {
+  # We first prepare the table for the dt export
 
-de4dt <- DE_foldchange_pvalues %>%
-  select(
-    feature_id,
-    feature_id_full,
-    chebiasciiname_sirius,
-    chebiid_sirius,
-    name_sirius,
-    npc_pathway_canopus,
-    npc_superclass_canopus,
-    npc_class_canopus,
-    npc_pathway_probability_canopus,
-    npc_superclass_probability_canopus,
-    npc_class_probability_canopus,
-    feature_mz,
-    feature_rt,
-    component_gnps,
-    gnpslinkout_network_gnps,
-    libraryid_gnps,
-    gnpslinkout_cluster_gnps,
-    confidencescore_sirius,
-    inchi_sirius,
-    inchikey2d_sirius,
-    molecularformula_sirius,
-    adduct_sirius,
-    smiles_sirius,
-    structure_inchi_metannot,
-    structure_inchikey_metannot,
-    structure_molecular_formula_metannot,
-    structure_nametraditional_metannot,
-    structure_smiles_metannot,
-    structure_taxonomy_npclassifier_01pathway_metannot,
-    structure_taxonomy_npclassifier_02superclass_metannot,
-    structure_taxonomy_npclassifier_03class_metannot,
-    structure_wikidata_metannot,
-    organism_name_metannot,
-    organism_taxonomy_01domain_metannot,
-    organism_taxonomy_02kingdom_metannot,
-    organism_taxonomy_03phylum_metannot,
-    organism_taxonomy_04class_metannot,
-    organism_taxonomy_05order_metannot,
-    organism_taxonomy_06family_metannot,
-    organism_taxonomy_07tribe_metannot,
-    organism_taxonomy_08genus_metannot,
-    organism_taxonomy_09species_metannot,
-    organism_taxonomy_10varietas_metannot,
-    organism_taxonomy_ottid_metannot,
-    organism_wikidata_metannot,
-    score_taxo_metannot,
-    contains("p_value_minus_log10"),
-    contains("p_value"),
-    contains("fold_change_log2"),
-    contains("fold_change")
-  ) %>%
-  # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
-  mutate(chemical_structure_sirius = ifelse(!is.na(smiles_sirius),
-    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
-    ""
-  )) %>%
-  mutate(chemical_structure_met_annot = ifelse(!is.na(structure_smiles_metannot),
-    sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', structure_smiles_metannot),
-    ""
-  )) %>%
-  mutate(structure_wikidata_metannot = ifelse(!is.na(structure_wikidata_metannot), sprintf('<a href="%s">%s</a>', structure_wikidata_metannot, structure_wikidata_metannot), "")) %>%
-  mutate(organism_wikidata_metannot = ifelse(!is.na(organism_wikidata_metannot), sprintf('<a href="%s">%s</a>', organism_wikidata_metannot, organism_wikidata_metannot), "")) %>%
-  mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps)) %>%
-  mutate(spectra_gnps_link = sprintf("<a href='%s'>gnps spectrum %s</a>", gnpslinkout_cluster_gnps, feature_id)) %>%
-  # We first sanitize the name_sirius column and make it URL safe
-  mutate(name_sirius_url_safe = URLencode(name_sirius)) %>%
-  # We then build the link to the PubChem website
-  mutate(name_sirius = ifelse(!is.na(smiles_sirius),
-    sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
-    ""
-  )) %>%
-  # We then build the link to the CheBI website
-  mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
-    sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
-    ""
-  )) %>%
-  # We build a column for WD query
-  mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>%
-  # We build a column for WD query
-  mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>%
-  # We build a column for the gnps plotter for interactive box plots
-  mutate(gnps_plotter_box_plot = str_glue('<a href="http://plotter.gnps2.org/?gnps_tall_table_usi=mzdata%3AGNPS%3ATASK-{params$gnps_job_id}-feature_statistics%2Fdata_long.csv&gnps_quant_table_usi=&gnps_metadata_table_usi=&feature={feature_id}&filter_metadata_column=None&filter_metadata_value=%5B%5D&metadata={params$options$gnps_column_for_boxplots$factor_name}&facet=&groups={params$options$gnps_column_for_boxplots$factor_name}&plot_type=box&color_column={params$options$gnps_column_for_boxplots$factor_name}&color_selection=%5B%5D&points_toggle=True&theme=ggplot2&animation_column=&lat_column=&long_column=&map_animation_column=&map_scope=world">Box plots for {feature_id}</a>')) %>%
-  select(
-    feature_id,
-    feature_id_full,
-    chebiasciiname_sirius,
-    chemical_structure_sirius,
-    chebiid_sirius,
-    name_sirius,
-    wd_occurence_reports,
-    wd_occurence_reports_all,
-    npc_pathway_canopus,
-    npc_superclass_canopus,
-    npc_class_canopus,
-    npc_pathway_probability_canopus,
-    npc_superclass_probability_canopus,
-    npc_class_probability_canopus,
-    feature_mz,
-    feature_rt,
-    cluster_gnps_link,
-    libraryid_gnps,
-    spectra_gnps_link,
-    gnps_plotter_box_plot,
-    confidencescore_sirius,
-    inchi_sirius,
-    inchikey2d_sirius,
-    molecularformula_sirius,
-    adduct_sirius,
-    smiles_sirius,
-    chemical_structure_met_annot,
-    structure_inchi_metannot,
-    structure_inchikey_metannot,
-    structure_molecular_formula_metannot,
-    structure_nametraditional_metannot,
-    structure_smiles_metannot,
-    structure_taxonomy_npclassifier_01pathway_metannot,
-    structure_taxonomy_npclassifier_02superclass_metannot,
-    structure_taxonomy_npclassifier_03class_metannot,
-    structure_wikidata_metannot,
-    organism_name_metannot,
-    organism_taxonomy_01domain_metannot,
-    organism_taxonomy_02kingdom_metannot,
-    organism_taxonomy_03phylum_metannot,
-    organism_taxonomy_04class_metannot,
-    organism_taxonomy_05order_metannot,
-    organism_taxonomy_06family_metannot,
-    organism_taxonomy_07tribe_metannot,
-    organism_taxonomy_08genus_metannot,
-    organism_taxonomy_09species_metannot,
-    organism_taxonomy_10varietas_metannot,
-    organism_taxonomy_ottid_metannot,
-    organism_wikidata_metannot,
-    score_taxo_metannot,
-    contains("p_value_minus_log10"),
-    contains("p_value"),
-    contains("fold_change_log2"),
-    contains("fold_change")
-  ) %>%
-  # We set the type of the confidencescore_sirius column to numeric
-  mutate(confidencescore_sirius = as.numeric(confidencescore_sirius))
+  de4dt <- DE_foldchange_pvalues %>%
+    select(
+      feature_id,
+      feature_id_full,
+      chebiasciiname_sirius,
+      chebiid_sirius,
+      name_sirius,
+      npc_pathway_canopus,
+      npc_superclass_canopus,
+      npc_class_canopus,
+      npc_pathway_probability_canopus,
+      npc_superclass_probability_canopus,
+      npc_class_probability_canopus,
+      feature_mz,
+      feature_rt,
+      component_gnps,
+      compound_name_gnps,
+      confidencescore_sirius,
+      inchi_sirius,
+      inchikey2d_sirius,
+      molecularformula_sirius,
+      adduct_sirius,
+      smiles_sirius,
+      structure_inchi_metannot,
+      structure_inchikey_metannot,
+      structure_molecular_formula_metannot,
+      structure_nametraditional_metannot,
+      structure_smiles_metannot,
+      structure_taxonomy_npclassifier_01pathway_metannot,
+      structure_taxonomy_npclassifier_02superclass_metannot,
+      structure_taxonomy_npclassifier_03class_metannot,
+      structure_wikidata_metannot,
+      organism_name_metannot,
+      organism_taxonomy_01domain_metannot,
+      organism_taxonomy_02kingdom_metannot,
+      organism_taxonomy_03phylum_metannot,
+      organism_taxonomy_04class_metannot,
+      organism_taxonomy_05order_metannot,
+      organism_taxonomy_06family_metannot,
+      organism_taxonomy_07tribe_metannot,
+      organism_taxonomy_08genus_metannot,
+      organism_taxonomy_09species_metannot,
+      organism_taxonomy_10varietas_metannot,
+      organism_taxonomy_ottid_metannot,
+      organism_wikidata_metannot,
+      score_taxo_metannot,
+      contains("p_value_minus_log10"),
+      contains("p_value"),
+      contains("fold_change_log2"),
+      contains("fold_change")
+    ) %>%
+    # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
+    mutate(chemical_structure_sirius = ifelse(!is.na(smiles_sirius),
+      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
+      ""
+    )) %>%
+    mutate(chemical_structure_met_annot = ifelse(!is.na(structure_smiles_metannot),
+      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', structure_smiles_metannot),
+      ""
+    )) %>%
+    mutate(structure_wikidata_metannot = ifelse(!is.na(structure_wikidata_metannot), sprintf('<a href="%s">%s</a>', structure_wikidata_metannot, structure_wikidata_metannot), "")) %>%
+    mutate(organism_wikidata_metannot = ifelse(!is.na(organism_wikidata_metannot), sprintf('<a href="%s">%s</a>', organism_wikidata_metannot, organism_wikidata_metannot), "")) %>%
+    mutate(name_sirius_url_safe = URLencode(name_sirius)) %>%
+    # We then build the link to the PubChem website
+    mutate(name_sirius = ifelse(!is.na(smiles_sirius),
+      sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
+      ""
+    )) %>%
+    # We then build the link to the CheBI website
+    mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
+      sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
+      ""
+    )) %>%
+    # We build a column for WD query
+    mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>%
+    # We build a column for WD query
+    mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>%
+    # We build a column for the gnps plotter for interactive box plots
+    mutate(gnps_plotter_box_plot = str_glue('<a href="http://plotter.gnps2.org/?gnps_quant_table_usi=mzspec%3AGNPS2%3ATASK-{params$gnps_job_id}-nf_output%2Fclustering%2Ffeaturetable_reformated.csv&gnps_metadata_table_usi=mzspec%3AGNPS2%3ATASK-{params$gnps_job_id}-nf_output%2Fmetadata%2Fmerged_metadata.tsv&feature={feature_id}&filter_metadata_column=None&filter_metadata_value=%5B%5D&metadata={params$options$gnps_column_for_boxplots$factor_name}&facet=&groups={params$options$gnps_column_for_boxplots$factor_name}&plot_type=box&color_column={params$options$gnps_column_for_boxplots$factor_name}&color_selection=%5B%5D&points_toggle=False&theme=ggplot2&animation_column=&lat_column=&long_column=&map_animation_column=&map_scope=world">Box plots for {feature_id}</a>')) %>%
+    select(
+      feature_id,
+      feature_id_full,
+      chebiasciiname_sirius,
+      chemical_structure_sirius,
+      chebiid_sirius,
+      name_sirius,
+      wd_occurence_reports,
+      wd_occurence_reports_all,
+      npc_pathway_canopus,
+      npc_superclass_canopus,
+      npc_class_canopus,
+      npc_pathway_probability_canopus,
+      npc_superclass_probability_canopus,
+      npc_class_probability_canopus,
+      feature_mz,
+      feature_rt,
+      component_gnps,
+      compound_name_gnps,
+      gnps_plotter_box_plot,
+      confidencescore_sirius,
+      inchi_sirius,
+      inchikey2d_sirius,
+      molecularformula_sirius,
+      adduct_sirius,
+      smiles_sirius,
+      chemical_structure_met_annot,
+      structure_inchi_metannot,
+      structure_inchikey_metannot,
+      structure_molecular_formula_metannot,
+      structure_nametraditional_metannot,
+      structure_smiles_metannot,
+      structure_taxonomy_npclassifier_01pathway_metannot,
+      structure_taxonomy_npclassifier_02superclass_metannot,
+      structure_taxonomy_npclassifier_03class_metannot,
+      structure_wikidata_metannot,
+      organism_name_metannot,
+      organism_taxonomy_01domain_metannot,
+      organism_taxonomy_02kingdom_metannot,
+      organism_taxonomy_03phylum_metannot,
+      organism_taxonomy_04class_metannot,
+      organism_taxonomy_05order_metannot,
+      organism_taxonomy_06family_metannot,
+      organism_taxonomy_07tribe_metannot,
+      organism_taxonomy_08genus_metannot,
+      organism_taxonomy_09species_metannot,
+      organism_taxonomy_10varietas_metannot,
+      organism_taxonomy_ottid_metannot,
+      organism_wikidata_metannot,
+      score_taxo_metannot,
+      contains("p_value_minus_log10"),
+      contains("p_value"),
+      contains("fold_change_log2"),
+      contains("fold_change")
+    ) %>%
+    # We set the type of the confidencescore_sirius column to numeric
+    mutate(confidencescore_sirius = as.numeric(confidencescore_sirius))
+} else {
+  # We first prepare the table for the dt export
 
+  de4dt <- DE_foldchange_pvalues %>%
+    select(
+      feature_id,
+      feature_id_full,
+      chebiasciiname_sirius,
+      chebiid_sirius,
+      name_sirius,
+      npc_pathway_canopus,
+      npc_superclass_canopus,
+      npc_class_canopus,
+      npc_pathway_probability_canopus,
+      npc_superclass_probability_canopus,
+      npc_class_probability_canopus,
+      feature_mz,
+      feature_rt,
+      componentindex_gnps,
+      gnpslinkout_network_gnps,
+      libraryid_gnps,
+      confidencescore_sirius,
+      inchi_sirius,
+      inchikey2d_sirius,
+      molecularformula_sirius,
+      adduct_sirius,
+      smiles_sirius,
+      structure_inchi_metannot,
+      structure_inchikey_metannot,
+      structure_molecular_formula_metannot,
+      structure_nametraditional_metannot,
+      structure_smiles_metannot,
+      structure_taxonomy_npclassifier_01pathway_metannot,
+      structure_taxonomy_npclassifier_02superclass_metannot,
+      structure_taxonomy_npclassifier_03class_metannot,
+      structure_wikidata_metannot,
+      organism_name_metannot,
+      organism_taxonomy_01domain_metannot,
+      organism_taxonomy_02kingdom_metannot,
+      organism_taxonomy_03phylum_metannot,
+      organism_taxonomy_04class_metannot,
+      organism_taxonomy_05order_metannot,
+      organism_taxonomy_06family_metannot,
+      organism_taxonomy_07tribe_metannot,
+      organism_taxonomy_08genus_metannot,
+      organism_taxonomy_09species_metannot,
+      organism_taxonomy_10varietas_metannot,
+      organism_taxonomy_ottid_metannot,
+      organism_wikidata_metannot,
+      score_taxo_metannot,
+      contains("p_value_minus_log10"),
+      contains("p_value"),
+      contains("fold_change_log2"),
+      contains("fold_change")
+    ) %>%
+    # We format the smiles column to be able to display it in the datatable. We make sure this is only applied when smiles_sirius is not NA
+    mutate(chemical_structure_sirius = ifelse(!is.na(smiles_sirius),
+      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', smiles_sirius),
+      ""
+    )) %>%
+    mutate(chemical_structure_met_annot = ifelse(!is.na(structure_smiles_metannot),
+      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', structure_smiles_metannot),
+      ""
+    )) %>%
+    mutate(structure_wikidata_metannot = ifelse(!is.na(structure_wikidata_metannot), sprintf('<a href="%s">%s</a>', structure_wikidata_metannot, structure_wikidata_metannot), "")) %>%
+    mutate(organism_wikidata_metannot = ifelse(!is.na(organism_wikidata_metannot), sprintf('<a href="%s">%s</a>', organism_wikidata_metannot, organism_wikidata_metannot), "")) %>%
+    mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnpslinkout_network_gnps, componentindex_gnps)) %>%
+    # mutate(spectra_gnps_link = sprintf("<a href='%s'>gnps spectrum %s</a>", gnpslinkout_cluster_gnps, feature_id)) %>%
+    # We first sanitize the name_sirius column and make it URL safe
+    mutate(name_sirius_url_safe = URLencode(name_sirius)) %>%
+    # We then build the link to the PubChem website
+    mutate(name_sirius = ifelse(!is.na(smiles_sirius),
+      sprintf('<a href="https://pubchem.ncbi.nlm.nih.gov/#query=%s">%s</a>', name_sirius_url_safe, name_sirius),
+      ""
+    )) %>%
+    # We then build the link to the CheBI website
+    mutate(chebiid_sirius = ifelse(!is.na(chebiid_sirius),
+      sprintf('<a href="https://www.ebi.ac.uk/chebi/searchId.do?chebiId=%s">%s</a>', chebiid_sirius, chebiid_sirius),
+      ""
+    )) %>%
+    # We build a column for WD query
+    mutate(wd_occurence_reports = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20WITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20%20%20%20%20%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%20VALUES%20%3Ftaxon%20%7B%0A%20%20%20%20%20%20{target_taxa}%0A%20%20%20%20%7D%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000">Biological occurences of this molecule (limited to organism(s) of the current dataset)</a>'), "")) %>%
+    # We build a column for WD query
+    mutate(wd_occurence_reports_all = ifelse(!is.na(inchikey2d_sirius), str_glue('<a href="https://query.wikidata.org/embed.html#SELECT%20%20%3Fcompound%20%3FInChIKey%20%3Ftaxon%20%3FtaxonLabel%20%3Fgenus_name%20%3Ffamily_name%20%3Fkingdom_name%20%3Freference%20%3FreferenceLabel%20%0AWITH%20%7B%0A%20%20SELECT%20%3FqueryKey%20%3Fsrsearch%20%3Ffilter%20WHERE%20%7B%0A%20%20%20%20VALUES%20%3FqueryKey%20%7B%0A%20%20%20%20%20%20%22{inchikey2d_sirius}%22%0A%20%20%20%20%7D%0A%20%20%20%20BIND%20%28CONCAT%28substr%28%24queryKey%2C1%2C14%29%2C%20%22%20haswbstatement%3AP235%22%29%20AS%20%3Fsrsearch%29%0A%20%20%20%20BIND%20%28CONCAT%28%22%5E%22%2C%20substr%28%24queryKey%2C1%2C14%29%29%20AS%20%3Ffilter%29%0A%20%20%7D%0A%7D%20AS%20%25comps%20WITH%20%7B%0A%20%20SELECT%20%3Fcompound%20%3FInChIKey%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25comps%0A%20%20%20%20SERVICE%20wikibase%3Amwapi%20%7B%0A%20%20%20%20%20%20bd%3AserviceParam%20wikibase%3Aendpoint%20%22www.wikidata.org%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20wikibase%3Aapi%20%22Search%22%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrsearch%20%3Fsrsearch%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20mwapi%3Asrlimit%20%22max%22.%0A%20%20%20%20%20%20%3Fcompound%20wikibase%3AapiOutputItem%20mwapi%3Atitle.%0A%20%20%20%20%7D%0A%20%20%20%20%3Fcompound%20wdt%3AP235%20%3FInChIKey%20.%0A%20%20%20%20FILTER%20%28REGEX%28STR%28%3FInChIKey%29%2C%20%3Ffilter%29%29%0A%20%20%7D%0A%7D%20AS%20%25compounds%0AWHERE%20%7B%0A%20%20INCLUDE%20%25compounds%0A%20%20%7B%0A%20%20%20%20%3Fcompound%20p%3AP703%20%3Fstmt.%0A%20%20%20%20%3Fstmt%20ps%3AP703%20%3Ftaxon.%0A%20%20%20%20%3Fkingdom%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ36732%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fkingdom_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Ffamily%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ35409%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Ffamily_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20.%0A%20%20%20%20%3Fgenus%20wdt%3AP31%20wd%3AQ16521%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP105%20wd%3AQ34740%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20wdt%3AP225%20%3Fgenus_name%20%3B%0A%20%20%20%20%20%20%20%20%20%20%20%5Ewdt%3AP171%2a%20%3Ftaxon%20%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fstmt%20prov%3AwasDerivedFrom%20%3Fref.%0A%20%20%20%20%3Fref%20pr%3AP248%20%3Freference.%0A%20%20%7D%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22.%20%7D%0A%7D%0ALIMIT%2010000%0A">All biological occurences of this molecule</a>'), "")) %>%
+    # We build a column for the gnps plotter for interactive box plots
+    mutate(gnps_plotter_box_plot = str_glue('<a href="http://plotter.gnps2.org/?gnps_tall_table_usi=mzdata%3AGNPS%3ATASK-{params$gnps_job_id}-feature_statistics%2Fdata_long.csv&gnps_quant_table_usi=&gnps_metadata_table_usi=&feature={feature_id}&filter_metadata_column=None&filter_metadata_value=%5B%5D&metadata={params$options$gnps_column_for_boxplots$factor_name}&facet=&groups=&plot_type=box&color_column={params$options$gnps_column_for_boxplots$factor_name}&color_selection=%5B%5D&points_toggle=True&theme=ggplot2&animation_column=&lat_column=&long_column=&map_animation_column=&map_scope=world">Box plots for {feature_id}</a>')) %>%
+    select(
+      feature_id,
+      feature_id_full,
+      chebiasciiname_sirius,
+      chemical_structure_sirius,
+      chebiid_sirius,
+      name_sirius,
+      wd_occurence_reports,
+      wd_occurence_reports_all,
+      npc_pathway_canopus,
+      npc_superclass_canopus,
+      npc_class_canopus,
+      npc_pathway_probability_canopus,
+      npc_superclass_probability_canopus,
+      npc_class_probability_canopus,
+      feature_mz,
+      feature_rt,
+      cluster_gnps_link,
+      libraryid_gnps,
+      spectra_gnps_link,
+      gnps_plotter_box_plot,
+      confidencescore_sirius,
+      inchi_sirius,
+      inchikey2d_sirius,
+      molecularformula_sirius,
+      adduct_sirius,
+      smiles_sirius,
+      chemical_structure_met_annot,
+      structure_inchi_metannot,
+      structure_inchikey_metannot,
+      structure_molecular_formula_metannot,
+      structure_nametraditional_metannot,
+      structure_smiles_metannot,
+      structure_taxonomy_npclassifier_01pathway_metannot,
+      structure_taxonomy_npclassifier_02superclass_metannot,
+      structure_taxonomy_npclassifier_03class_metannot,
+      structure_wikidata_metannot,
+      organism_name_metannot,
+      organism_taxonomy_01domain_metannot,
+      organism_taxonomy_02kingdom_metannot,
+      organism_taxonomy_03phylum_metannot,
+      organism_taxonomy_04class_metannot,
+      organism_taxonomy_05order_metannot,
+      organism_taxonomy_06family_metannot,
+      organism_taxonomy_07tribe_metannot,
+      organism_taxonomy_08genus_metannot,
+      organism_taxonomy_09species_metannot,
+      organism_taxonomy_10varietas_metannot,
+      organism_taxonomy_ottid_metannot,
+      organism_wikidata_metannot,
+      score_taxo_metannot,
+      contains("p_value_minus_log10"),
+      contains("p_value"),
+      contains("fold_change_log2"),
+      contains("fold_change")
+    ) %>%
+    # We set the type of the confidencescore_sirius column to numeric
+    mutate(confidencescore_sirius = as.numeric(confidencescore_sirius))
+}
 # We outpuzt a generic DT for data exploration of the whole set
 
 
@@ -2646,11 +2796,17 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     first_part <- condition_parts[1]
     second_part <- condition_parts[2]
 
-
+    if (gnps2_job) {
+    mydata_meta <- select(
+      DE_foldchange_pvalues_signi, "inchikey2d_sirius", "row_id", "name_sirius", "smiles_sirius",
+      "cluster_index_gnps", "feature_rt", "feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius", "molecularformula_sirius", "component_gnps"
+    )    } else {
     mydata_meta <- select(
       DE_foldchange_pvalues_signi, "inchikey2d_sirius", "row_id", "name_sirius", "smiles_sirius",
       "cluster_index_gnps", "feature_rt", "feature_mz", "adduct_sirius", "chebiasciiname_sirius", "chebiid_sirius", "molecularformula_sirius", "componentindex_gnps", "gnpslinkout_cluster_gnps", "libraryid_gnps"
     )
+    }
+
     mydata_meta$name_comp <- "unknown"
     mydata_meta$name_comp[!is.na(mydata_meta$inchikey2d_sirius)] <- mydata_meta$name_sirius[!is.na(mydata_meta$inchikey2d_sirius)]
 
@@ -2916,12 +3072,12 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       ), ""
     )
 
-    # Generate full_hl hyperlink only if hl is not NA
-    matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$cluster_index_gnps),
-      paste0(
-        "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster_index_gnps, "</a>"
-      ), ""
-    )
+    # # Generate full_hl hyperlink only if hl is not NA
+    # matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$cluster_index_gnps),
+    #   paste0(
+    #     "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster_index_gnps, "</a>"
+    #   ), ""
+    # )
 
     # Generate smiles_url only if smiles_sirius is not NA
     matttree$smiles_url <- ifelse(!is.na(matttree$smiles_sirius),
@@ -2944,7 +3100,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     matttree$smiles_clickable_url[is.na(matttree$smiles_clickable_url)] <- ""
     matttree$chebiid_sirius[is.na(matttree$chebiid_sirius)] <- ""
     matttree$chebiasciiname_sirius[is.na(matttree$chebiasciiname_sirius)] <- ""
-    matttree$libraryid_gnps[is.na(matttree$libraryid_gnps)] <- ""
+    # matttree$libraryid_gnps[is.na(matttree$libraryid_gnps)] <- ""
 
 
     # Create a new column in the data frame to store the colors for each value
@@ -2971,7 +3127,21 @@ if (params$actions$run_fc_treemaps == "TRUE") {
 
     #########################################################
     #########################################################
-
+    
+    if (gnps2_job) {
+    txt <- as.character(paste0
+    (
+      "feature id: ", matttree$cluster_index_gnps, "<br>",
+      "component id: ", matttree$component_gnps, "<br>",
+      "name: ", matttree$labels_adjusted, "<br>",
+      "m/z: ", round(matttree$feature_mz, 4), "<br>",
+      "RT: ", round(matttree$feature_rt, 2), "<br>",
+      "MF: ", matttree$molecularformula_sirius, "<br>",
+      "adduct: ", matttree$adduct_sirius, "<br>",
+      "FC (log 2): ", round(matttree$foldchange_log2, 2),
+      "<extra></extra>"
+    ))
+    } else {
     txt <- as.character(paste0
     (
       "feature id: ", matttree$cluster_index_gnps, "<br>",
@@ -2984,6 +3154,8 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       "FC (log 2): ", round(matttree$foldchange_log2, 2),
       "<extra></extra>"
     ))
+    }
+
 
 
     matttree$txt <- txt
@@ -2994,7 +3166,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -3018,7 +3190,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$gnps_hl_formatted, "<br>", matttree$matttree$libraryid_gnps, "<br>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$chebiasciiname_sirius, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -4476,7 +4648,31 @@ grid_params <- setup_colorbar_grid(
 
 dt <- as.data.frame(t(data_subset_for_pval_hm_mat))
 
-values_mat <- dt %>%
+if (gnps2_job) {
+  values_mat <- dt %>%
+  rownames_to_column("feature_id") %>%
+  select(feature_id) %>%
+  mutate(feature_id = as.numeric(feature_id)) %>%
+  left_join(DE$variable_meta, by = "feature_id") %>%
+  select(feature_id, component_gnps, adduct_sirius, chebiasciiname_sirius, name_sirius, npc_pathway_canopus, npc_superclass_canopus, npc_class_canopus) %>%
+  mutate(hover_text = paste0(
+    "<br>", "feature_id: ", feature_id,
+    "<br>", "component_gnps: ", component_gnps,
+    "<br>", "Adduct sirius: ", adduct_sirius,
+    "<br>", "CheBI name: ", chebiasciiname_sirius,
+    "<br>", "Sirius name: ", name_sirius,
+    "<br>", "Pathway: ", npc_pathway_canopus,
+    "<br>", "Superclass: ", npc_superclass_canopus,
+    "<br>", "Class: ", npc_class_canopus
+  )) %>%
+  select(feature_id, hover_text) %>%
+  pivot_wider(names_from = feature_id, values_from = hover_text) %>%
+  # we now repeat the hover_text for each row of the matrix. We use dplyr to do that
+  mutate(count = nrow(data_subset_for_pval_hm_mat)) %>%
+  uncount(count) %>%
+  as.matrix()
+} else {
+  values_mat <- dt %>%
   rownames_to_column("feature_id") %>%
   select(feature_id) %>%
   mutate(feature_id = as.numeric(feature_id)) %>%
@@ -4498,6 +4694,8 @@ values_mat <- dt %>%
   mutate(count = nrow(data_subset_for_pval_hm_mat)) %>%
   uncount(count) %>%
   as.matrix()
+}
+
 
 
 # We change the numeric into E-notation and we round the values to 2 decimals.
@@ -4820,7 +5018,7 @@ summary_stat_output_selected <- DE_foldchange_pvalues %>%
     npc_superclass_canopus,
     npc_class_canopus,
     name_sirius,
-    libraryid_gnps,
+    # libraryid_gnps,
     contains("smiles", ignore.case = TRUE),
     contains("inchi_", ignore.case = TRUE),
     contains("inchikey", ignore.case = TRUE)
@@ -5002,9 +5200,16 @@ message("Generating GraphML output ...")
 
 # We first load the GNPS graphml file
 
-graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
+if (gnps2_job) {
+  graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking")
+  graphml_file <- list.files(path = graphml_dir, pattern = "network.graphml$")
 
-graphml_file <- list.files(path = graphml_dir, pattern = "\\.graphml$")
+} else {
+  graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
+  graphml_file <- list.files(path = graphml_dir, pattern = "\\.graphml$")
+
+}
+
 
 graphml_file_path <- file.path(graphml_dir, graphml_file)
 
@@ -5021,12 +5226,19 @@ df_from_graph_vertices_original <- igraph::as_data_frame(g, what = c("vertices")
 # And then rename the node 1 and node 2 columns to from and to, respectively
 # These columns are placed at the beginning of the dataframe
 # and converted to numerics
-
-df_from_graph_edges <- df_from_graph_edges_original %>%
-  select(-from, -to) %>%
-  rename(from = node1, to = node2) %>%
-  select(from, to, everything()) %>%
-  mutate_at(vars(from, to), as.numeric)
+if (gnps2_job) {
+  df_from_graph_edges <- df_from_graph_edges_original %>%
+    select(-from, -to) %>%
+    rename(from = scan1, to = scan2) %>%
+    select(from, to, everything()) %>%
+    mutate_at(vars(from, to), as.numeric)
+} else {
+  df_from_graph_edges <- df_from_graph_edges_original %>%
+    select(-from, -to) %>%
+    rename(from = node1, to = node2) %>%
+    select(from, to, everything()) %>%
+    mutate_at(vars(from, to), as.numeric)
+}
 
 # the id column of the vertices dataframe is converted to numerics
 
