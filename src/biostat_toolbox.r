@@ -250,7 +250,10 @@ file_prefix <- paste("")
 
 filename_box_plots <- paste(file_prefix, "Boxplots.pdf", sep = "")
 filename_box_plots_interactive <- paste(file_prefix, "Boxplots_interactive.html", sep = "")
-filename_DE_model <- paste(file_prefix, "DE_description.txt", sep = "")
+filename_DE <- paste(file_prefix, "DE.rds", sep = "")
+filename_DE_original <- paste(file_prefix, "DE_original.rds", sep = "")
+filename_DE_description <- paste(file_prefix, "DE_description.txt", sep = "")
+filename_DE_original_description <- paste(file_prefix, "DE_original_description.txt", sep = "")
 filename_foldchange_pvalues <- paste(file_prefix, "foldchange_pvalues.csv", sep = "")
 filename_formatted_peak_table <- paste(file_prefix, "formatted_peak_table.csv", sep = "")
 filename_formatted_sample_data_table <- paste(file_prefix, "formatted_sample_data_table.csv", sep = "")
@@ -450,11 +453,15 @@ data_metannot$feature_id <- as.numeric(data_metannot$feature_id)
 
 # The GNPS data is loaded. Note that we use the `Sys.glob` function to get the path to the file and expand the wildcard
 
-data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+# data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+#   delim = "\t", escape_double = FALSE,
+#   trim_ws = TRUE
+# )
+
+data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking", "clustersummary_with_network.tsv")),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
-
 # The column names are modified to include the source of the data
 
 colnames(data_gnps) <- paste(colnames(data_gnps), "gnps", sep = "_")
@@ -1073,6 +1080,32 @@ setwd(output_directory)
 
 #######################
 
+# The DE and DE_original objects is printed and saved in the output directory
+
+message("Saving DE object ...")
+
+saveRDS(DE, filename_DE)
+
+message("DatasetExperiment object properties: ")
+
+sink(filename_DE_description)
+
+print(DE)
+
+sink()
+
+message("Saving DE_original object ...")
+
+saveRDS(DE_original, filename_DE_original)
+
+message("DatasetExperiment object properties: ")
+
+sink(filename_DE_original_description)
+
+print(DE_original)
+
+sink()
+
 
 write.table(formatted_peak_table, file = filename_formatted_peak_table, sep = ",", row.names = FALSE)
 write.table(formatted_variable_metadata_filtered, file = filename_formatted_variable_metadata, sep = ",", row.names = FALSE)
@@ -1230,7 +1263,7 @@ pca_seq_result <- model_apply(pca_seq_model, DE)
 
 # Fetching the PCA data object
 pca_object <- pca_seq_result[length(pca_seq_result)]
-pca_object@scores@value$sample_meta
+
 # PCA scores plot
 
 pca_scores_plot <- pca_scores_plot(
@@ -1947,7 +1980,7 @@ de4dt <- DE_foldchange_pvalues %>%
     npc_class_probability_canopus,
     feature_mz,
     feature_rt,
-    componentindex_gnps,
+    component_gnps,
     gnpslinkout_network_gnps,
     libraryid_gnps,
     gnpslinkout_cluster_gnps,
