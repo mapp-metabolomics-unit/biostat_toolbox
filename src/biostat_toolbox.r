@@ -434,30 +434,30 @@ write.table(data_canopus, file = file.path(working_directory, "results", "sirius
 
 # The MetAnnot data is loaded
 
-data_metannot <- read_delim(file.path(working_directory, "results", "metannot_enhancer", params$metannot_enhancer_folder, paste0(params$metannot_enhancer_folder, "_spectral_match_results_repond.tsv")),
+data_met_annot <- read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$met_annot_enhancer_folder, paste0(params$met_annot_enhancer_folder, "_spectral_match_results_repond.tsv")),
   delim = "\t", escape_double = FALSE,
   trim_ws = TRUE
 )
 
 # The column names are modified to include the source of the data
 
-colnames(data_metannot) <- paste("metannot", colnames(data_metannot),  sep = "_")
+colnames(data_met_annot) <- paste("met_annot", colnames(data_met_annot),  sep = "_")
 
 
 # We now build a unique feature_id for each feature in the Metannot data
 
-data_metannot$feature_id <- data_metannot$feature_id_metannot
-data_metannot$feature_id <- as.numeric(data_metannot$feature_id)
+data_met_annot$feature_id <- data_met_annot$met_annot_feature_id
+data_met_annot$feature_id <- as.numeric(data_met_annot$feature_id)
 
 
 
 # The GNPS data is loaded. Note that we use the `Sys.glob` function to get the path to the file and expand the wildcard
 
 # At this point we check wether we have to deal with a GNPS2 job or a job from the GNPS legacy interface
-# For this we check for the presence of a directory named `nf_output` in file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id)
+# For this we check for the presence of a directory named `nf_output` in file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id)
 # If their is such directory then we set the variable gnps2_job to TRUE, else it is FALSE
 # Check if the directory exists
-gnps2_job <- file.exists(Sys.glob(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id)))
+gnps2_job <- file.exists(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id)))
 
 # Print the result
 if (gnps2_job) {
@@ -468,21 +468,21 @@ if (gnps2_job) {
 
 
 if (gnps2_job) {
-  data_gnps_mn <- read_delim(Sys.glob(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "nf_output", "networking", "clustersummary_with_network.tsv")),
+  data_gnps_mn <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking", "clustersummary_with_network.tsv")),
     delim = "\t", escape_double = FALSE,
     trim_ws = TRUE
   )
   # The GNPS `Compound_Name` is dropped
   data_gnps_mn <- data_gnps_mn %>%
     select(-contains("Compound_Name"))
-  data_gnps_lib <- read_delim(Sys.glob(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "nf_output", "library", "merged_results_with_gnps.tsv")),
+  data_gnps_lib <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "library", "merged_results_with_gnps.tsv")),
     delim = "\t", escape_double = FALSE,
     trim_ws = TRUE
   )
   # Both df are mergeq using the `#Scan#` column
   data_gnps <- merge(data_gnps_mn, data_gnps_lib, by = "#Scan#")
 } else {
-  data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
+  data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
     delim = "\t", escape_double = FALSE,
     trim_ws = TRUE
   )
@@ -501,13 +501,13 @@ data_gnps$feature_id <- as.numeric(data_gnps$feature_id)
 
 # First we check if a chebied version exists, if not we create it
 
-# if (file.exists(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "chebied_DB_result.tsv"))) {
-#   data_gnps_annotations = read_delim(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "DB_result", "chebied_DB_result.tsv"),
+# if (file.exists(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "chebied_DB_result.tsv"))) {
+#   data_gnps_annotations = read_delim(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "DB_result", "chebied_DB_result.tsv"),
 #   delim = "\t", escape_double = FALSE,
 #   trim_ws = TRUE
 # )
 # } else {
-#   data_gnps_annotations = read_delim(Sys.glob(file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "DB_result", "*.tsv")),
+#   data_gnps_annotations = read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "DB_result", "*.tsv")),
 #     delim = "\t", escape_double = FALSE,
 #     trim_ws = TRUE
 #   )
@@ -536,14 +536,14 @@ data_gnps$feature_id <- as.numeric(data_gnps$feature_id)
 #   data_gnps_annotations$feature_id = as.numeric(data_gnps_annotations$feature_id)
 #   str(data_gnps_annotations)
 
-#   write.table(data_gnps_annotations, file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "DB_result", "chebied_DB_result.tsv"),
+#   write.table(data_gnps_annotations, file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "DB_result", "chebied_DB_result.tsv"),
 #   sep = "\t", row.names = FALSE)
 # }
 
 
 # The four previous dataframe are merged into one using the common `feature_id` column as key and the tidyverse `reduce` function
 
-list_df <- list(feature_metadata, data_sirius, data_canopus, data_metannot, data_gnps)
+list_df <- list(feature_metadata, data_sirius, data_canopus, data_met_annot, data_gnps)
 VM <- list_df %>% reduce(full_join, by = "feature_id")
 
 # We take care to convert all N/A values to NA
@@ -565,7 +565,7 @@ VM <- VM %>%
 
 # The row m/z and row retention time columns are concatenated to create a new column called `feature_id_full_annotated`
 VM$"feature_id_full_annotated" <- paste0(
-  VM$sirius_chebiascii_name,
+  VM$sirius_chebiasciiname,
   "_[",
   VM$feature_id_full,
   "]",
@@ -968,18 +968,18 @@ formatted_variable_metadata <- DE$variable_meta ### need to be filter with only 
 # "sirius_name","sirius_smiles", "pubchemids_sirius", "molecularFormula_canopus", "canopus_npc_pathway","NPC.pathway.Probability_canopus",
 # "canopus_npc_superclass", "canopus_npc_class","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
 # "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
-# "metannot_structure_wikidata","metannot_structure_inchikey","metannot_structure_inchi","metannot_structure_smiles","metannot_structure_molecular_formula",
-# "short_inchikey_metannot","metannot_structure_taxonomy_npclassifier_01pathway","metannot_structure_taxonomy_npclassifier_02superclass",
-# "metannot_structure_taxonomy_npclassifier_02superclass","metannot_organism_wikidata","metannot_organism_name","metannot_organism_taxonomy_ottid","metannot_organism_taxonomy_01domain",
-# "metannot_organism_taxonomy_02kingdom","metannot_organism_taxonomy_03phylum","metannot_organism_taxonomy_04class","metannot_organism_taxonomy_05order",
-# "metannot_organism_taxonomy_06family","metannot_organism_taxonomy_07tribe","metannot_organism_taxonomy_08genus","metannot_organism_taxonomy_09species","metannot_organism_taxonomy_10varietas",
-# "matched_domain_metannot","matched_kingdom_metannot","matched_phylum_metannot","matched_class_metannot","matched_order_metannot","matched_family_metannot","matched_tribe_metannot",
-# "matched_genus_metannot","matched_species_metannot","metannot_score_taxo","score_max_consistency_metannot","final_score_metannot","rank_final_metannot","component_id_metannot",
-# "metannot_structure_taxonomy_npclassifier_01pathway_consensus","freq_metannot_structure_taxonomy_npclassifier_01pathway","metannot_structure_taxonomy_npclassifier_02superclass_consensus",
-# "freq_metannot_structure_taxonomy_npclassifier_02superclass","metannot_structure_taxonomy_npclassifier_03class_consensus","freq_metannot_structure_taxonomy_npclassifier_02superclass")
+# "met_annot_structure_wikidata","met_annot_structure_inchikey","met_annot_structure_inchi","met_annot_structure_smiles","met_annot_structure_molecular_formula",
+# "short_inchikey_met_annot","met_annot_structure_taxonomy_npclassifier_01pathway","met_annot_structure_taxonomy_npclassifier_02superclass",
+# "met_annot_structure_taxonomy_npclassifier_02superclass","met_annot_organism_wikidata","met_annot_organism_name","met_annot_organism_taxonomy_ottid","met_annot_organism_taxonomy_01domain",
+# "met_annot_organism_taxonomy_02kingdom","met_annot_organism_taxonomy_03phylum","met_annot_organism_taxonomy_04class","met_annot_organism_taxonomy_05order",
+# "met_annot_organism_taxonomy_06family","met_annot_organism_taxonomy_07tribe","met_annot_organism_taxonomy_08genus","met_annot_organism_taxonomy_09species","met_annot_organism_taxonomy_10varietas",
+# "matched_domain_met_annot","matched_kingdom_met_annot","matched_phylum_met_annot","matched_class_met_annot","matched_order_met_annot","matched_family_met_annot","matched_tribe_met_annot",
+# "matched_genus_met_annot","matched_species_met_annot","met_annot_score_taxo","score_max_consistency_met_annot","final_score_met_annot","rank_final_met_annot","component_id_met_annot",
+# "met_annot_structure_taxonomy_npclassifier_01pathway_consensus","freq_met_annot_structure_taxonomy_npclassifier_01pathway","met_annot_structure_taxonomy_npclassifier_02superclass_consensus",
+# "freq_met_annot_structure_taxonomy_npclassifier_02superclass","met_annot_structure_taxonomy_npclassifier_03class_consensus","freq_met_annot_structure_taxonomy_npclassifier_02superclass")
 
 
-col_filter <- c("feature_id_full", "feature_id", "feature_mz", "feature_rt", "sirius_molecularformula", "freq_metannot_structure_taxonomy_npclassifier_02superclass")
+col_filter <- c("feature_id_full", "feature_id", "feature_mz", "feature_rt", "sirius_molecularformula")
 
 formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
 
@@ -1012,12 +1012,12 @@ formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
 
 # colnames(DE$variable_meta)
 
-# DE$variable_meta$sirius_chebiascii_name
+# DE$variable_meta$sirius_chebiasciiname
 
 # compound_names = DE$variable_meta  %>%
-# select(sirius_chebiascii_name)  %>%
+# select(sirius_chebiasciiname)  %>%
 # # NA are dropped by default
-# filter(!is.na(sirius_chebiascii_name))
+# filter(!is.na(sirius_chebiasciiname))
 
 # # We now replace the column names in the sample_data_table with the compound names
 # # For this we transpose the sample_data_table and then match
@@ -1037,7 +1037,7 @@ formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
 
 # rownames(sample_compounds)
 
-# # Row "sirius_chebiascii_name" is now the first row. We now rename it to "compound_name"
+# # Row "sirius_chebiasciiname" is now the first row. We now rename it to "compound_name"
 
 
 
@@ -1971,8 +1971,8 @@ message("Launching Volcano Plots calculations ...")
 formatted_qids <- paste("wd:", distinct_qids, sep = "") # Add "wd:" prefix
 target_taxa <- paste(formatted_qids, collapse = "%0A") # Separate with "%0A" the URLencode equivalent of "\n"
 
-# 'nan' strings in the metannot_structure_smiles column are replaced by NA
-DE_foldchange_pvalues$metannot_structure_smiles[DE_foldchange_pvalues$metannot_structure_smiles == "nan"] <- NA
+# 'nan' strings in the met_annot_structure_smiles column are replaced by NA
+DE_foldchange_pvalues$met_annot_structure_smiles[DE_foldchange_pvalues$met_annot_structure_smiles == "nan"] <- NA
 
 if (gnps2_job) {
   # We first prepare the table for the dt export
@@ -1984,12 +1984,12 @@ if (gnps2_job) {
       sirius_chebiasciiname,
       sirius_chebiid,
       sirius_name,
-      canpous_npc_pathway,
-      canpous_npc_superclass,
-      canpous_npc_class,
-      canpous_npc_pathway_probability,
-      canpous_npc_superclass_probability,
-      canpous_npc_class_probability,
+      canopus_npc_pathway,
+      canopus_npc_superclass,
+      canopus_npc_class,
+      canopus_npc_pathway_probability,
+      canopus_npc_superclass_probability,
+      canopus_npc_class_probability,
       feature_mz,
       feature_rt,
       gnps_component,
@@ -2000,29 +2000,29 @@ if (gnps2_job) {
       sirius_molecularformula,
       sirius_adduct,
       sirius_smiles,
-      metannot_structure_inchi,
-      metannot_structure_inchikey,
-      metannot_structure_molecular_formula,
-      metannot_structure_nametraditional,
-      metannot_structure_smiles,
-      metannot_structure_taxonomy_npclassifier_01pathway,
-      metannot_structure_taxonomy_npclassifier_02superclass,
-      metannot_structure_taxonomy_npclassifier_03class,
-      metannot_structure_wikidata,
-      metannot_organism_name,
-      metannot_organism_taxonomy_01domain,
-      metannot_organism_taxonomy_02kingdom,
-      metannot_organism_taxonomy_03phylum,
-      metannot_organism_taxonomy_04class,
-      metannot_organism_taxonomy_05order,
-      metannot_organism_taxonomy_06family,
-      metannot_organism_taxonomy_07tribe,
-      metannot_organism_taxonomy_08genus,
-      metannot_organism_taxonomy_09species,
-      metannot_organism_taxonomy_10varietas,
-      metannot_organism_taxonomy_ottid,
-      metannot_organism_wikidata,
-      metannot_score_taxo,
+      met_annot_structure_inchi,
+      met_annot_structure_inchikey,
+      met_annot_structure_molecular_formula,
+      met_annot_structure_nametraditional,
+      met_annot_structure_smiles,
+      met_annot_structure_taxonomy_npclassifier_01pathway,
+      met_annot_structure_taxonomy_npclassifier_02superclass,
+      met_annot_structure_taxonomy_npclassifier_03class,
+      met_annot_structure_wikidata,
+      met_annot_organism_name,
+      met_annot_organism_taxonomy_01domain,
+      met_annot_organism_taxonomy_02kingdom,
+      met_annot_organism_taxonomy_03phylum,
+      met_annot_organism_taxonomy_04class,
+      met_annot_organism_taxonomy_05order,
+      met_annot_organism_taxonomy_06family,
+      met_annot_organism_taxonomy_07tribe,
+      met_annot_organism_taxonomy_08genus,
+      met_annot_organism_taxonomy_09species,
+      met_annot_organism_taxonomy_10varietas,
+      met_annot_organism_taxonomy_ottid,
+      met_annot_organism_wikidata,
+      met_annot_score_taxo,
       contains("p_value_minus_log10"),
       contains("p_value"),
       contains("fold_change_log2"),
@@ -2033,12 +2033,12 @@ if (gnps2_job) {
       sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', sirius_smiles),
       ""
     )) %>%
-    mutate(metannot_chemical_structure = ifelse(!is.na(metannot_structure_smiles),
-      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', metannot_structure_smiles),
+    mutate(met_annot_chemical_structure = ifelse(!is.na(met_annot_structure_smiles),
+      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', met_annot_structure_smiles),
       ""
     )) %>%
-    mutate(metannot_structure_wikidata = ifelse(!is.na(metannot_structure_wikidata), sprintf('<a href="%s">%s</a>', metannot_structure_wikidata, metannot_structure_wikidata), "")) %>%
-    mutate(metannot_organism_wikidata = ifelse(!is.na(metannot_organism_wikidata), sprintf('<a href="%s">%s</a>', metannot_organism_wikidata, metannot_organism_wikidata), "")) %>%
+    mutate(met_annot_structure_wikidata = ifelse(!is.na(met_annot_structure_wikidata), sprintf('<a href="%s">%s</a>', met_annot_structure_wikidata, met_annot_structure_wikidata), "")) %>%
+    mutate(met_annot_organism_wikidata = ifelse(!is.na(met_annot_organism_wikidata), sprintf('<a href="%s">%s</a>', met_annot_organism_wikidata, met_annot_organism_wikidata), "")) %>%
     mutate(sirius_name_url_safe = URLencode(sirius_name)) %>%
     # We then build the link to the PubChem website
     mutate(sirius_name = ifelse(!is.na(sirius_smiles),
@@ -2059,7 +2059,7 @@ if (gnps2_job) {
     select(
       feature_id,
       feature_id_full,
-      sirius_chebiascii_name,
+      sirius_chebiasciiname,
       sirius_chemical_structure,
       sirius_chebiid,
       sirius_name,
@@ -2073,39 +2073,39 @@ if (gnps2_job) {
       canopus_npc_class_probability,
       feature_mz,
       feature_rt,
-      component,
-      compound_name,
+      gnps_component,
+      gnps_compound_name,
       gnps_plotter_box_plot,
-      sirius_sirius_confidencescore,
-      sirius_sirius_inchi,
+      sirius_confidencescore,
+      sirius_inchi,
       sirius_inchikey2d,
       sirius_molecularformula,
       sirius_adduct,
       sirius_smiles,
-      metannot_chemical_structure,
-      structure_inchi,
-      structure_inchikey,
-      structure_molecular_formula,
-      structure_nametraditional,
-      metannot_structure_smiles,
-      metannot_structure_taxonomy_npclassifier_01pathway,
-      metannot_structure_taxonomy_npclassifier_02superclass,
-      metannot_structure_taxonomy_npclassifier_03class,
-      metannot_structure_wikidata,
-      metannot_organism_name,
-      metannot_organism_taxonomy_01domain,
-      metannot_organism_taxonomy_02kingdom,
-      metannot_organism_taxonomy_03phylum,
-      metannot_organism_taxonomy_04class,
-      metannot_organism_taxonomy_05order,
-      metannot_organism_taxonomy_06family,
-      metannot_organism_taxonomy_07tribe,
-      metannot_organism_taxonomy_08genus,
-      metannot_organism_taxonomy_09species,
-      metannot_organism_taxonomy_10varietas,
-      metannot_organism_taxonomy_ottid,
-      metannot_organism_wikidata,
-      metannot_score_taxo,
+      met_annot_chemical_structure,
+      met_annot_structure_inchi,
+      met_annot_structure_inchikey,
+      met_annot_structure_molecular_formula,
+      met_annot_structure_nametraditional,
+      met_annot_structure_smiles,
+      met_annot_structure_taxonomy_npclassifier_01pathway,
+      met_annot_structure_taxonomy_npclassifier_02superclass,
+      met_annot_structure_taxonomy_npclassifier_03class,
+      met_annot_structure_wikidata,
+      met_annot_organism_name,
+      met_annot_organism_taxonomy_01domain,
+      met_annot_organism_taxonomy_02kingdom,
+      met_annot_organism_taxonomy_03phylum,
+      met_annot_organism_taxonomy_04class,
+      met_annot_organism_taxonomy_05order,
+      met_annot_organism_taxonomy_06family,
+      met_annot_organism_taxonomy_07tribe,
+      met_annot_organism_taxonomy_08genus,
+      met_annot_organism_taxonomy_09species,
+      met_annot_organism_taxonomy_10varietas,
+      met_annot_organism_taxonomy_ottid,
+      met_annot_organism_wikidata,
+      met_annot_score_taxo,
       contains("p_value_minus_log10"),
       contains("p_value"),
       contains("fold_change_log2"),
@@ -2120,7 +2120,7 @@ if (gnps2_job) {
     select(
       feature_id,
       feature_id_full,
-      sirius_chebiascii_name,
+      sirius_chebiasciiname,
       sirius_chebiid,
       sirius_name,
       canopus_npc_pathway,
@@ -2140,28 +2140,28 @@ if (gnps2_job) {
       sirius_molecularformula,
       sirius_adduct,
       sirius_smiles,
-      metannot_structure_inchi,
-      metannot_structure_inchikey,
-      metannot_structure_molecular_formula,
-      metannot_structure_nametraditional,
-      metannot_structure_smiles,
-      metannot_structure_taxonomy_npclassifier_01pathway,
-      metannot_structure_taxonomy_npclassifier_02superclass,
-      metannot_structure_taxonomy_npclassifier_03class,
-      metannot_structure_wikidata,
-      metannot_organism_name,
-      metannot_organism_taxonomy_01domain,
-      metannot_organism_taxonomy_02kingdom,
-      metannot_organism_taxonomy_03phylum,
-      metannot_organism_taxonomy_04class,
-      metannot_organism_taxonomy_05order,
-      metannot_organism_taxonomy_06family,
-      metannot_organism_taxonomy_07tribe,
-      metannot_organism_taxonomy_08genus,
-      metannot_organism_taxonomy_09species,
-      metannot_organism_taxonomy_10varietas,
-      metannot_organism_taxonomy_ottid,
-      metannot_organism_wikidata,
+      met_annot_structure_inchi,
+      met_annot_structure_inchikey,
+      met_annot_structure_molecular_formula,
+      met_annot_structure_nametraditional,
+      met_annot_structure_smiles,
+      met_annot_structure_taxonomy_npclassifier_01pathway,
+      met_annot_structure_taxonomy_npclassifier_02superclass,
+      met_annot_structure_taxonomy_npclassifier_03class,
+      met_annot_structure_wikidata,
+      met_annot_organism_name,
+      met_annot_organism_taxonomy_01domain,
+      met_annot_organism_taxonomy_02kingdom,
+      met_annot_organism_taxonomy_03phylum,
+      met_annot_organism_taxonomy_04class,
+      met_annot_organism_taxonomy_05order,
+      met_annot_organism_taxonomy_06family,
+      met_annot_organism_taxonomy_07tribe,
+      met_annot_organism_taxonomy_08genus,
+      met_annot_organism_taxonomy_09species,
+      met_annot_organism_taxonomy_10varietas,
+      met_annot_organism_taxonomy_ottid,
+      met_annot_organism_wikidata,
       score_taxo,
       contains("p_value_minus_log10"),
       contains("p_value"),
@@ -2173,12 +2173,12 @@ if (gnps2_job) {
       sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', sirius_smiles),
       ""
     )) %>%
-    mutate(metannot_chemical_structure = ifelse(!is.na(metannot_structure_smiles),
-      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', metannot_structure_smiles),
+    mutate(met_annot_chemical_structure = ifelse(!is.na(met_annot_structure_smiles),
+      sprintf('<img src="https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=%s&zoom=2.0" height="50"></img>', met_annot_structure_smiles),
       ""
     )) %>%
-    mutate(metannot_structure_wikidata = ifelse(!is.na(metannot_structure_wikidata), sprintf('<a href="%s">%s</a>', metannot_structure_wikidata, metannot_structure_wikidata), "")) %>%
-    mutate(metannot_organism_wikidata = ifelse(!is.na(metannot_organism_wikidata), sprintf('<a href="%s">%s</a>', metannot_organism_wikidata, metannot_organism_wikidata), "")) %>%
+    mutate(met_annot_structure_wikidata = ifelse(!is.na(met_annot_structure_wikidata), sprintf('<a href="%s">%s</a>', met_annot_structure_wikidata, met_annot_structure_wikidata), "")) %>%
+    mutate(met_annot_organism_wikidata = ifelse(!is.na(met_annot_organism_wikidata), sprintf('<a href="%s">%s</a>', met_annot_organism_wikidata, met_annot_organism_wikidata), "")) %>%
     mutate(cluster_gnps_link = sprintf('<a href="%s">%s</a>', gnps_gnpslinkout_network, gnps_componentindex)) %>%
     # mutate(spectra_gnps_link = sprintf("<a href='%s'>gnps spectrum %s</a>", gnpslinkout_cluster_gnps, feature_id)) %>%
     # We first sanitize the sirius_name column and make it URL safe
@@ -2202,7 +2202,7 @@ if (gnps2_job) {
     select(
       feature_id,
       feature_id_full,
-      sirius_chebiascii_name,
+      sirius_chebiasciiname,
       sirius_chemical_structure,
       sirius_chebiid,
       sirius_name,
@@ -2226,30 +2226,30 @@ if (gnps2_job) {
       sirius_molecularformula,
       sirius_adduct,
       sirius_smiles,
-      metannot_chemical_structure,
-      metannot_structure_inchi,
-      metannot_structure_inchikey,
-      metannot_structure_molecular_formula,
-      metannot_structure_nametraditional,
-      metannot_structure_smiles,
-      metannot_structure_taxonomy_npclassifier_01pathway,
-      metannot_structure_taxonomy_npclassifier_02superclass,
-      metannot_metannot_structure_taxonomy_npclassifier_02superclass,
-      metannot_structure_wikidata,
-      metannot_organism_name,
-      metannot_organism_taxonomy_01domain,
-      metannot_organism_taxonomy_02kingdom,
-      metannot_organism_taxonomy_03phylum,
-      metannot_organism_taxonomy_04class,
-      metannot_organism_taxonomy_05order,
-      metannot_organism_taxonomy_06family,
-      metannot_organism_taxonomy_07tribe,
-      metannot_organism_taxonomy_08genus,
-      metannot_organism_taxonomy_09species,
-      metannot_organism_taxonomy_10varietas,
-      metannot_organism_taxonomy_ottid,
-      metannot_organism_wikidata,
-      metannot_score_taxo,
+      met_annot_chemical_structure,
+      met_annot_structure_inchi,
+      met_annot_structure_inchikey,
+      met_annot_structure_molecular_formula,
+      met_annot_structure_nametraditional,
+      met_annot_structure_smiles,
+      met_annot_structure_taxonomy_npclassifier_01pathway,
+      met_annot_structure_taxonomy_npclassifier_02superclass,
+      met_annot_met_annot_structure_taxonomy_npclassifier_02superclass,
+      met_annot_structure_wikidata,
+      met_annot_organism_name,
+      met_annot_organism_taxonomy_01domain,
+      met_annot_organism_taxonomy_02kingdom,
+      met_annot_organism_taxonomy_03phylum,
+      met_annot_organism_taxonomy_04class,
+      met_annot_organism_taxonomy_05order,
+      met_annot_organism_taxonomy_06family,
+      met_annot_organism_taxonomy_07tribe,
+      met_annot_organism_taxonomy_08genus,
+      met_annot_organism_taxonomy_09species,
+      met_annot_organism_taxonomy_10varietas,
+      met_annot_organism_taxonomy_ottid,
+      met_annot_organism_wikidata,
+      met_annot_score_taxo,
       contains("p_value_minus_log10"),
       contains("p_value"),
       contains("fold_change_log2"),
@@ -2533,7 +2533,7 @@ for (condition in conditions) {
 
   # We define a vector of columns to use as labels
 
-  label_columns <- c("sirius_chebiascii_name", "canopus_npc_class", "canopus_npc_superclass", "canopus_npc_pathway")
+  label_columns <- c("sirius_chebiasciiname", "canopus_npc_class", "canopus_npc_superclass", "canopus_npc_pathway")
 
 
   # Now we iterate over the vectors
@@ -2799,11 +2799,11 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     if (gnps2_job) {
     mydata_meta <- select(
       DE_foldchange_pvalues_signi, "sirius_inchikey2d", "row_id", "sirius_name", "sirius_smiles",
-      "cluster_index_gnps", "feature_rt", "feature_mz", "sirius_adduct", "sirius_chebiascii_name", "sirius_chebiid", "sirius_molecularformula", "component_gnps"
+      "gnps_cluster_index", "feature_rt", "feature_mz", "sirius_adduct", "sirius_chebiasciiname", "sirius_chebiid", "sirius_molecularformula", "gnps_component"
     )    } else {
     mydata_meta <- select(
       DE_foldchange_pvalues_signi, "sirius_inchikey2d", "row_id", "sirius_name", "sirius_smiles",
-      "cluster_index_gnps", "feature_rt", "feature_mz", "sirius_adduct", "sirius_chebiascii_name", "sirius_chebiid", "sirius_molecularformula", "gnps_componentindex", "gnpslinkout_cluster_gnps", "gnps_libraryid"
+      "gnps_cluster_index", "feature_rt", "feature_mz", "sirius_adduct", "sirius_chebiasciiname", "sirius_chebiid", "sirius_molecularformula", "gnps_componentindex", "gnpslinkout_cluster_gnps", "gnps_libraryid"
     )
     }
 
@@ -3073,9 +3073,9 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     )
 
     # # Generate full_hl hyperlink only if hl is not NA
-    # matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$cluster_index_gnps),
+    # matttree$gnps_hl_formatted <- ifelse(!is.na(matttree$gnps_cluster_index),
     #   paste0(
-    #     "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$cluster_index_gnps, "</a>"
+    #     "<a href='", matttree$gnpslinkout_cluster_gnps, "' target='_blank' style='color: black;'>", matttree$gnps_cluster_index, "</a>"
     #   ), ""
     # )
 
@@ -3099,7 +3099,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
 
     matttree$smiles_clickable_url[is.na(matttree$smiles_clickable_url)] <- ""
     matttree$sirius_chebiid[is.na(matttree$sirius_chebiid)] <- ""
-    matttree$sirius_chebiascii_name[is.na(matttree$sirius_chebiascii_name)] <- ""
+    matttree$sirius_chebiasciiname[is.na(matttree$sirius_chebiasciiname)] <- ""
     # matttree$gnps_libraryid[is.na(matttree$gnps_libraryid)] <- ""
 
 
@@ -3131,8 +3131,8 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     if (gnps2_job) {
     txt <- as.character(paste0
     (
-      "feature id: ", matttree$cluster_index_gnps, "<br>",
-      "component id: ", matttree$component_gnps, "<br>",
+      "feature id: ", matttree$gnps_cluster_index, "<br>",
+      "component id: ", matttree$gnps_component, "<br>",
       "name: ", matttree$labels_adjusted, "<br>",
       "m/z: ", round(matttree$feature_mz, 4), "<br>",
       "RT: ", round(matttree$feature_rt, 2), "<br>",
@@ -3144,7 +3144,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     } else {
     txt <- as.character(paste0
     (
-      "feature id: ", matttree$cluster_index_gnps, "<br>",
+      "feature id: ", matttree$gnps_cluster_index, "<br>",
       "component id: ", matttree$gnps_componentindex, "<br>",
       "name: ", matttree$labels_adjusted, "<br>",
       "m/z: ", round(matttree$feature_mz, 4), "<br>",
@@ -3166,7 +3166,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$sirius_chebiascii_name, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$sirius_chebiasciiname, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -3190,7 +3190,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       data = matttree,
       type = "treemap",
       ids = ~value,
-      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$sirius_chebiascii_name, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
+      labels = ~ paste0("<b>", matttree$full_hl, "</b><br>", matttree$smiles_clickable_url, "<br><b>", matttree$sirius_chebiasciiname, "</b><br>", matttree$chebi_hl_formatted, "<br>", "</a>"),
       parents = ~parent.value,
       values = ~count,
       branchvalues = "total",
@@ -3257,7 +3257,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
 
 
 # mydata_meta <- select(DE_foldchange_pvalues, "sirius_inchikey2d", "row_id","sirius_name","sirius_smiles",
-# "cluster_index_gnps","feature_rt","feature_mz")
+# "gnps_cluster_index","feature_rt","feature_mz")
 # mydata_meta$name_comp<- "unknown"
 # mydata_meta$name_comp[!is.na(mydata_meta$sirius_inchikey2d)] <- mydata_meta$sirius_name[!is.na(mydata_meta$sirius_inchikey2d)]
 
@@ -3487,7 +3487,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
 # #########################################################
 
 # txt <- as.character(paste0
-# ("feature id: ",matttree$cluster_index_gnps,"<br>",
+# ("feature id: ",matttree$gnps_cluster_index,"<br>",
 #  "RT: ", round(matttree$feature_rt,2),"<br>",
 #  "m/z: ", round(matttree$feature_mz,4),
 #  "<extra></extra>"
@@ -4045,7 +4045,7 @@ ridiculous_strips <- strip_themed(
   by_layer_y = FALSE
 )
 
-fig_boxplot <- p + facet_wrap2(~ sirius_chebiascii_name + feature_id_full, labeller = label_value, strip = ridiculous_strips) + theme(
+fig_boxplot <- p + facet_wrap2(~ sirius_chebiasciiname + feature_id_full, labeller = label_value, strip = ridiculous_strips) + theme(
   legend.position = "top",
   legend.title = element_blank()
 )
@@ -4089,7 +4089,7 @@ for (var in features_of_importance_boxplots) {
     geom_boxplot() +
     geom_point(position = position_jitter(width = 0.2), size = 2, alpha = 0.5) + # Add data points with jitter for better visibility
     # ggtitle(paste("Box Plot for", "\n",
-    # "Compound name: ", data_for_plot$sirius_chebiascii_name[1], "\n",
+    # "Compound name: ", data_for_plot$sirius_chebiasciiname[1], "\n",
     # "Feature details: ", data_for_plot$feature_id_full[1]))
     labs(
       x = params$target$sample_metadata_header,
@@ -4097,7 +4097,7 @@ for (var in features_of_importance_boxplots) {
       title = paste("Compared intensities for feature:", var),
       subtitle = paste(
         "\n",
-        "Compound name: ", data_for_plot$sirius_chebiascii_name[1], "\n",
+        "Compound name: ", data_for_plot$sirius_chebiasciiname[1], "\n",
         "Feature details: ", data_for_plot$feature_id_full[1]
       ),
       caption = paste("Calculated p-value is ~ ", rounded_p_value)
@@ -4654,12 +4654,12 @@ if (gnps2_job) {
   select(feature_id) %>%
   mutate(feature_id = as.numeric(feature_id)) %>%
   left_join(DE$variable_meta, by = "feature_id") %>%
-  select(feature_id, component_gnps, sirius_adduct, sirius_chebiascii_name, sirius_name, canopus_npc_pathway, canopus_npc_superclass, canopus_npc_class) %>%
+  select(feature_id, gnps_component, sirius_adduct, sirius_chebiasciiname, sirius_name, canopus_npc_pathway, canopus_npc_superclass, canopus_npc_class) %>%
   mutate(hover_text = paste0(
     "<br>", "feature_id: ", feature_id,
-    "<br>", "component_gnps: ", component_gnps,
+    "<br>", "gnps_component: ", gnps_component,
     "<br>", "Adduct sirius: ", sirius_adduct,
-    "<br>", "CheBI name: ", sirius_chebiascii_name,
+    "<br>", "CheBI name: ", sirius_chebiasciiname,
     "<br>", "Sirius name: ", sirius_name,
     "<br>", "Pathway: ", canopus_npc_pathway,
     "<br>", "Superclass: ", canopus_npc_superclass,
@@ -4677,12 +4677,12 @@ if (gnps2_job) {
   select(feature_id) %>%
   mutate(feature_id = as.numeric(feature_id)) %>%
   left_join(DE$variable_meta, by = "feature_id") %>%
-  select(feature_id, gnps_componentindex, sirius_adduct, sirius_chebiascii_name, sirius_name, canopus_npc_pathway, canopus_npc_superclass, canopus_npc_class) %>%
+  select(feature_id, gnps_componentindex, sirius_adduct, sirius_chebiasciiname, sirius_name, canopus_npc_pathway, canopus_npc_superclass, canopus_npc_class) %>%
   mutate(hover_text = paste0(
     "<br>", "feature_id: ", feature_id,
     "<br>", "gnps_componentindex: ", gnps_componentindex,
     "<br>", "Adduct sirius: ", sirius_adduct,
-    "<br>", "CheBI name: ", sirius_chebiascii_name,
+    "<br>", "CheBI name: ", sirius_chebiasciiname,
     "<br>", "Sirius name: ", sirius_name,
     "<br>", "Pathway: ", canopus_npc_pathway,
     "<br>", "Superclass: ", canopus_npc_superclass,
@@ -5001,7 +5001,7 @@ summary_stat_output_full <- DE_foldchange_pvalues
 
 # We filter the DE_foldchange_pvalues table to only keep the top N features (any column ending with _p_value string should have a value < 0.05)
 # We use the dplyr synthax to filter the table
-# We need to make sure to remove the rwonames() before exporting
+# We need to make sure to remove the rownames() before exporting
 
 
 summary_stat_output_selected <- DE_foldchange_pvalues %>%
@@ -5020,7 +5020,7 @@ summary_stat_output_selected <- DE_foldchange_pvalues %>%
     sirius_name,
     # gnps_libraryid,
     contains("smiles", ignore.case = TRUE),
-    contains("inchi_", ignore.case = TRUE),
+    contains("inchi", ignore.case = TRUE),
     contains("inchikey", ignore.case = TRUE)
   )
 
@@ -5034,12 +5034,12 @@ summary_stat_output_selected_cytoscape <- DE_foldchange_pvalues %>%
     contains("p_value"),
     contains("fold"),
     sirius_name,
-    sirius_chebiascii_name,
+    sirius_chebiasciiname,
     sirius_chebiid,
     sirius_confidencescore,
-    csi_fingeridscore_sirius,
-    siriusscore_sirius,
-    zodiacscore_sirius,
+    sirius_csi_fingeridscore,
+    sirius_siriusscore,
+    sirius_zodiacscore,
     sirius_inchi,
     sirius_inchikey2d,
     sirius_molecularformula,
@@ -5048,34 +5048,34 @@ summary_stat_output_selected_cytoscape <- DE_foldchange_pvalues %>%
     canopus_npc_pathway,
     canopus_npc_class,
     canopus_npc_superclass,
-    structure_exact_mass_metannot,
-    metannot_structure_inchi,
-    metannot_structure_inchikey,
-    short_inchikey_metannot,
-    metannot_structure_smiles,
-    metannot_structure_molecular_formula,
-    metannot_structure_nametraditional,
-    metannot_structure_wikidata,
-    metannot_structure_taxonomy_npclassifier_01pathway,
-    metannot_structure_taxonomy_npclassifier_02superclass,
-    metannot_structure_taxonomy_npclassifier_02superclass,
-    metannot_structure_taxonomy_npclassifier_01pathway_consensus,
-    metannot_structure_taxonomy_npclassifier_02superclass_consensus,
-    metannot_structure_taxonomy_npclassifier_03class_consensus,
-    metannot_organism_name,
-    metannot_organism_taxonomy_01domain,
-    metannot_organism_taxonomy_02kingdom,
-    metannot_organism_taxonomy_03phylum,
-    metannot_organism_taxonomy_04class,
-    metannot_organism_taxonomy_05order,
-    metannot_organism_taxonomy_06family,
-    metannot_organism_taxonomy_07tribe,
-    metannot_organism_taxonomy_08genus,
-    metannot_organism_taxonomy_09species,
-    metannot_organism_taxonomy_10varietas,
-    metannot_organism_taxonomy_ottid,
-    metannot_organism_wikidata,
-    metannot_score_taxo
+    structure_exact_mass_met_annot,
+    met_annot_structure_inchi,
+    met_annot_structure_inchikey,
+    short_inchikey_met_annot,
+    met_annot_structure_smiles,
+    met_annot_structure_molecular_formula,
+    met_annot_structure_nametraditional,
+    met_annot_structure_wikidata,
+    met_annot_structure_taxonomy_npclassifier_01pathway,
+    met_annot_structure_taxonomy_npclassifier_02superclass,
+    met_annot_structure_taxonomy_npclassifier_02superclass,
+    met_annot_structure_taxonomy_npclassifier_01pathway_consensus,
+    met_annot_structure_taxonomy_npclassifier_02superclass_consensus,
+    met_annot_structure_taxonomy_npclassifier_03class_consensus,
+    met_annot_organism_name,
+    met_annot_organism_taxonomy_01domain,
+    met_annot_organism_taxonomy_02kingdom,
+    met_annot_organism_taxonomy_03phylum,
+    met_annot_organism_taxonomy_04class,
+    met_annot_organism_taxonomy_05order,
+    met_annot_organism_taxonomy_06family,
+    met_annot_organism_taxonomy_07tribe,
+    met_annot_organism_taxonomy_08genus,
+    met_annot_organism_taxonomy_09species,
+    met_annot_organism_taxonomy_10varietas,
+    met_annot_organism_taxonomy_ottid,
+    met_annot_organism_wikidata,
+    met_annot_score_taxo
   )
 
 #### ad rf importance
@@ -5090,25 +5090,25 @@ summary_stat_output_selected_cytoscape <- merge(summary_stat_output_selected_cyt
 
 metaboverse_table <- DE_foldchange_pvalues
 
-# We then keep the keep the first occurence of the sirius_chebiascii_name
+# We then keep the keep the first occurence of the sirius_chebiasciiname
 
 metaboverse_table <- metaboverse_table %>%
-  distinct(sirius_chebiascii_name, .keep_all = TRUE)
+  distinct(sirius_chebiasciiname, .keep_all = TRUE)
 
 # We now format the table for Metaboverse
 # For this we apply the foillowing steps:
-# 1. We select the columns we want to keep (sirius_chebiascii_name, Co_KO_p_value, Co_KO_fold_change_log2)
+# 1. We select the columns we want to keep (sirius_chebiasciiname, Co_KO_p_value, Co_KO_fold_change_log2)
 # 2. We rename the columns to the names Metaboverse expects. Using the rename_with and gsub we replace the the _p_value and _fold_change_log2 suffixes to _stat and _fc
-# 3. We reorganize the columns to the order Metaboverse expects (sirius_chebiascii_name, _stat, _fc)
+# 3. We reorganize the columns to the order Metaboverse expects (sirius_chebiasciiname, _stat, _fc)
 # 4. We remove any rows containing NA values in the dataframe
-# 5. We replace the name of the `sirius_chebiascii_name` column by an empty string
+# 5. We replace the name of the `sirius_chebiasciiname` column by an empty string
 
 
 metaboverse_table <- metaboverse_table %>%
-  select(sirius_chebiascii_name, ends_with("_fold_change_log2"), ends_with("_p_value")) %>%
+  select(sirius_chebiasciiname, ends_with("_fold_change_log2"), ends_with("_p_value")) %>%
   # rename_with(~gsub("_p_value", "_stat", .)) %>%
   # rename_with(~gsub("_fold_change_log2", "_fc", .)) %>%
-  # select(sirius_chebiascii_name, Co_KO_fc, Co_KO_stat) %>%
+  # select(sirius_chebiasciiname, Co_KO_fc, Co_KO_stat) %>%
   # We remove row containing the `Inf` value
   # filter(!grepl('Inf', ends_with('_fold_change_log2')))  %>%
   # We remove any row containing the `Inf` value across all columns of the dataframe
@@ -5201,11 +5201,11 @@ message("Generating GraphML output ...")
 # We first load the GNPS graphml file
 
 if (gnps2_job) {
-  graphml_dir <- file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "nf_output", "networking")
+  graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking")
   graphml_file <- list.files(path = graphml_dir, pattern = "network.graphml$")
 
 } else {
-  graphml_dir <- file.path(working_directory, "results", "metannot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
+  graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
   graphml_file <- list.files(path = graphml_dir, pattern = "\\.graphml$")
 
 }
@@ -5267,7 +5267,7 @@ df_from_graph_vertices <- df_from_graph_vertices_original %>%
 # summary_stat_output_red = summary_stat_output_full %>%
 #   select(-contains("_sirius")) %>%
 #   select(-contains("_canopus")) %>%
-#   select(-contains("_metannot")) %>%
+#   select(-contains("_met_annot")) %>%
 #   select(-contains("_gnps"))  %>%
 #   #select(-ends_with("_id"))  %>%
 #   select(-ends_with("_mz"))  %>%
