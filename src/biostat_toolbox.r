@@ -200,7 +200,7 @@ if (params$actions$scale_data == "TRUE") {
   scaling_status <- "raw"
 }
 
-possible_modes <- c("exclude", "include", "above", "below")
+possible_modes <- c("exclude", "include", "above", "below", "activated", "deactivated")
 
 
 
@@ -794,6 +794,7 @@ DE_original <- DatasetExperiment(
   description = params$dataset_experiment$description
 )
 
+
 # variable_meta = DE_original$variable_meta
 
 ## Filtering steps
@@ -811,6 +812,25 @@ if (length(params$feature_to_filter) > 0) {
 
 ## Filtering steps
 
+## Blank filter
+
+if (is.numeric(params$filter_blank$fold_change) == TRUE) {
+
+  filter_blank_model <- blank_filter(
+    fold_change = params$filter_blank$fold_change,
+    factor_name = params$filter_blank$factor_name,
+    blank_label = params$filter_blank$blank_label,
+    qc_label = params$filter_blank$qc_label,
+    fraction_in_blank = params$filter_blank$fraction_in_blank
+  )
+
+  # apply model sequence
+  filter_blank_result <- model_apply(filter_blank_model, DE_filtered_name)
+
+  DE_filtered <- filter_blank_result$filtered
+} else {
+  DE_filtered <- DE_filtered_name
+}
 
 
 if (params$filter_sample_type$mode %in% possible_modes){
@@ -821,12 +841,10 @@ if (params$filter_sample_type$mode %in% possible_modes){
   )
 
   # apply model sequence
-  filter_smeta_result <- model_apply(filter_smeta_model, DE_filtered_name)
+  filter_smeta_result <- model_apply(filter_smeta_model, DE_filtered)
 
   DE_filtered <- filter_smeta_result@filtered
-} else {
-  DE_filtered <- DE_filtered_name
-}
+} 
 
 if (params$filter_sample_metadata_one$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(

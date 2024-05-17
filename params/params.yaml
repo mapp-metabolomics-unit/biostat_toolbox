@@ -1,17 +1,17 @@
 mapp_project : mapp_project_00050
-mapp_batch : mapp_batch_00111
-met_annot_enhancer_folder : mapp_batch_00111
-gnps_job_id : 72b95bd8850f46f394f9cfaa673f2685
+mapp_batch : mapp_batch_00109
+met_annot_enhancer_folder : mapp_batch_00109
+gnps_job_id : 686365fe75624ed8be661d43be058592
 
 dataset_experiment : 
-  name: "mapp_batch_00111 LCMS metabolomics dataset"
-  description: "TP SBL20004 2024 - Group C - Rosacaea taxonomy"
+  name: "mapp_batch_00109 LCMS metabolomics dataset"
+  description: "TP SBL20004 2024 - Group A - Biscutella herbivory"
 
 ms_files_extension: ".mzML"
 
 
 actions:
-  scale_data : TRUE
+  scale_data : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -21,8 +21,14 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'source_taxon_genus'
+    factor_name : 'source_taxon'
 
+filter_blank :
+  fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
+  factor_name : '' # (character) The factor name in the sample metadata file that contains the sample type. The default is "sample_type".
+  blank_label : '' # (character) The label used for the blanks in the sample metadata file. The default is "BK".
+  qc_label : '' # (character) The label used for the QC samples in the sample metadata file. The default is "QC".
+  fraction_in_blank : # (numeric) Features present in less than this proportion of the blanks are not considered for removal. The default is 0.
 
 filter_sample_type :
   mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
@@ -31,10 +37,10 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : '' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : '' 
+  mode : 'exclude' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'source_taxon' 
   levels : 
-    - ''
+    - 'Plutella xylostella'
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -59,13 +65,13 @@ filter_variable_metadata_annotated :
   levels : '' # E.g. 'NA' 
 
 filter_variable_metadata_num :
-  mode : 'above' # 'above' or 'below', if '', the filter is not applied
-  factor_name : 'sirius_confidencescore' # e.g 'sirius_confidencescore'
-  level : 0.7 # Numerical value. E.g 0.5
+  mode : '' # 'above' or 'below', if '', the filter is not applied
+  factor_name : '' # e.g 'sirius_confidencescore'
+  level : # Numerical value. E.g 0.5
 
 
 target:
-  sample_metadata_header: "source_taxon_genus" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "full" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -114,7 +120,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "source_taxon_genus"
+    - "full"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
