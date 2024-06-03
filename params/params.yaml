@@ -1,17 +1,18 @@
-mapp_project : mapp_project_00050
-mapp_batch : mapp_batch_00109
-met_annot_enhancer_folder : mapp_batch_00109
-gnps_job_id : 686365fe75624ed8be661d43be058592
+
+mapp_project : mapp_project_00014
+mapp_batch : mapp_batch_00074
+met_annot_enhancer_folder : mapp_batch_00074
+gnps_job_id : edf5dbd2ba884d8580a0478e3627bdd9
 
 dataset_experiment : 
-  name: "mapp_batch_00109 LCMS metabolomics dataset"
-  description: "TP SBL20004 2024 - Group A - Biscutella herbivory"
+  name: "mapp_batch_00074 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics of Honey pot ants - batch 3"
 
 ms_files_extension: ".mzML"
 
 
 actions:
-  scale_data : FALSE
+  scale_data : TRUE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -21,7 +22,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'source_taxon'
+    factor_name : 'ATTRIBUTE_colony'
 
 filter_blank :
   fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -37,10 +38,10 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : 'exclude' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : 'source_taxon' 
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : '' 
   levels : 
-    - 'Plutella xylostella'
+    - ''
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -67,11 +68,11 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : '' # 'above' or 'below', if '', the filter is not applied
   factor_name : '' # e.g 'sirius_confidencescore'
-  level : # Numerical value. E.g 0.5
+  level :  # Numerical value. E.g 0.5
 
 
 target:
-  sample_metadata_header: "full" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_colony" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -120,7 +121,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "full"
+    - "ATTRIBUTE_colony"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.

@@ -603,7 +603,7 @@ VM <- VM[, order(colnames(VM))]
 # We here load the sample metadata
 
 
-sample_metadata <- read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch, "metadata.txt", sep = "_")),
+sample_metadata <- read_delim(file.path(working_directory, "metadata", "treated", paste(params$mapp_batch, "metadata.tsv", sep = "_")),
   delim = "\t",
   escape_double = FALSE,
   trim_ws = TRUE
