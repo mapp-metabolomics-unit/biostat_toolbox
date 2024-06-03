@@ -710,12 +710,18 @@ for (column in names(params$to_combine_vertically)) {
 # The function below is used to create metadata combinations
 # Then we work horizontally (across SM columns)
 
+
 if (!is.null(params$to_combine_horizontally$factor_name)) {
   df <- SM %>%
     filter(sample_type == "sample")
 
   # This line allows us to make sure that the columns will be combined in alphabetical order
   cols <- sort(c(params$to_combine_horizontally$factor_name), decreasing = FALSE)
+
+  # Here we make sure to lower case the column names present in cols
+
+  cols <- tolower(cols)
+
 
   for (n in 1:length(cols)) {
     combos <- combn(cols, n, simplify = FALSE)
@@ -5218,164 +5224,164 @@ summary_stat_output_selected_simple <- DE_foldchange_pvalues %>%
 #############################################################################
 #############################################################################
 
-message("Generating GraphML output ...")
+# message("Generating GraphML output ...")
 
 
-# We first load the GNPS graphml file
+# # We first load the GNPS graphml file
 
-if (gnps2_job) {
-  graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking")
-  graphml_file <- list.files(path = graphml_dir, pattern = "network.graphml$")
+# if (gnps2_job) {
+#   graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "nf_output", "networking")
+#   graphml_file <- list.files(path = graphml_dir, pattern = "network.graphml$")
 
-} else {
-  graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
-  graphml_file <- list.files(path = graphml_dir, pattern = "\\.graphml$")
+# } else {
+#   graphml_dir <- file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "gnps_molecular_network_graphml")
+#   graphml_file <- list.files(path = graphml_dir, pattern = "\\.graphml$")
 
-}
-
-
-graphml_file_path <- file.path(graphml_dir, graphml_file)
+# }
 
 
-
-g <- read.graph(file = graphml_file_path, format = "graphml")
-# net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
-
-df_from_graph_edges_original <- igraph::as_data_frame(g, what = c("edges"))
-df_from_graph_vertices_original <- igraph::as_data_frame(g, what = c("vertices"))
-
-
-# We define drop the from and to columns from the edges dataframe
-# And then rename the node 1 and node 2 columns to from and to, respectively
-# These columns are placed at the beginning of the dataframe
-# and converted to numerics
-if (gnps2_job) {
-  df_from_graph_edges <- df_from_graph_edges_original %>%
-    select(-from, -to) %>%
-    rename(from = scan1, to = scan2) %>%
-    select(from, to, everything()) %>%
-    mutate_at(vars(from, to), as.numeric)
-} else {
-  df_from_graph_edges <- df_from_graph_edges_original %>%
-    select(-from, -to) %>%
-    rename(from = node1, to = node2) %>%
-    select(from, to, everything()) %>%
-    mutate_at(vars(from, to), as.numeric)
-}
-
-# the id column of the vertices dataframe is converted to numerics
-
-df_from_graph_vertices <- df_from_graph_vertices_original %>%
-  mutate_at(vars(id), as.numeric)
-
-
-# We then add the attributes to the vertices dataframe
-# For this we merge the vertices dataframe with the VM output using the id column and the feature_id column, respectively
-
-# vm_minus_gnps = DE_original$variable_meta  %>%
-# select(-contains("_gnps"))
-
-
-# df_from_graph_vertices_plus = merge(df_from_graph_vertices, vm_minus_gnps, by.x = "id", by.y = "feature_id", all.x = T)
-
-# glimpse(df_from_graph_vertices_plus)
-
-
-# Now we will add the results of the statistical outputs to the vertices dataframe
-# For this we merge the vertices dataframe with the summary_stat_output using the id column and the feature_id column, respectively
-
-# First we clean the summary_stat_output dataframe
-# For this we remove columns that are not needed. The one containing the sirius and canopus pattern in the column names. Indeed they arr already present in the VM dataframe
-
-# summary_stat_output_red = summary_stat_output_full %>%
-#   select(-contains("_sirius")) %>%
-#   select(-contains("_canopus")) %>%
-#   select(-contains("_met_annot")) %>%
-#   select(-contains("_gnps"))  %>%
-#   #select(-ends_with("_id"))  %>%
-#   select(-ends_with("_mz"))  %>%
-#   select(-ends_with("_rt"))
-
-DE_original_features <- DE_original$variable_meta 
-# %>%
-#   select(feature_id)
-
-# We merge DE_original_features and summary_stat_output_selected_cytoscape but make sure to drop duplicated columns from the summary_stat_output_selected_cytoscape dataframe
-
-# Identify the names of columns that are duplicated between the two data frames, excluding the merging key column.
-common_cols <- setdiff(intersect(names(DE_original_features), names(summary_stat_output_selected_cytoscape)), "feature_id")
-
-# Remove Duplicated Columns from One DataFrame
-summary_stat_output_selected_cytoscape <- summary_stat_output_selected_cytoscape %>%
-  select(-all_of(common_cols))
-
-
-df_from_graph_vertices_plus <- DE_original_features %>%
-  left_join(summary_stat_output_selected_cytoscape, by = "feature_id")
+# graphml_file_path <- file.path(graphml_dir, graphml_file)
 
 
 
-# We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
+# g <- read.graph(file = graphml_file_path, format = "graphml")
+# # net_gnps = igraph::simplify(g, remove.multiple = FALSE, edge.attr.comb = "ignore")
 
-merged_D_SM <- merge(DE_original$sample_meta, DE_original$data, by = "row.names", all = TRUE)
-
-# We replace NA values with 0 in the merged dataframe
-# Check why we dont do this before ??
-merged_D_SM[is.na(merged_D_SM)] <- 0
+# df_from_graph_edges_original <- igraph::as_data_frame(g, what = c("edges"))
+# df_from_graph_vertices_original <- igraph::as_data_frame(g, what = c("vertices"))
 
 
-# The function below allows to group data by multiple factors and return a dataframe with the mean of each group
+# # We define drop the from and to columns from the edges dataframe
+# # And then rename the node 1 and node 2 columns to from and to, respectively
+# # These columns are placed at the beginning of the dataframe
+# # and converted to numerics
+# if (gnps2_job) {
+#   df_from_graph_edges <- df_from_graph_edges_original %>%
+#     select(-from, -to) %>%
+#     rename(from = scan1, to = scan2) %>%
+#     select(from, to, everything()) %>%
+#     mutate_at(vars(from, to), as.numeric)
+# } else {
+#   df_from_graph_edges <- df_from_graph_edges_original %>%
+#     select(-from, -to) %>%
+#     rename(from = node1, to = node2) %>%
+#     select(from, to, everything()) %>%
+#     mutate_at(vars(from, to), as.numeric)
+# }
+
+# # the id column of the vertices dataframe is converted to numerics
+
+# df_from_graph_vertices <- df_from_graph_vertices_original %>%
+#   mutate_at(vars(id), as.numeric)
 
 
-dfList <- list()
+# # We then add the attributes to the vertices dataframe
+# # For this we merge the vertices dataframe with the VM output using the id column and the feature_id column, respectively
 
-for (i in params$to_mean$factor_name) {
-  dfList[[i]] <- merged_D_SM %>%
-    group_by(!!as.symbol(i)) %>%
-    summarise(across(colnames(DE_original$data), mean),
-      .groups = "drop"
-    ) %>%
-    select(!!all_of(i), colnames(DE_original$data)) %>%
-    pivot_longer(-!!i) %>%
-    pivot_wider(names_from = all_of(i), values_from = value) %>%
-    # We prefix all columns with the factor name
-    rename_with(.cols = -name, ~ paste0("mean_int", "_", i, "_", .x))
-}
+# # vm_minus_gnps = DE_original$variable_meta  %>%
+# # select(-contains("_gnps"))
 
 
-flat_dfList <- reduce(dfList, full_join, by = "name")
+# # df_from_graph_vertices_plus = merge(df_from_graph_vertices, vm_minus_gnps, by.x = "id", by.y = "feature_id", all.x = T)
 
-# We now add the raw feature list to the dataframe
-
-full_flat_dfList <- merge(flat_dfList, t(DE_original$data), by.x = "name", by.y = "row.names", all = TRUE)
+# # glimpse(df_from_graph_vertices_plus)
 
 
-#  We add the raw feature list
+# # Now we will add the results of the statistical outputs to the vertices dataframe
+# # For this we merge the vertices dataframe with the summary_stat_output using the id column and the feature_id column, respectively
 
-df_from_graph_vertices_plus_plus <- merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id", by.y = "name", all.x = T)
+# # First we clean the summary_stat_output dataframe
+# # For this we remove columns that are not needed. The one containing the sirius and canopus pattern in the column names. Indeed they arr already present in the VM dataframe
+
+# # summary_stat_output_red = summary_stat_output_full %>%
+# #   select(-contains("_sirius")) %>%
+# #   select(-contains("_canopus")) %>%
+# #   select(-contains("_met_annot")) %>%
+# #   select(-contains("_gnps"))  %>%
+# #   #select(-ends_with("_id"))  %>%
+# #   select(-ends_with("_mz"))  %>%
+# #   select(-ends_with("_rt"))
+
+# DE_original_features <- DE_original$variable_meta 
+# # %>%
+# #   select(feature_id)
+
+# # We merge DE_original_features and summary_stat_output_selected_cytoscape but make sure to drop duplicated columns from the summary_stat_output_selected_cytoscape dataframe
+
+# # Identify the names of columns that are duplicated between the two data frames, excluding the merging key column.
+# common_cols <- setdiff(intersect(names(DE_original_features), names(summary_stat_output_selected_cytoscape)), "feature_id")
+
+# # Remove Duplicated Columns from One DataFrame
+# summary_stat_output_selected_cytoscape <- summary_stat_output_selected_cytoscape %>%
+#   select(-all_of(common_cols))
 
 
-# We set back the id column as the first column of the dataframe
-
-df_from_graph_vertices_plus_plus <- df_from_graph_vertices_plus_plus %>%
-  select(feature_id, everything())
-
-node_size <- df_from_graph_vertices_plus_plus$MeanDecreaseGini
-node_size[is.na(node_size)] <- min(node_size, na.rm = T)
-
-df_from_graph_vertices_plus_plus$node_size <- node_size
-# We then add the attributes to the edges dataframe and generate the igraph object
-
-# In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging.
+# df_from_graph_vertices_plus <- DE_original_features %>%
+#   left_join(summary_stat_output_selected_cytoscape, by = "feature_id")
 
 
-# We then make sure to have the df_from_graph_vertices_plus_plus dataframe ordered by decreasing value of the MeanDecreaseGini column
 
-df_from_graph_vertices_plus_plus <- df_from_graph_vertices_plus_plus %>%
-  arrange(desc(MeanDecreaseGini))
+# # We merge the data from the DE$data dataframe with the DE$sample_meta dataframe using rownames as the key
+
+# merged_D_SM <- merge(DE_original$sample_meta, DE_original$data, by = "row.names", all = TRUE)
+
+# # We replace NA values with 0 in the merged dataframe
+# # Check why we dont do this before ??
+# merged_D_SM[is.na(merged_D_SM)] <- 0
 
 
-generated_g <- graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
+# # The function below allows to group data by multiple factors and return a dataframe with the mean of each group
+
+
+# dfList <- list()
+
+# for (i in params$to_mean$factor_name) {
+#   dfList[[i]] <- merged_D_SM %>%
+#     group_by(!!as.symbol(i)) %>%
+#     summarise(across(colnames(DE_original$data), mean),
+#       .groups = "drop"
+#     ) %>%
+#     select(!!all_of(i), colnames(DE_original$data)) %>%
+#     pivot_longer(-!!i) %>%
+#     pivot_wider(names_from = all_of(i), values_from = value) %>%
+#     # We prefix all columns with the factor name
+#     rename_with(.cols = -name, ~ paste0("mean_int", "_", i, "_", .x))
+# }
+
+
+# flat_dfList <- reduce(dfList, full_join, by = "name")
+
+# # We now add the raw feature list to the dataframe
+
+# full_flat_dfList <- merge(flat_dfList, t(DE_original$data), by.x = "name", by.y = "row.names", all = TRUE)
+
+
+# #  We add the raw feature list
+
+# df_from_graph_vertices_plus_plus <- merge(df_from_graph_vertices_plus, full_flat_dfList, by.x = "feature_id", by.y = "name", all.x = T)
+
+
+# # We set back the id column as the first column of the dataframe
+
+# df_from_graph_vertices_plus_plus <- df_from_graph_vertices_plus_plus %>%
+#   select(feature_id, everything())
+
+# node_size <- df_from_graph_vertices_plus_plus$MeanDecreaseGini
+# node_size[is.na(node_size)] <- min(node_size, na.rm = T)
+
+# df_from_graph_vertices_plus_plus$node_size <- node_size
+# # We then add the attributes to the edges dataframe and generate the igraph object
+
+# # In the case when we have been filtering the X data we will add the filtered X data to the vertices dataframe prior to merging.
+
+
+# # We then make sure to have the df_from_graph_vertices_plus_plus dataframe ordered by decreasing value of the MeanDecreaseGini column
+
+# df_from_graph_vertices_plus_plus <- df_from_graph_vertices_plus_plus %>%
+#   arrange(desc(MeanDecreaseGini))
+
+
+# generated_g <- graph_from_data_frame(df_from_graph_edges, directed = FALSE, vertices = df_from_graph_vertices_plus_plus)
 
 
 ################################################################################
