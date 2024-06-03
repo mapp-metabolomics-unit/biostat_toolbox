@@ -2,7 +2,7 @@
 mapp_project : mapp_project_00014
 mapp_batch : mapp_batch_00074
 met_annot_enhancer_folder : mapp_batch_00074
-gnps_job_id : edf5dbd2ba884d8580a0478e3627bdd9
+gnps_job_id : 04d7a9fa47614941904ae8d2ae8e82f9
 
 dataset_experiment : 
   name: "mapp_batch_00074 LCMS metabolomics dataset"

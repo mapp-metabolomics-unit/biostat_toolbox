@@ -1061,6 +1061,11 @@ formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
 
 ###################################################################################################
 ######################### rename main folder - short version
+
+# We make sure that the params$target$sample_metadata_header is lowercase
+
+params$target$sample_metadata_header <- tolower(params$target$sample_metadata_header)
+
 # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
 target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
