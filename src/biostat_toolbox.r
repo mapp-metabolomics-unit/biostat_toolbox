@@ -5380,8 +5380,8 @@ generated_g <- graph_from_data_frame(df_from_graph_edges, directed = FALSE, vert
 
 # The file is exported
 
-
-write_graph(generated_g, file = filename_graphml, format = "graphml")
+# Not outputted by default
+# write_graph(generated_g, file = filename_graphml, format = "graphml")
 
 
 message("... the R session info file ...")
