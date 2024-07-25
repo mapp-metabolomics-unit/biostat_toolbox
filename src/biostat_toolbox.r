@@ -329,8 +329,8 @@ feature_table$"feature_id_full" <- paste(feature_table$feature_id,
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
 feature_table_intensities <- feature_table %>%
-  select(feature_id, contains(" Peak area")) %>%
-  rename_with(~ gsub(" Peak area", "", .x)) %>%
+  select(feature_id, contains(" Peak height")) %>%
+  rename_with(~ gsub(" Peak height", "", .x)) %>%
   column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
@@ -404,8 +404,10 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
 
   # We now build a unique feature_id for each feature in the Sirius data
 
-  data_sirius$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$sirius_id)
-  data_sirius$feature_id <- as.numeric(data_sirius$feature_id)
+  # data_sirius$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$sirius_id)
+  # Previous line is now deprecated with the new Sirius outputs
+
+  data_sirius$feature_id <- as.numeric(data_sirius$featureId)
 
   # Since this step takes time we save the output locally
 
@@ -426,8 +428,9 @@ colnames(data_canopus) <- paste("canopus", colnames(data_canopus),  sep = "_")
 
 # We now build a unique feature_id for each feature in the Sirius data
 
-data_canopus$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$canopus_id)
-data_canopus$feature_id <- as.numeric(data_canopus$feature_id)
+#data_canopus$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$canopus_id)
+# Previous line is now deprecated with the new Sirius outputs
+data_canopus$feature_id <- as.numeric(data_canopus$featureId)
 
 
 write.table(data_canopus, file = file.path(working_directory, "results", "sirius", paste("featured", canopus_annotations_filename, sep = "_")), sep = "\t", row.names = FALSE)
