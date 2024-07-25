@@ -1,12 +1,11 @@
-
-mapp_project : mapp_project_00014
-mapp_batch : mapp_batch_00074
-met_annot_enhancer_folder : mapp_batch_00074
-gnps_job_id : 04d7a9fa47614941904ae8d2ae8e82f9
+mapp_project : mapp_project_00007
+mapp_batch : mapp_batch_00059
+met_annot_enhancer_folder : mapp_batch_00059
+gnps_job_id : 9be4451a46b74244bf07da72cba2965b
 
 dataset_experiment : 
-  name: "mapp_batch_00074 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics of Honey pot ants - batch 3"
+  name: "mapp_batch_00059 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics of Medicago truncatula nodules - negative mode"
 
 ms_files_extension: ".mzML"
 
@@ -22,7 +21,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'ATTRIBUTE_reevaluatedcolor'
+    factor_name : 'source_taxon'
 
 filter_blank :
   fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -51,28 +50,28 @@ filter_sample_metadata_two :
 
 filter_variable_metadata_one :
   mode : ''
-  factor_name : '' # E.g. 'npc_pathway_canopus'
+  factor_name : '' # E.g. 'canopus_npc_pathway'
   levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
 
 filter_variable_metadata_two :
   mode : ''
-  factor_name : '' # E.g. 'npc_pathway_canopus'
-  levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+  factor_name : '' # E.g. 'canopus_npc_pathway'
+  levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'canopus_npc_pathway_probability'
 
 
 filter_variable_metadata_annotated :
   mode : ''
-  factor_name : '' # E.g. 'npc_pathway_canopus'
+  factor_name : '' # E.g. 'canopus_npc_pathway'
   levels : '' # E.g. 'NA' 
 
 filter_variable_metadata_num :
-  mode : 'above' # 'above' or 'below', if '', the filter is not applied
-  factor_name : 'sirius_confidencescore' # e.g 'sirius_confidencescore'
-  level : 0.7 # Numerical value. E.g 0.5
+  mode : '' # 'above' or 'below', if '', the filter is not applied
+  factor_name : '' # e.g e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
+  level :  # Numerical value. E.g 0.5
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_colony_ATTRIBUTE_reevaluatedcolor" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -121,7 +120,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "ATTRIBUTE_reevaluatedcolor"
+    - "source_taxon"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
@@ -132,7 +131,7 @@ to_mean:
 
 to_combine_vertically: 
   # column1: 
-  #   factor_name: 
+  #   factor_name:
   #   groups:
   #     group1:
   #       levels:
@@ -154,8 +153,7 @@ to_combine_vertically:
 
 to_combine_horizontally:
   factor_name: 
-     - "ATTRIBUTE_reevaluatedcolor"
-     - "ATTRIBUTE_colony"
+    #  - "source_taxon"
 
 
 multi_series:
