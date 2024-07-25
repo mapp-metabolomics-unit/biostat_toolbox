@@ -407,7 +407,7 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
   # data_sirius$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$sirius_id)
   # Previous line is now deprecated with the new Sirius outputs
 
-  data_sirius$feature_id <- as.numeric(data_sirius$featureId)
+  data_sirius$feature_id <- as.numeric(data_sirius$sirius_featureId)
 
   # Since this step takes time we save the output locally
 
@@ -430,7 +430,7 @@ colnames(data_canopus) <- paste("canopus", colnames(data_canopus),  sep = "_")
 
 #data_canopus$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$canopus_id)
 # Previous line is now deprecated with the new Sirius outputs
-data_canopus$feature_id <- as.numeric(data_canopus$featureId)
+data_canopus$feature_id <- as.numeric(data_canopus$canopus_featureId)
 
 
 write.table(data_canopus, file = file.path(working_directory, "results", "sirius", paste("featured", canopus_annotations_filename, sep = "_")), sep = "\t", row.names = FALSE)
