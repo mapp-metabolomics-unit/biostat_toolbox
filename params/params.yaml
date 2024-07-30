@@ -1,17 +1,17 @@
 mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00059
-met_annot_enhancer_folder : mapp_batch_00059
-gnps_job_id : 9be4451a46b74244bf07da72cba2965b
+mapp_batch : mapp_batch_00091
+met_annot_enhancer_folder : mapp_batch_00091
+gnps_job_id : d1b816a7a27041f7aa567768f117798b
 
 dataset_experiment : 
-  name: "mapp_batch_00059 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics of Medicago truncatula nodules - negative mode"
+  name: "mapp_batch_00091 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics of Medicago truncatula nodules - negative mode - second round of injection"
 
 ms_files_extension: ".mzML"
 
 
 actions:
-  scale_data : TRUE
+  scale_data : FALSE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -21,7 +21,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'source_taxon'
+    factor_name : 'ATTRIBUTE_condition'
 
 filter_blank :
   fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -37,10 +37,13 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : '' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : '' 
+  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'ATTRIBUTE_condition' 
   levels : 
-    - ''
+      - 'Argon'
+      - 'NifH'
+      - 'HN'
+      - 'WT'
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -71,19 +74,23 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_condition" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
 colors:
   all:
    key:
-      # - 'CH'
-      # - 'TR'
+      - 'Argon'
+      - 'HN'
+      - 'NifH'
+      - 'WT'
 
    value:
-      # - "cadetblue" # 'X1'
-      # - "goldenrod" # 'X2'
+      - "darkslateblue" # 'Argon'
+      - "cadetblue" # 'HN'
+      - "goldenrod" # 'NifH'
+      - "darkolivegreen" # 'WT'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)

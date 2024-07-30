@@ -172,6 +172,7 @@ params$operating_system$system <- params_user$operating_system$system
 params$operating_system$pandoc <- params_user$operating_system$pandoc
 
 
+
 # We generate a hash from the params.yaml file
 
 # yaml_hash <- generate_hash_from_yaml(path_to_params)
@@ -827,7 +828,7 @@ if (is.numeric(params$filter_blank$fold_change) == TRUE) {
 
   filter_blank_model <- blank_filter(
     fold_change = params$filter_blank$fold_change,
-    factor_name = params$filter_blank$factor_name,
+    factor_name = tolower(params$filter_blank$factor_name),
     blank_label = params$filter_blank$blank_label,
     qc_label = params$filter_blank$qc_label,
     fraction_in_blank = params$filter_blank$fraction_in_blank
@@ -845,7 +846,7 @@ if (is.numeric(params$filter_blank$fold_change) == TRUE) {
 if (params$filter_sample_type$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_type$mode,
-    factor_name = params$filter_sample_type$factor_name,
+    factor_name = tolower(params$filter_sample_type$factor_name),
     levels = params$filter_sample_type$levels
   )
 
@@ -858,7 +859,7 @@ if (params$filter_sample_type$mode %in% possible_modes){
 if (params$filter_sample_metadata_one$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_metadata_one$mode,
-    factor_name = params$filter_sample_metadata_one$factor_name,
+    factor_name = tolower(params$filter_sample_metadata_one$factor_name),
     levels = params$filter_sample_metadata_one$levels
   )
 
@@ -871,7 +872,7 @@ if (params$filter_sample_metadata_one$mode %in% possible_modes){
 if (params$filter_sample_metadata_two$mode %in% possible_modes) {
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_metadata_two$mode,
-    factor_name = params$filter_sample_metadata_two$factor_name,
+    factor_name = tolower(params$filter_sample_metadata_two$factor_name),
     levels = params$filter_sample_metadata_two$levels
   )
 
@@ -885,7 +886,7 @@ if (params$filter_sample_metadata_two$mode %in% possible_modes) {
 if (params$filter_variable_metadata_one$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_one$mode,
-    factor_name = params$filter_variable_metadata_one$factor_name,
+    factor_name = tolower(params$filter_variable_metadata_one$factor_name),
     levels = params$filter_variable_metadata_one$levels
   )
 
@@ -898,7 +899,7 @@ if (params$filter_variable_metadata_one$mode %in% possible_modes) {
 if (params$filter_variable_metadata_two$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_two$mode,
-    factor_name = params$filter_variable_metadata_two$factor_name,
+    factor_name = tolower(params$filter_variable_metadata_two$factor_name),
     levels = params$filter_variable_metadata_two$levels
   )
 
@@ -918,7 +919,7 @@ if (params$filter_variable_metadata_annotated$mode %in% possible_modes) {
 
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_annotated$mode,
-    factor_name = params$filter_variable_metadata_annotated$factor_name,
+    factor_name = tolower(params$filter_variable_metadata_annotated$factor_name),
     levels = as.character(params$filter_variable_metadata_annotated$levels)
   )
 
@@ -932,7 +933,7 @@ if (params$filter_variable_metadata_annotated$mode %in% possible_modes) {
 if (params$filter_variable_metadata_num$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta_num(
     mode = params$filter_variable_metadata_num$mode,
-    factor_name = params$filter_variable_metadata_num$factor_name,
+    factor_name = tolower(params$filter_variable_metadata_num$factor_name),
     level = params$filter_variable_metadata_num$level
   )
 
