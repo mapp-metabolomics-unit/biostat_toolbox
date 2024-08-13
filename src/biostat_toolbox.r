@@ -393,7 +393,23 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
 
   print("Getting ChEBI IDs from smiles ...")
 
-  chebi_ids <- get_chebiid(for_chembiid_smiles, from = "smiles", to = "chebiid", match = "best")
+  # Here we make sure that the service is up.
+  # For this we use the ping() function from the webchem package
+
+  if ping_service("chebi") == FALSE {
+    stop("The ChEBI service is down. We will issue an empty DF. Please try again later.")
+
+    # Here, using the for_chembiid_smiles object, we return an ampty dataframe with the following columns query, chebiid and chebiasciiname
+
+    chebi_ids <- data.frame(query = for_chembiid_smiles, chebiid = NA, chebiasciiname = NA)
+    
+  } else {
+    print("The ChEBI service is up.")
+
+    chebi_ids <- get_chebiid(for_chembiid_smiles, from = "smiles", to = "chebiid", match = "best")
+
+  }
+
 
   # And we merge the data_sirius dataframe with the chebi_ids dataframe
   data_sirius <- merge(data_sirius, chebi_ids, by.x = "smiles", by.y = "query")

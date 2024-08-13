@@ -1,17 +1,17 @@
-mapp_project : mapp_project_00007
-mapp_batch : mapp_batch_00091
-met_annot_enhancer_folder : mapp_batch_00091
-gnps_job_id : d1b816a7a27041f7aa567768f117798b
+mapp_project : mapp_project_00051
+mapp_batch : mapp_batch_00114
+met_annot_enhancer_folder : mapp_batch_00114
+gnps_job_id : 9e16a42412034ce4b1a8ef6b6cf137cd
 
 dataset_experiment : 
-  name: "mapp_batch_00091 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics of Medicago truncatula nodules - negative mode - second round of injection"
+  name: "mapp_batch_00114 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics on yeast in positive mode."
 
 ms_files_extension: ".mzML"
 
 
 actions:
-  scale_data : FALSE
+  scale_data : TRUE
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -21,7 +21,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'ATTRIBUTE_condition'
+    factor_name : 'ATTRIBUTE_sample_group'
 
 filter_blank :
   fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -37,13 +37,10 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : 'ATTRIBUTE_condition' 
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : '' 
   levels : 
-      - 'Argon'
-      - 'NifH'
-      - 'HN'
-      - 'WT'
+    - ''
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -74,23 +71,19 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_condition" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_sample_group" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
 colors:
   all:
    key:
-      - 'Argon'
-      - 'HN'
-      - 'NifH'
-      - 'WT'
+      # - 'CH'
+      # - 'TR'
 
    value:
-      - "darkslateblue" # 'Argon'
-      - "cadetblue" # 'HN'
-      - "goldenrod" # 'NifH'
-      - "darkolivegreen" # 'WT'
+      # - "cadetblue" # 'X1'
+      # - "goldenrod" # 'X2'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -127,7 +120,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "source_taxon"
+    - "ATTRIBUTE_sample_group"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
