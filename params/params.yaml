@@ -1,11 +1,11 @@
-mapp_project : mapp_project_00051
-mapp_batch : mapp_batch_00114
-met_annot_enhancer_folder : mapp_batch_00114
-gnps_job_id : 9e16a42412034ce4b1a8ef6b6cf137cd
+mapp_project : mapp_project_00017
+mapp_batch : mapp_batch_00044
+met_annot_enhancer_folder : mapp_batch_00044
+gnps_job_id : d5d8b06cc49c446cb0de7717a4c20360
 
 dataset_experiment : 
-  name: "mapp_batch_00114 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics on yeast in positive mode."
+  name: "mapp_batch_00044 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics of Botryllus and Botrylloides - positive mode"
 
 ms_files_extension: ".mzML"
 
@@ -21,7 +21,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'ATTRIBUTE_sample_group'
+    factor_name : 'ATTRIBUTE_source_taxon'
 
 filter_blank :
   fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -71,7 +71,7 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_sample_group" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_source_taxon" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -120,7 +120,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "ATTRIBUTE_sample_group"
+    - "ATTRIBUTE_source_taxon"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.

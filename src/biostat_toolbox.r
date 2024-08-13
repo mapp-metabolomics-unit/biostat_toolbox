@@ -330,8 +330,8 @@ feature_table$"feature_id_full" <- paste(feature_table$feature_id,
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
 feature_table_intensities <- feature_table %>%
-  select(feature_id, contains(" Peak height")) %>%
-  rename_with(~ gsub(" Peak height", "", .x)) %>%
+  select(feature_id, contains(" Peak area")) %>%
+  rename_with(~ gsub(" Peak area", "", .x)) %>%
   column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
@@ -396,13 +396,13 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
   # Here we make sure that the service is up.
   # For this we use the ping() function from the webchem package
 
-  if ping_service("chebi") == FALSE {
-    stop("The ChEBI service is down. We will issue an empty DF. Please try again later.")
+  if (ping_service("chebi") == FALSE) {
+    print("The ChEBI service is down. We will issue an empty DF. Please try again later.")
 
     # Here, using the for_chembiid_smiles object, we return an ampty dataframe with the following columns query, chebiid and chebiasciiname
 
     chebi_ids <- data.frame(query = for_chembiid_smiles, chebiid = NA, chebiasciiname = NA)
-    
+
   } else {
     print("The ChEBI service is up.")
 
