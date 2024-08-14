@@ -330,8 +330,8 @@ feature_table$"feature_id_full" <- paste(feature_table$feature_id,
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
 feature_table_intensities <- feature_table %>%
-  select(feature_id, contains(" Peak area")) %>%
-  rename_with(~ gsub(" Peak area", "", .x)) %>%
+  select(feature_id, contains(" Peak height")) %>%
+  rename_with(~ gsub(" Peak height", "", .x)) %>%
   column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
@@ -348,13 +348,7 @@ X <- X[, order(colnames(X))]
 
 X <- as.data.frame(X)
 
-# Min value imputation (to be checked !!!)
 
-half_min <- min(X[X > 0], na.rm = TRUE) / 2
-min <- min(X[X > 0], na.rm = TRUE)
-
-
-X[X == 0] <- min
 
 # min(X)
 
@@ -631,7 +625,7 @@ sample_metadata <- read_delim(file.path(working_directory, "metadata", "treated"
 
 # Here we establish a small test which will check if the sample metadata file contains the required columns (filename, sample_id, sample_type and species)
 
-required_columns <- c("filename", "sample_id", "sample_type", "source_taxon")
+required_columns <- c("filename", "sample_id", "sample_type", "source_taxon", "sample_type", "source_taxon")
 
 if (!all(required_columns %in% colnames(sample_metadata))) {
   stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type and source_taxon). Please check your metadata file and try again.")
@@ -771,21 +765,39 @@ SM$filename <- rownames(SM)
 SM <- SM[order(row.names(SM)), ]
 SM <- SM[, order(colnames(SM))]
 
+# Ponderation stage.
 
-# glimpse(SM)
-# Optional ponderation step.
-# To clean
+# First we check from the params that the apply_ponderation is set to TRUE and that the factor_name is not NULL
 
-# XSM = merge(x = X, y = SMDF, by = "row.names", all = TRUE)
+if (params$actions$ponderate_data$run == "TRUE" && !is.null(params$actions$ponderate_data$factor_name)) {
+  # Prepare the data: convert params$actions$ponderate_data$factor_name to numeric, handling non-numeric "ND" values
+  # We print a message to the console to inform the user that the ponderation is being applied and the factor_name used
+  print(paste("Ponderation is being applied using the factor:", params$actions$ponderate_data$factor_name))
+  
+  factor_name <- params$actions$ponderate_data$factor_name
+  
+  X <- X %>%
+    as.data.frame() %>%
+    rownames_to_column("SampleID") %>%  # Temporarily create a SampleID column from rownames
+    left_join(SM %>% select(filename, all_of(factor_name)) %>% 
+                rename(SampleID = filename) %>% 
+                mutate(across(all_of(factor_name), as.numeric)), by = "SampleID") %>%  # Join on SampleID and convert the factor_name to numeric
+    mutate(across(-c(SampleID, all_of(factor_name)), ~ ifelse(is.na(.data[[factor_name]]), .x, .x / .data[[factor_name]]))) %>%  # Perform row-wise division, keep original if the factor is NA
+    select(-all_of(factor_name)) %>%  # Drop factor_name column after ponderation
+    column_to_rownames("SampleID")  # Convert SampleID back to rownames
+} else {
+  # If ponderation is not required, we keep the original data
+  X <- X
+}
 
-# X_pond = XSM %>%
-#   select(Row.names, grep("peak", colnames(XSM))) %>%
-#   column_to_rownames(var = "Row.names")
 
-# X_pond = X_pond[order(row.names(X_pond)), ]
-# X_pond = X_pond[, order(colnames(X_pond))]
-# SMDF = SMDF[order(row.names(SMDF)), ]
-# VM = VM[order(row.names(VM)), ]
+# Min value imputation (to be checked !!!)
+
+half_min <- min(X[X > 0], na.rm = TRUE) / 2
+min <- min(X[X > 0], na.rm = TRUE)
+
+
+X[X == 0] <- min
 
 
 if (any(colnames(X) != row.names(VM))) {

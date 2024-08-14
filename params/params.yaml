@@ -1,7 +1,7 @@
 mapp_project : mapp_project_00017
 mapp_batch : mapp_batch_00044
 met_annot_enhancer_folder : mapp_batch_00044
-gnps_job_id : d5d8b06cc49c446cb0de7717a4c20360
+gnps_job_id : 1eb7ff7d9e474376a88b126a2e12912a
 
 dataset_experiment : 
   name: "mapp_batch_00044 LCMS metabolomics dataset"
@@ -12,6 +12,9 @@ ms_files_extension: ".mzML"
 
 actions:
   scale_data : TRUE
+  ponderate_data :
+    run : TRUE
+    factor_name : 'dry_weight'
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -21,7 +24,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'ATTRIBUTE_source_taxon'
+    factor_name : 'ATTRIBUTE_process'
 
 filter_blank :
   fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -37,10 +40,12 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : '' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : '' 
+  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'ATTRIBUTE_process' 
   levels : 
-    - ''
+    - 'blastogenesis'
+    - 'healing'
+    - 'regeneration'
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -65,13 +70,13 @@ filter_variable_metadata_annotated :
   levels : '' # E.g. 'NA' 
 
 filter_variable_metadata_num :
-  mode : '' # 'above' or 'below', if '', the filter is not applied
-  factor_name : '' # e.g e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
-  level :  # Numerical value. E.g 0.5
+  mode : 'above' # 'above' or 'below', if '', the filter is not applied
+  factor_name : 'sirius_confidencescore' # e.g e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
+  level : 0.3 # Numerical value. E.g 0.5
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_source_taxon" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_process" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -120,7 +125,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "ATTRIBUTE_source_taxon"
+    - "ATTRIBUTE_process"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
