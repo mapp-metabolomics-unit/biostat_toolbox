@@ -1289,28 +1289,41 @@ title_volcano <- paste(
 ############# Colors definition #################################################################
 #################################################################################################
 #################################################################################################
+# Sample and sort unique color values from wes_palettes
 wes_palettes_vec <- sample(sort(unique(unlist(wes_palettes[names(wes_palettes)]))))
 
+# Extract unique factor names from metadata
 factor_name_meta <- unlist(unique(DE$sample_meta[params$target$sample_metadata_header]))
 
-
-# Check that alll members of params$colors$all$key are present in factor_name_meta.
+# Check that all members of params$colors$all$key are present in factor_name_meta.
 # If not, return the values of params$colors$all$key that are not present in factor_name_meta.
-
 if (!all(params$colors$all$key %in% factor_name_meta)) {
   missing_colors <- params$colors$all$key[!params$colors$all$key %in% factor_name_meta]
   factor_name_meta_str <- paste(unique(factor_name_meta), collapse=", ")
-  stop(paste("The following values in params$colors$all$key are not present in the sample metadata:", paste(missing_colors, collapse=", "), "Check the spelling of values in params$colors$all$key, they should match the following available values:", factor_name_meta_str))
+  stop(paste("The following values in params$colors$all$key are not present in the sample metadata:", 
+             paste(missing_colors, collapse=", "), 
+             "Check the spelling of values in params$colors$all$key, they should match the following available values:", 
+             factor_name_meta_str))
 }
 
 # We establish a named vector for the whole dataset
-if (length(params$colors$all$key) > 0) {
-  custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
+if (params$colors$continuous) {
+  # Apply numerical sorting to the keys if continuous color scale is requested
+  sorted_keys <- as.character(sort(as.numeric(params$colors$all$key)))
+  
+  # Apply the Viridis color scale
+  viridis_colors <- viridis(length(sorted_keys))
+  
+  # Assign the Viridis colors to the sorted keys
+  custom_colors <- setNames(viridis_colors, sorted_keys)
 } else {
-  custom_colors <- wes_palettes_vec[sample(c(1:length(wes_palettes_vec)), length(factor_name_meta))]
-  names(custom_colors) <- factor_name_meta
+  if (length(params$colors$all$key) > 0) {
+    custom_colors <- setNames(c(params$colors$all$value), c(params$colors$all$key))
+  } else {
+    custom_colors <- wes_palettes_vec[sample(c(1:length(wes_palettes_vec)), length(factor_name_meta))]
+    names(custom_colors) <- factor_name_meta
+  }
 }
-
 
 
 

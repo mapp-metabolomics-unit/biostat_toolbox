@@ -1,7 +1,7 @@
 mapp_project : mapp_project_00017
 mapp_batch : mapp_batch_00044
 met_annot_enhancer_folder : mapp_batch_00044
-gnps_job_id : 1eb7ff7d9e474376a88b126a2e12912a
+gnps_job_id : a9dd9e94a3d4485682934c26a4b59192
 
 dataset_experiment : 
   name: "mapp_batch_00044 LCMS metabolomics dataset"
@@ -43,9 +43,9 @@ filter_sample_metadata_one :
   mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
   factor_name : 'ATTRIBUTE_process' 
   levels : 
-    - 'blastogenesis'
-    - 'healing'
-    - 'regeneration'
+      - 'blastogenesis'
+      - 'healing'
+      - 'regeneration'
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -71,8 +71,8 @@ filter_variable_metadata_annotated :
 
 filter_variable_metadata_num :
   mode : 'above' # 'above' or 'below', if '', the filter is not applied
-  factor_name : 'sirius_confidencescore' # e.g e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
-  level : 0.3 # Numerical value. E.g 0.5
+  factor_name : 'sirius_confidencescore' # e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
+  level : 0.2 # Numerical value. E.g 0.5
 
 
 target:
@@ -81,14 +81,25 @@ target:
 
 
 colors:
+  continuous : FALSE
   all:
    key:
-      # - 'CH'
-      # - 'TR'
+      - 'blastogenesis'
+      - 'healing'
+      - 'regeneration'
+    # - 'Botrylloides anceps'
+    # - 'Botrylloides diegensis'
+    # - 'Botrylloides niger'
+    # - 'Botryllus schlosseri'
 
    value:
-      # - "cadetblue" # 'X1'
-      # - "goldenrod" # 'X2'
+      - "darkorchid" # 'blastogenesis'
+      - "goldenrod" # 'healing'
+      - "chartreuse" # 'regeneration'
+      # - "coral" # 'Botrylloides anceps'
+      # - "cornflowerblue" # 'Botrylloides diegensis'
+      # - "cyan" # 'Botrylloides niger'
+      # - "darkblue" # 'Botryllus schlosseri'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
