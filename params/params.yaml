@@ -72,7 +72,7 @@ filter_variable_metadata_annotated :
 filter_variable_metadata_num :
   mode : 'above' # 'above' or 'below', if '', the filter is not applied
   factor_name : 'sirius_confidencescore' # e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
-  level : 0.2 # Numerical value. E.g 0.5
+  level : 0.5 # Numerical value. E.g 0.5
 
 
 target:
