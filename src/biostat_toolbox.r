@@ -555,7 +555,11 @@ if (gnps2_job) {
     trim_ws = TRUE
   )
   # Both df are mergeq using the `#Scan#` column
-  data_gnps <- merge(data_gnps_mn, data_gnps_lib, by = "#Scan#")
+  # data_gnps <- merge(data_gnps_mn, data_gnps_lib, by = "#Scan#")
+  list_df <- list(data_gnps_mn, data_gnps_lib)
+  data_gnps <- list_df %>% reduce(full_join, by = "#Scan#")
+
+
 } else {
   data_gnps <- read_delim(Sys.glob(file.path(working_directory, "results", "met_annot_enhancer", params$gnps_job_id, "clusterinfo_summary", "*.tsv")),
     delim = "\t", escape_double = FALSE,
@@ -2084,6 +2088,7 @@ if (params$actions$calculate_multi_series_fc == "TRUE") {
 
 # We now merge the DE_foldchange_pvalues with the variable metadata using the row_ID column and the rownames of the variable metadata
 
+
 DE_foldchange_pvalues <- merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "row_id", by.y = "row.names")
 
 
@@ -2915,11 +2920,11 @@ if (params$actions$run_fc_treemaps == "TRUE") {
   # Print message before iterating over conditions
   message("Iterating over the following conditions for the treemaps generation:\n")
 
-
+  # condition = "blastogenesis_vs_healing"
   # Iterate over the prefixes
   for (condition in conditions) {
     message("Generating treemaps for condition: ", condition)
-
+    # glimpse(DE_foldchange_pvalues)
     # Perform filtering using the prefix as a condition
     DE_foldchange_pvalues_signi <- DE_foldchange_pvalues %>%
       filter(!!sym(paste0(condition, "_p_value")) < 0.05)
@@ -2932,7 +2937,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     condition_parts <- strsplit(condition, "_vs_")[[1]]
     first_part <- condition_parts[1]
     second_part <- condition_parts[2]
-
+    # glimpse(DE_foldchange_pvalues_signi)
     if (gnps2_job) {
     mydata_meta <- select(
       DE_foldchange_pvalues_signi, "sirius_inchikey2d", "row_id", "sirius_name", "sirius_smiles",

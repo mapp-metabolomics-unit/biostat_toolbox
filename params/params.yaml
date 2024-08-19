@@ -43,7 +43,7 @@ filter_sample_metadata_one :
   mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
   factor_name : 'ATTRIBUTE_process' 
   levels : 
-      - 'blastogenesis'
+      # - 'blastogenesis'
       - 'healing'
       - 'regeneration'
 
@@ -84,7 +84,7 @@ colors:
   continuous : FALSE
   all:
    key:
-      - 'blastogenesis'
+      # - 'blastogenesis'
       - 'healing'
       - 'regeneration'
     # - 'Botrylloides anceps'
@@ -93,7 +93,7 @@ colors:
     # - 'Botryllus schlosseri'
 
    value:
-      - "darkorchid" # 'blastogenesis'
+      # - "darkorchid" # 'blastogenesis'
       - "goldenrod" # 'healing'
       - "chartreuse" # 'regeneration'
       # - "coral" # 'Botrylloides anceps'
