@@ -855,6 +855,32 @@ if (params$actions$ponderate_data$run == "TRUE" && !is.null(params$actions$ponde
   X <- X
 }
 
+# Pruning stage.
+
+# Check if the pruning threshold is set in the params
+if (!is.null(params$actions$prune_data$threshold)) {
+  threshold <- params$actions$prune_data$threshold  # Define the threshold value from params
+  
+  # Print a message to the console to inform the user that pruning is being applied
+  print(paste("Pruning is being applied using the threshold:", threshold))
+  
+  # Prune the X dataframe by dropping columns where the maximum value doesn't reach the threshold
+  pruned_columns <- X %>%
+    as.data.frame() %>%
+    select(where(~ max(.x, na.rm = TRUE) >= threshold)) %>%
+    colnames()
+  
+  # Update X to keep only the pruned columns
+  X <- X[, pruned_columns, drop = FALSE]
+  
+  # Prune the VM dataframe by keeping only the rows corresponding to the pruned columns of X
+  VM <- VM[rownames(VM) %in% pruned_columns, , drop = FALSE]
+  
+} else {
+  # If pruning is not required, we keep the original data
+  X <- X
+  VM <- VM
+}
 
 # Min value imputation (to be checked !!!)
 
