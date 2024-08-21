@@ -1,22 +1,22 @@
-mapp_project : mapp_project_00051
-mapp_batch : mapp_batch_00117
-met_annot_enhancer_folder : mapp_batch_00117
-gnps_job_id : 77e9111f801d42bd95242147a6ba1059
+mapp_project : mapp_project_00017
+mapp_batch : mapp_batch_00044
+met_annot_enhancer_folder : mapp_batch_00044
+gnps_job_id : a9dd9e94a3d4485682934c26a4b59192
 
 dataset_experiment : 
-  name: "mapp_batch_00117 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics on yeast in negative mode."
+  name: "mapp_batch_00044 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics of Botryllus and Botrylloides - positive mode"
 
 ms_files_extension: ".mzML"
 
 
 actions:
-  scale_data : TRUE
+  scale_method : 'pareto' # 'autoscale' or 'pareto' or 'none'
   ponderate_data :
-    run : FALSE
-    factor_name : ''
+    run : TRUE
+    factor_name : 'dry_weight'
   prune_data :
-    threshold : 
+    threshold :
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
@@ -27,14 +27,14 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'ATTRIBUTE_sample_group'
+    factor_name : 'ATTRIBUTE_process'
 
 filter_blank :
-  fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
-  factor_name : '' # (character) The factor name in the sample metadata file that contains the sample type. The default is "sample_type".
-  blank_label : '' # (character) The label used for the blanks in the sample metadata file. The default is "BK".
-  qc_label : '' # (character) The label used for the QC samples in the sample metadata file. The default is "QC".
-  fraction_in_blank : # (numeric) Features present in less than this proportion of the blanks are not considered for removal. The default is 0.
+  fold_change : 5 # (numeric) Features with fold change less than this value are removed. The default is 20.
+  factor_name : 'sample_type' # (character) The factor name in the sample metadata file that contains the sample type. The default is "sample_type".
+  blank_label : 'BK' # (character) The label used for the blanks in the sample metadata file. The default is "BK".
+  qc_label : 'QC' # (character) The label used for the QC samples in the sample metadata file. The default is "QC".
+  fraction_in_blank : 0.7 # (numeric) Features present in less than this proportion of the blanks are not considered for removal. The default is 0.
 
 filter_sample_type :
   mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
@@ -43,16 +43,20 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : '' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : '' 
+  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'source_taxon' 
   levels : 
-    - ''
+    - 'Botrylloides anceps'
+    # - 'Botrylloides diegensis'
+    # - 'Botrylloides niger'
+    # - 'Botryllus schlosseri'
 
 filter_sample_metadata_two :
-  mode : '' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : '' 
+  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'ATTRIBUTE_process' 
   levels : 
-      - ''
+      - 'healing'
+      - 'regeneration'
 
 filter_variable_metadata_one :
   mode : ''
@@ -72,12 +76,12 @@ filter_variable_metadata_annotated :
 
 filter_variable_metadata_num :
   mode : '' # 'above' or 'below', if '', the filter is not applied
-  factor_name : '' # e.g e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
-  level :  # Numerical value. E.g 0.5
+  factor_name : '' # e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
+  level :   # Numerical value. E.g 0.5
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_sample_group" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_process" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -85,19 +89,22 @@ colors:
   continuous: FALSE
   all:
    key:
-    - 'pDelta'
-    - 'psDelta'
-    - 'sDelta'
-    - 'WT'
+      # - 'blastogenesis'
+      - 'healing'
+      - 'regeneration'
+    # - 'Botrylloides anceps'
+    # - 'Botrylloides diegensis'
+    # - 'Botrylloides niger'
+    # - 'Botryllus schlosseri'
 
    value:
       # - "darkorchid" # 'blastogenesis'
-      # - "goldenrod" # 'healing'
-      # - "chartreuse" # 'regeneration'
-      - "coral" # 'pDelta'
-      - "cornflowerblue" # 'psDelta'
-      - "cyan" # 'sDelta'
-      - "darkblue" # 'WT'
+      - "goldenrod" # 'healing'
+      - "chartreuse" # 'regeneration'
+      # - "coral" # 'Botrylloides anceps'
+      # - "cornflowerblue" # 'Botrylloides diegensis'
+      # - "cyan" # 'Botrylloides niger'
+      # - "darkblue" # 'Botryllus schlosseri'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -134,7 +141,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "ATTRIBUTE_sample_group"
+    - "ATTRIBUTE_process"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.

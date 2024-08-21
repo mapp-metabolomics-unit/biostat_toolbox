@@ -38,6 +38,7 @@ rm(r)
 
 # Package organized alphabetically
 
+usePackage("agricolae")
 usePackage("ape") ### super package
 usePackage("base")
 usePackage("BiocFileCache")
@@ -256,10 +257,10 @@ working_directory <- file.path(params$paths$docs, params$mapp_project, params$ma
 
 # We set the output directory
 
-if (params$actions$scale_data == "TRUE") {
-  scaling_status <- "scaled"
-} else {
+if (params$actions$scale_method == "none") {
   scaling_status <- "raw"
+} else {
+  scaling_status <- "scaled"
 }
 
 possible_modes <- c("exclude", "include", "above", "below", "activated", "deactivated")
@@ -1063,10 +1064,10 @@ if (params$filter_variable_metadata_num$mode %in% possible_modes) {
 }
 
 
-if (params$actions$scale_data == "FALSE") {
+if (params$actions$scale_method == "none") {
   DE <- DE_filtered
 
-} else if (params$actions$scale_data == "TRUE") {
+} else if (params$actions$scale_method == "pareto") {
   # Overall Pareto scaling (test)
 
   M <- pareto_scale()
@@ -1096,8 +1097,29 @@ if (params$actions$scale_data == "FALSE") {
   # DE$data[DE$data == 0] = min_sec
 
 
+} else if (params$actions$scale_method == "autoscale") 
+{ 
+  # Overall Pareto scaling (test)
+
+  M <- autoscale()
+  M <- model_train(M, DE_filtered)
+  M <- model_predict(M, DE_filtered)
+  DE <- M$autoscaled
+
+  # We use the filter_na_count function to filter out features with a number of NAs greater than the threshold
+
+  M <- filter_na_count(threshold = 1, factor_name = "sample_type")
+  M <- model_apply(M, DE)
+
+  DE <- M$filtered
+
+  ##### we range all feature from 0 to 1
+
+  # @Manu !!! Why do we have this ?!
+  DE$data <- apply(DE$data, 2, modEvA::range01)
+
 } else {
-stop("Please check the value of the 'scale_data' parameter in the params file.")
+stop("Please check the value of the 'scale_method' parameter in the params file.")
 }
 
 ################################################################################################
@@ -2001,23 +2023,36 @@ if (params$actions$calculate_multi_series_fc == "TRUE") {
 
   DE_foldchange_pvalues <- Reduce(function(x, y) merge(x, y, by = "row_id"), l)
 } else {
-  # The formula is defined externally
-  formula <- as.formula(paste0(
-    "y", "~", params$target$sample_metadata_header, "+",
-    "Error(sample_id/",
-    params$target$sample_metadata_header,
-    ")"
-  ))
+
+  if (params$actions$scale_method == "pareto" | params$actions$scale_method == "none") {
+    # The formula is defined externally
+    formula <- as.formula(paste0(
+      "y", "~", params$target$sample_metadata_header, "+",
+      "Error(sample_id/",
+      params$target$sample_metadata_header,
+      ")"
+    ))
 
 
-  # DE$sample_meta
+    model <- HSDEM(
+      alpha = params$posthoc$p_value,
+      formula = formula, mtc = "none"
+    )
+  } else if (params$actions$scale_method == "autoscale") {
+    # The formula is defined externally
+    formula <- as.formula(paste0(
+      "y", "~", params$target$sample_metadata_header
+    ))
 
-  HSDEM_model <- HSDEM(
-    alpha = params$posthoc$p_value,
-    formula = formula, mtc = "none"
-  )
+    model <- HSD(
+      alpha = params$posthoc$p_value,
+      formula = formula, mtc = "none", unbalanced = FALSE
+    )
+  }
 
-  HSDEM_result <- model_apply(HSDEM_model, DE)
+
+
+  HSDEM_result <- model_apply(model, DE)
 
   HSDEM_result_p_value <- HSDEM_result$p_value
 
