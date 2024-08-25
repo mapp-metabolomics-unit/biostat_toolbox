@@ -27,7 +27,7 @@ actions:
 
 options:
   gnps_column_for_boxplots : 
-    factor_name : 'ATTRIBUTE_process'
+    factor_name : 'timepoint'
 
 filter_blank :
   fold_change : 5 # (numeric) Features with fold change less than this value are removed. The default is 20.
@@ -55,7 +55,8 @@ filter_sample_metadata_two :
   mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
   factor_name : 'ATTRIBUTE_process' 
   levels : 
-      - 'healing'
+      # - 'blastogenesis'
+      # - 'healing'
       - 'regeneration'
 
 filter_variable_metadata_one :
@@ -81,26 +82,32 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_process" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "timepoint" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
 colors:
-  continuous: FALSE
+  continuous: TRUE
   all:
    key:
       # - 'blastogenesis'
-      - 'healing'
-      - 'regeneration'
+      # - 'healing'
+      # - 'regeneration'
     # - 'Botrylloides anceps'
     # - 'Botrylloides diegensis'
     # - 'Botrylloides niger'
     # - 'Botryllus schlosseri'
+      - 1
+      - 24
+      - 72
+      - 120
+      - 144
+
 
    value:
       # - "darkorchid" # 'blastogenesis'
-      - "goldenrod" # 'healing'
-      - "chartreuse" # 'regeneration'
+      # - "goldenrod" # 'healing'
+      # - "chartreuse" # 'regeneration'
       # - "coral" # 'Botrylloides anceps'
       # - "cornflowerblue" # 'Botrylloides diegensis'
       # - "cyan" # 'Botrylloides niger'
@@ -141,7 +148,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "ATTRIBUTE_process"
+    - "timepoint"
 
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
@@ -178,14 +185,13 @@ to_combine_horizontally:
 
 
 multi_series:
-  # colname: 'time.point'
+  # colname: 'timepoint'
   # points:
-  #    - '00'
-  #    - '04'
-  #    - '08'
-  #    - '12'
-  #    - '16'
-  #    - '20'
+  #     - 1
+  #     - 24
+  #     - 72
+  #     - 120
+  #     - 144
 
 
 boxplot:

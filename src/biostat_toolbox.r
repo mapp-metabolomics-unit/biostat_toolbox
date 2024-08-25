@@ -2061,6 +2061,10 @@ if (params$actions$calculate_multi_series_fc == "TRUE") {
 
   colnames(HSDEM_result_p_value) <- plotrix::pasteCols(sapply(strsplit(colnames(HSDEM_result_p_value), " - "), sort), sep = "_vs_")
 
+  # Additionally we make sure to remove the headers name from the colnames (this one can be added when the data are numerics.)
+
+  colnames(HSDEM_result_p_value) <- gsub(params$target$sample_metadata_header, "", colnames(HSDEM_result_p_value))
+
   # We now add a specific suffix (`_p_value`) to each of the colnames
 
   colnames(HSDEM_result_p_value) <- paste0(colnames(HSDEM_result_p_value), "_p_value")
