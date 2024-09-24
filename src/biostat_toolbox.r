@@ -50,6 +50,7 @@ usePackage("iheatmapr")
 usePackage("janitor")
 usePackage("microshades") ### remotes::install_github("KarstensLab/microshades", dependencies=TRUE)
 usePackage("plotly")
+usePackage("pmp")
 usePackage("readr")
 usePackage("rfPermute")
 usePackage("tidyverse")
@@ -59,7 +60,7 @@ usePackage("wesanderson")
 usePackage("WikidataQueryServiceR")
 usePackage("yaml")
 
-
+# renv::install("bioc::pmp")
 
 # struct(1.10)
 
