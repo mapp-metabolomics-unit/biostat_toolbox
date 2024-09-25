@@ -37,3 +37,28 @@ This should install all the required libraries for the `biostat_toolbox` package
 
 
 If you are having trouble with the installation, please drop an issue [here](https://github.com/mapp-metabolomics-unit/biostat_toolbox/issues)
+
+
+## Example usage
+
+
+1. Fetch the following demon repo
+
+```bash
+git clone https://github.com/mapp-metabolomics-unit/johnny-watanabe-group.git
+```
+
+2. Run the MAPP copier template `update` function to update paths.
+
+```bash
+cd johnny-watanabe-group
+copier update --trust
+```
+
+You should now be able to use the updated https://github.com/mapp-metabolomics-unit/johnny-watanabe-group/blob/46c665c607fc3137f5f2de65288bcda11ab13a93/docs/mapp_project_00051/mapp_batch_00114/CONTRIB.md#run-biostat_toolbox params and run biostat_toolbox functions.
+
+```bash
+Rscript src/biostat_toolbox.R
+```
+
+
