@@ -48,8 +48,9 @@ usePackage("ggrepel")
 usePackage("htmltools")
 usePackage("iheatmapr")
 usePackage("janitor")
-usePackage("microshades") ### remotes::install_github("KarstensLab/microshades", dependencies=TRUE)
+usePackage("microshades")
 usePackage("plotly")
+usePackage("pls")
 usePackage("pmp")
 usePackage("readr")
 usePackage("rfPermute")
@@ -61,6 +62,9 @@ usePackage("WikidataQueryServiceR")
 usePackage("yaml")
 
 # renv::install("bioc::pmp")
+# renv::install("emmeans")
+# renv::install("KarstensLab/microshades", dependencies=TRUE)
+# renv::install("mikemc/speedyseq", dependencies=TRUE)
 
 # struct(1.10)
 
@@ -80,7 +84,7 @@ library(MAPPstructToolbox)
 
 ############################################################################################
 ############################################################################################
-################################ LOAD REQUIRED FUNCTIONS  ##################################
+################################ LOAD REQUIRED FUNCTIONS  ##################################jksahdkjhdjjdsjhdjksfhh
 ############################################################################################
 ############################################################################################
 
