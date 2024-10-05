@@ -1,22 +1,21 @@
-mapp_project: mapp_project_00051
-mapp_batch: mapp_batch_00114
-met_annot_enhancer_folder: mapp_batch_00114
-gnps_job_id: 9e16a42412034ce4b1a8ef6b6cf137cd
+mapp_project: mapp_project_00053
+mapp_batch: mapp_batch_00123
+met_annot_enhancer_folder: mapp_batch_00123
+gnps_job_id: f3c7cf9c1e434bdfad2156805472824c
 
 dataset_experiment:
-  name: "mapp_batch_00114 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics on yeast in positive mode."
+  name: "mapp_batch_00123 LCMS metabolomics dataset"
+  description: "Untargeted analyses river and outlet samples - negative mode"
 
 ms_files_extension: ".mzML"
 
 actions:
-  scale_data: FALSE
-  scale_method: "pareto"
+  scale_method: "pareto" # 'autoscale' or 'pareto' or 'none'
   ponderate_data:
     run: FALSE
     factor_name: ""
   prune_data:
-    threshold: 5E6
+    threshold:
   run_PLSDA: TRUE
   calculate_multi_series_fc: FALSE
   run_fc_treemaps: TRUE
@@ -25,13 +24,13 @@ actions:
 
 options:
   gnps_column_for_boxplots:
-    factor_name: "ATTRIBUTE_sample_group"
+    factor_name: "comparison3_factor"
 
 filter_blank:
   fold_change: # (numeric) Features with fold change less than this value are removed. The default is 20.
   factor_name: "" # (character) The factor name in the sample metadata file that contains the sample type. The default is "sample_type".
   blank_label: "" # (character) The label used for the blanks in the sample metadata file. The default is "BK".
-  qc_label: "" # (character) The label used for the QC samples in the sample metadata file. The default is "QC".
+  qc_label: "" # (character) The label used for the QC samples in the sample metadata file. The default is "QC". Else use NULL, If set to NULL then the median of the samples is used.
   fraction_in_blank: # (numeric) Features present in less than this proportion of the blanks are not considered for removal. The default is 0.
 
 filter_sample_type:
@@ -42,12 +41,10 @@ filter_sample_type:
 
 filter_sample_metadata_one:
   mode: "include" # 'include' or 'exclude', if '', the filter is not applied
-  factor_name: "ATTRIBUTE_sample_group"
+  factor_name: "comparison3_factor"
   levels:
-    # - 'pDelta'
-    # - 'psDelta'
-    - "sDelta"
-    - "WT"
+    - "factor_a"
+    - "factor_b"
 
 filter_sample_metadata_two:
   mode: "" # 'include' or 'exclude', if '', the filter is not applied
@@ -77,7 +74,7 @@ filter_variable_metadata_num:
 
 target:
   sample_metadata_header:
-    "ATTRIBUTE_sample_group" # This variable will be used throughout the whole script as you can see
+    "comparison3_factor" # This variable will be used throughout the whole script as you can see
     ## XXX_simplified  for combined horizontally
 
 colors:
@@ -86,8 +83,8 @@ colors:
     key:
       # - 'pDelta'
       # - 'psDelta'
-      - "sDelta"
-      - "WT"
+      # - 'sDelta'
+      # - 'WT'
 
     value:
       # - "darkorchid" # 'blastogenesis'
@@ -95,8 +92,8 @@ colors:
       # - "chartreuse" # 'regeneration'
       # - "coral" # 'pDelta'
       # - "cornflowerblue" # 'psDelta'
-      - "cyan" # 'sDelta'
-      - "darkblue" # 'WT'
+      # - "cyan" # 'sDelta'
+      # - "darkblue" # 'WT'
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
 
@@ -130,7 +127,7 @@ colors:
 # The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
 to_mean:
   factor_name:
-    - "ATTRIBUTE_sample_group"
+    - "comparison3_factor"
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
