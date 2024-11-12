@@ -2896,7 +2896,7 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     # glimpse(DE_foldchange_pvalues)
     # Perform filtering using the prefix as a condition
     DE_foldchange_pvalues_signi <- DE_foldchange_pvalues %>%
-      filter(!!sym(paste0(condition, "_p_value")) < 0.05)
+      filter(!!sym(paste0(condition, "_p_value")) < params$posthoc$p_value)
 
     # Print the filtered data
     message("Filtered data for condition: ", condition, ":\n")
