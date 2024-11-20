@@ -257,6 +257,55 @@ filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", s
 sirius_annotations_filename = "compound_identifications.tsv"
 canopus_annotations_filename = "canopus_compound_summary.tsv"
 
+
+
+
+###################################################################################################
+######################### rename main folder - short version
+
+
+
+
+# common_df_path <- file.path(params$paths$output, "params_log.rds")
+common_tsv_path <- file.path(params$paths$output, "params_log.tsv")
+
+
+  # Convert the YAML content to a dataframe row
+new_row_df <- convert_yaml_to_single_row_df_with_hash(params)
+
+# Append this row to the common dataframe and save
+append_to_common_df_and_save(new_row_df, common_tsv_path)
+
+
+
+if (params$paths$output != "") {
+  output_directory <- file.path(params$paths$output, new_row_df$hash)
+} else {
+  output_directory <- file.path(working_directory, "results", "stats", new_row_df$hash)
+}
+
+
+if (!dir.exists(output_directory)) {
+  dir.create(output_directory, recursive = TRUE)
+  message("Directory created:", output_directory, "\n")
+} else {
+  message("Directory already exists:", output_directory, "\n")
+}
+
+#################################################################################
+#################################################################################
+##### write raw data and param
+
+## We save the used params.yaml
+
+message("Writing params.yaml ...")
+
+file.copy(path_to_params, file.path(output_directory, filename_params), overwrite = TRUE)
+file.copy(path_to_params_user, file.path(output_directory, filename_params_user), overwrite = TRUE)
+
+
+
+
 ################################### load peak table ########################################
 ############################################################################################
 
@@ -1026,6 +1075,16 @@ if (params$actions$scale_method == "none") {
 stop("Please check the value of the 'scale_method' parameter in the params file.")
 }
 
+
+# We make sure that the params$target$sample_metadata_header is lowercase
+
+params$target$sample_metadata_header <- tolower(params$target$sample_metadata_header)
+
+# Here we check if the params$paths$out value exist and use it else we use the default output_directory
+
+target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
+
+
 ################################################################################################
 ################################################################################################
 ######################## structool box formatted data export
@@ -1113,55 +1172,6 @@ formatted_sample_data_table <- merge(DE$sample_meta, DE$data, by = "row.names")
 # # Row "sirius_chebiasciiname" is now the first row. We now rename it to "compound_name"
 
 
-
-###################################################################################################
-######################### rename main folder - short version
-
-# We make sure that the params$target$sample_metadata_header is lowercase
-
-params$target$sample_metadata_header <- tolower(params$target$sample_metadata_header)
-
-# Here we check if the params$paths$out value exist and use it else we use the default output_directory
-
-target_name = paste(as.vector(sort(as.character(unique(DE$sample_meta[[params$target$sample_metadata_header]])), decreasing = FALSE)), collapse = "_vs_")
-
-
-common_df_path <- file.path(params$paths$output, "params_log.rds")
-common_tsv_path <- file.path(params$paths$output, "params_log.tsv")
-
-
-  # Convert the YAML content to a dataframe row
-new_row_df <- convert_yaml_to_single_row_df_with_hash(params)
-
-# Append this row to the common dataframe and save
-append_to_common_df_and_save(new_row_df, common_df_path, common_tsv_path)
-
-
-
-if (params$paths$output != "") {
-  output_directory <- file.path(params$paths$output, new_row_df$hash)
-} else {
-  output_directory <- file.path(working_directory, "results", "stats", new_row_df$hash)
-}
-
-
-if (!dir.exists(output_directory)) {
-  dir.create(output_directory, recursive = TRUE)
-  message("Directory created:", output_directory, "\n")
-} else {
-  message("Directory already exists:", output_directory, "\n")
-}
-
-#################################################################################
-#################################################################################
-##### write raw data and param
-
-## We save the used params.yaml
-
-message("Writing params.yaml ...")
-
-file.copy(path_to_params, file.path(output_directory, filename_params), overwrite = TRUE)
-file.copy(path_to_params_user, file.path(output_directory, filename_params_user), overwrite = TRUE)
 
 # We move to the output directory
 

@@ -51,33 +51,80 @@ convert_yaml_to_single_row_df_with_hash <- function(yaml_content) {
 }
 
 
-append_to_common_df_and_save <- function(new_row_df, common_df_path, common_tsv_path) {
-  if (file.exists(common_df_path)) {
-    common_df <- readRDS(common_df_path)
+# append_to_common_df_and_save <- function(new_row_df, common_df_path, common_tsv_path) {
+#   if (file.exists(common_df_path)) {
+#     common_df <- readRDS(common_df_path)
+#   } else {
+#     common_df <- data.frame(matrix(nrow = 0, ncol = 0))
+#   }
+
+#   # Ensure 'hash' column is at the beginning
+#   new_row_df <- bind_cols(new_row_df %>% select(hash, timestamp), new_row_df %>% select(-hash, -timestamp))
+
+#   # Check for unique hash before appending
+#   if (!(new_row_df$hash %in% common_df$hash)) {
+#     # Append the new row with timestamp
+#     common_df <- bind_rows(common_df, new_row_df)
+    
+#     # Sort columns alphabetically
+#     common_df <- common_df %>%
+#       select(hash, timestamp, everything()) %>%
+#       select(hash, timestamp, sort(names(.)[-c(1, 2)]))
+
+#     # Save the updated common dataframe
+#     saveRDS(common_df, common_df_path)
+#     write.table(common_df, common_tsv_path, sep = "\t", row.names = FALSE, quote = FALSE)
+#   } else {
+#     message("Content hash already exists in the dataframe. No new row added.")
+#   }
+# }
+append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
+  if (file.exists(common_tsv_path)) {
+    # Read the existing common dataframe from TSV
+    common_df <- read.table(common_tsv_path, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+
+    # Convert the timestamp column to character for consistency
+    common_df$timestamp <- as.character(common_df$timestamp)
   } else {
-    common_df <- data.frame(matrix(nrow = 0, ncol = 0))
+    # Create an empty dataframe with appropriate columns if the TSV doesn't exist
+    common_df <- data.frame(hash = character(), timestamp = character(), stringsAsFactors = FALSE)
   }
 
-  # Ensure 'hash' column is at the beginning
-  new_row_df <- bind_cols(new_row_df %>% select(hash, timestamp), new_row_df %>% select(-hash, -timestamp))
+  # Ensure 'new_row_df' has the required columns
+  if (!("hash" %in% names(new_row_df)) || !("timestamp" %in% names(new_row_df))) {
+    stop("The new_row_df must contain 'hash' and 'timestamp' columns.")
+  }
 
-  # Check for unique hash before appending
-  if (!(new_row_df$hash %in% common_df$hash)) {
-    # Append the new row with timestamp
+  # Ensure 'timestamp' is character for compatibility
+  new_row_df$timestamp <- as.character(new_row_df$timestamp)
+
+  # Align column types between common_df and new_row_df
+  for (col in intersect(names(common_df), names(new_row_df))) {
+    common_df[[col]] <- type.convert(as.character(common_df[[col]]), as.is = TRUE)
+    new_row_df[[col]] <- type.convert(as.character(new_row_df[[col]]), as.is = TRUE)
+  }
+
+  # If either dataframe is empty, directly bind rows without comparison
+  if (nrow(common_df) == 0) {
+    common_df <- new_row_df
+  } else if (!(new_row_df$hash %in% common_df$hash)) {
+    # Append the new row if the hash is unique
     common_df <- bind_rows(common_df, new_row_df)
-    
-    # Sort columns alphabetically
-    common_df <- common_df %>%
-      select(hash, timestamp, everything()) %>%
-      select(hash, timestamp, sort(names(.)[-c(1, 2)]))
-
-    # Save the updated common dataframe
-    saveRDS(common_df, common_df_path)
-    write.table(common_df, common_tsv_path, sep = "\t", row.names = FALSE, quote = FALSE)
   } else {
     message("Content hash already exists in the dataframe. No new row added.")
+    return()
   }
+
+  # Sort columns alphabetically
+  common_df <- common_df %>%
+    select(hash, timestamp, everything()) %>%
+    select(hash, timestamp, sort(names(.)[-c(1, 2)]))
+
+  # Save the updated common dataframe as a TSV file
+  write.table(common_df, common_tsv_path, sep = "\t", row.names = FALSE, quote = FALSE)
 }
+
+
 
 # String sanitization function
 
