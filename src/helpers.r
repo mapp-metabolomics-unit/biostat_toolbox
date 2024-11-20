@@ -78,6 +78,7 @@ convert_yaml_to_single_row_df_with_hash <- function(yaml_content) {
 #     message("Content hash already exists in the dataframe. No new row added.")
 #   }
 # }
+
 append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
   if (file.exists(common_tsv_path)) {
     # Read the existing common dataframe from TSV
@@ -104,15 +105,19 @@ append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
     new_row_df[[col]] <- type.convert(as.character(new_row_df[[col]]), as.is = TRUE)
   }
 
-  # If either dataframe is empty, directly bind rows without comparison
+  # Check if the hash already exists in common_df
   if (nrow(common_df) == 0) {
     common_df <- new_row_df
-  } else if (!(new_row_df$hash %in% common_df$hash)) {
-    # Append the new row if the hash is unique
-    common_df <- bind_rows(common_df, new_row_df)
   } else {
-    message("Content hash already exists in the dataframe. No new row added.")
-    return()
+    if (new_row_df$hash %in% common_df$hash) {
+      # Update the timestamp for the existing row
+      index <- which(common_df$hash == new_row_df$hash)
+      common_df$timestamp[index] <- new_row_df$timestamp
+      message("Content hash already exists. Timestamp updated.")
+    } else {
+      # Append the new row if the hash is unique
+      common_df <- bind_rows(common_df, new_row_df)
+    }
   }
 
   # Sort columns alphabetically
@@ -123,6 +128,7 @@ append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
   # Save the updated common dataframe as a TSV file
   write.table(common_df, common_tsv_path, sep = "\t", row.names = FALSE, quote = FALSE)
 }
+
 
 
 
