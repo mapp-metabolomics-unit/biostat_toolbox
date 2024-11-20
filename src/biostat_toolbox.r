@@ -4406,9 +4406,8 @@ target_metadata <- as.factor(DE$sample_meta[[params$target$sample_metadata_heade
 
 
 ##########################
-
-
-custom_colors_heatmap <- custom_colors
+# We make sure to order the colors.
+custom_colors_heatmap <- custom_colors[order(names(custom_colors))]
 
 
 # Define the vector of colors
