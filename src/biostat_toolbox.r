@@ -234,11 +234,14 @@ filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = 
 filename_params <- paste(file_prefix, "params.yaml", sep = "")
 filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
 filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
+filename_PCA_scores <- paste(file_prefix, "PCA_scores.tsv", sep = "")
+filename_PCA_loadings <- paste(file_prefix, "PCA_loadings.tsv", sep = "")
 filename_PCA3D <- paste(file_prefix, "PCA3D.html", sep = "")
 filename_PCoA <- paste(file_prefix, "PCoA.pdf", sep = "")
 filename_PCoA3D <- paste(file_prefix, "PCoA3D.html", sep = "")
 filename_PLSDA <- paste(file_prefix, "PLSDA.pdf", sep = "")
 filename_PLSDA_loadings <- paste(file_prefix, "PLSDA_loadings.tsv", sep = "")
+filename_PLSDA_scores <- paste(file_prefix, "PLSDA_scores.tsv", sep = "")
 filename_PLSDA_VIP_plot <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
 filename_PLSDA_VIP_table <- paste(file_prefix, "PLSDA_VIP.tsv", sep = "")
 filename_R_script <- paste(file_prefix, "R_script_backup.R", sep = "")
@@ -251,12 +254,6 @@ filename_summary_stat_output_selected_cytoscape <- paste(file_prefix, "summary_s
 filename_treemap <- paste(file_prefix, "Treemap_interactive.html", sep = "")
 filename_volcano <- paste(file_prefix, "Volcano.pdf", sep = "")
 filename_volcano_interactive <- paste(file_prefix, "Volcano_interactive.html", sep = "")
-
-# Sirius filenames
-
-sirius_annotations_filename = "compound_identifications.tsv"
-canopus_annotations_filename = "canopus_compound_summary.tsv"
-
 
 
 
@@ -379,8 +376,26 @@ feature_metadata <- feature_table %>%
 ############################### load annotation tables #####################################
 ############################################################################################
 
-# The Sirius data is loaded
-# First we check if a chebied version exists, if not we create it
+# Sirius data is treated
+# Determin sirius version. If structure_identifications.tsv exists in dir then version 6, else version 5
+
+sirius_version <- if (file.exists(file.path(working_directory, "results", "sirius", "structure_identifications.tsv"))) {
+  "6"
+} else {
+  "5"
+}
+
+# Sirius filenames
+
+if (sirius_version == "6") {
+  sirius_annotations_filename = "structure_identifications.tsv"
+  canopus_annotations_filename = "canopus_structure_summary.tsv"
+} else {
+  sirius_annotations_filename = "compound_identifications.tsv"
+  canopus_annotations_filename = "canopus_compound_summary.tsv"
+}
+
+# Check if a chebied version exists, if not we create it
 
 if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied", sirius_annotations_filename, sep = "_")))) {
   data_sirius <- read_delim(file.path(working_directory, "results", "sirius", paste("chebied", sirius_annotations_filename, sep = "_")),
@@ -433,7 +448,11 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
   # data_sirius$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_sirius$sirius_id)
   # Previous line is now deprecated with the new Sirius outputs
 
-  data_sirius$feature_id <- as.numeric(data_sirius$sirius_featureId)
+  if (sirius_version == "6") {
+    data_sirius$feature_id <- as.numeric(data_sirius$sirius_mappingFeatureId)
+  } else {
+    data_sirius$feature_id <- as.numeric(data_sirius$sirius_featureId)
+  }
 
   # Since this step takes time we save the output locally
 
@@ -456,7 +475,12 @@ colnames(data_canopus) <- paste("canopus", colnames(data_canopus),  sep = "_")
 
 #data_canopus$feature_id <- sub("^.*_([[:alnum:]]+)$", "\\1", data_canopus$canopus_id)
 # Previous line is now deprecated with the new Sirius outputs
-data_canopus$feature_id <- as.numeric(data_canopus$canopus_featureId)
+
+if (sirius_version == "6") {
+  data_canopus$feature_id <- as.numeric(data_canopus$canopus_mappingFeatureId)
+} else {
+  data_canopus$feature_id <- as.numeric(data_canopus$canopus_featureId)
+}
 
 
 write.table(data_canopus, file = file.path(working_directory, "results", "sirius", paste("featured", canopus_annotations_filename, sep = "_")), sep = "\t", row.names = FALSE)
@@ -1386,7 +1410,13 @@ pca_scores_plot <- pca_scores_plot(
   points_to_label = "all"
 )
 
+# We keep the PCA scores
 
+pca_scores = pca_object$scores$data
+
+# We keep the PCA loadings
+
+pca_loadings = pca_object$loadings
 
 # plot
 pca_plot <- chart_plot(pca_scores_plot, pca_object)
@@ -1446,6 +1476,27 @@ if (params$operating_system$system == "windows") {
   unlink("lib", recursive = FALSE)
 }
 
+# We export the PCA scores
+
+pca_scores <- pca_scores %>%
+  rownames_to_column(var = "samples")
+
+write.table(pca_scores, file = filename_PCA_scores, sep = "\t", row.names = FALSE)
+
+# We export the PCA loadings
+
+# First we add the missing column name
+
+
+pca_loadings <- pca_loadings %>%
+  rownames_to_column(var = "features")  %>% 
+  # Kept as numeric
+  mutate(features = as.numeric(features))
+
+
+write.table(pca_loadings, file = filename_PCA_loadings, sep = "\t", row.names = FALSE)
+
+
 # #################################################################################################
 # #################################################################################################
 # #################################################################################################
@@ -1477,6 +1528,15 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   # Fetching the PLSDA data object
   plsda_object <- plsda_seq_result[length(plsda_seq_result)]
+
+  # We keep the PLSDA scores
+
+  plsda_scores = plsda_object$scores$data
+
+  # We keep the PLSDA loadings
+
+  plsda_loadings = plsda_object$loadings
+
 
   # We merge the plsda_object$vip object with the DE$variable_meta object. We use dplyr syntax and keep a new object called variable_meta_plsda. We keep the rownames of the plsda_object$vip.
 
@@ -1559,6 +1619,27 @@ if (params$actions$run_PLSDA == "TRUE") {
   # We export the vip
 
   write.table(vip, file = filename_PLSDA_VIP_table, sep = "\t", row.names = FALSE)
+
+
+  # We export the PLSDA scores
+
+  plsda_scores <- plsda_scores %>%
+    rownames_to_column(var = "samples")
+
+  write.table(plsda_scores, file = filename_PLSDA_scores, sep = "\t", row.names = FALSE)
+
+  # We export the PLSDA loadings
+
+  # First we add the missing column name
+
+
+  plsda_loadings <- plsda_loadings %>%
+    rownames_to_column(var = "features")  %>% 
+    # Kept as numeric
+    mutate(features = as.numeric(features))
+
+
+  write.table(plsda_loadings, file = filename_PLSDA_loadings, sep = "\t", row.names = FALSE)
 
 }
 
@@ -2115,7 +2196,7 @@ if (gnps2_job) {
       feature_rt,
       gnps_component,
       gnps_compound_name,
-      sirius_confidencescore,
+      contains("sirius_confidencescore"),
       sirius_inchi,
       sirius_inchikey2d,
       sirius_molecularformula,
@@ -2197,7 +2278,7 @@ if (gnps2_job) {
       gnps_component,
       gnps_compound_name,
       gnps_plotter_box_plot,
-      sirius_confidencescore,
+      contains("sirius_confidencescore"),
       sirius_inchi,
       sirius_inchikey2d,
       sirius_molecularformula,
@@ -2231,9 +2312,16 @@ if (gnps2_job) {
       contains("p_value"),
       contains("fold_change_log2"),
       contains("fold_change")
-    ) %>%
-    # We set the type of the sirius_confidencescore column to numeric
-    mutate(sirius_confidencescore = as.numeric(sirius_confidencescore))
+    )
+    # We set the type of the sirius_confidencescoreapproximate column to numeric
+    if ("sirius_confidencescoreapproximate" %in% colnames(DE_foldchange_pvalues)) {
+      de4dt <- de4dt %>%
+        mutate(sirius_confidencescoreapproximate = as.numeric(sirius_confidencescoreapproximate))
+    } else if ("sirius_confidencescore" %in% colnames(DE_foldchange_pvalues)) {
+      de4dt <- de4dt %>%
+        mutate(sirius_confidencescore = as.numeric(sirius_confidencescore))
+    }
+
 } else {
   # We first prepare the table for the dt export
 
@@ -2255,7 +2343,7 @@ if (gnps2_job) {
       gnps_componentindex,
       gnps_gnpslinkout_network,
       gnps_libraryid,
-      sirius_confidencescore,
+      contains("sirius_confidencescore"),
       sirius_inchi,
       sirius_inchikey2d,
       sirius_molecularformula,
@@ -2341,7 +2429,7 @@ if (gnps2_job) {
       gnps_libraryid,
       spectra_gnps_link,
       gnps_plotter_box_plot,
-      sirius_confidencescore,
+      contains("sirius_confidencescore"),
       sirius_inchi,
       sirius_inchikey2d,
       sirius_molecularformula,
@@ -2375,11 +2463,17 @@ if (gnps2_job) {
       contains("p_value"),
       contains("fold_change_log2"),
       contains("fold_change")
-    ) %>%
-    # We set the type of the sirius_confidencescore column to numeric
-    mutate(sirius_confidencescore = as.numeric(sirius_confidencescore))
+    )
+    # We set the type of the sirius_confidencescoreapproximate column to numeric
+    if ("sirius_confidencescoreapproximate" %in% colnames(DE_foldchange_pvalues)) {
+      de4dt <- de4dt %>%
+        mutate(sirius_confidencescoreapproximate = as.numeric(sirius_confidencescoreapproximate))
+    } else if ("sirius_confidencescore" %in% colnames(DE_foldchange_pvalues)) {
+      de4dt <- de4dt %>%
+        mutate(sirius_confidencescore = as.numeric(sirius_confidencescore))
+    }
 }
-# We outpuzt a generic DT for data exploration of the whole set
+# We output a generic DT for data exploration of the whole set
 
 
 ### Defining the DT object
@@ -2443,9 +2537,18 @@ DT_volcano <- datatable(de4dt,
   formatRound(c(
     "canopus_npc_pathway_probability",
     "canopus_npc_superclass_probability",
-    "canopus_npc_class_probability",
-    "sirius_confidencescore"
+    "canopus_npc_class_probability"
+    # "sirius_confidencescoreapproximate"
   ), digits = 2)
+
+    # Add conditional formatting for sirius_confidencescore columns
+  if ("sirius_confidencescoreapproximate" %in% colnames(DE_foldchange_pvalues)) {
+    DT_volcano <- DT_volcano %>%
+      formatRound(c("sirius_confidencescoreapproximate"), digits = 2)
+  } else if ("sirius_confidencescore" %in% colnames(DE_foldchange_pvalues)) {
+    DT_volcano <- DT_volcano %>%
+      formatRound(c("sirius_confidencescore"), digits = 2)
+  }
 
 
 
@@ -2596,11 +2699,18 @@ for (condition in conditions) {
     formatRound(c(
       "canopus_npc_pathway_probability",
       "canopus_npc_superclass_probability",
-      "canopus_npc_class_probability",
-      "sirius_confidencescore"
-    ), digits = 2)
+      "canopus_npc_class_probability"
+    # "sirius_confidencescoreapproximate"
+  ), digits = 2)
 
-
+    # Add conditional formatting for sirius_confidencescore columns
+  if ("sirius_confidencescoreapproximate" %in% colnames(DE_foldchange_pvalues)) {
+    DT_volcano <- DT_volcano %>%
+      formatRound(c("sirius_confidencescoreapproximate"), digits = 2)
+  } else if ("sirius_confidencescore" %in% colnames(DE_foldchange_pvalues)) {
+    DT_volcano <- DT_volcano %>%
+      formatRound(c("sirius_confidencescore"), digits = 2)
+  }
 
   ### Defining the crosstalked object
 
@@ -5156,7 +5266,7 @@ summary_stat_output_selected_cytoscape <- DE_foldchange_pvalues %>%
     sirius_name,
     sirius_chebiasciiname,
     sirius_chebiid,
-    sirius_confidencescore,
+    contains("sirius_confidencescore"),
     sirius_csi_fingeridscore,
     sirius_siriusscore,
     sirius_zodiacscore,
