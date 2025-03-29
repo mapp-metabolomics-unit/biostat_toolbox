@@ -43,10 +43,10 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : '' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : '' 
+  mode : 'exclude' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'ATTRIBUTE_group' 
   levels : 
-    - ''
+    - 'D'
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -88,7 +88,7 @@ colors:
     - 'A'
     - 'B'
     - 'C'
-    - 'D'
+    # - 'D'
 
    value:
       # - "darkorchid" # 'blastogenesis'
@@ -97,7 +97,7 @@ colors:
       - "coral" # 'pDelta'
       - "cornflowerblue" # 'psDelta'
       - "cyan" # 'sDelta'
-      - "darkblue" # 'WT'
+      # - "darkblue" # 'WT'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
