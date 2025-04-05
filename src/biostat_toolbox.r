@@ -54,6 +54,7 @@ usePackage("pls")
 usePackage("pmp")
 usePackage("readr")
 usePackage("rfPermute")
+usePackage("rockchalk")
 usePackage("tidyverse")
 usePackage("vegan")
 usePackage("webchem")
@@ -738,16 +739,17 @@ SM <- SM %>%
   as.data.frame()
 
 
-
 # We take full power over the matrix (sic. Defossez, 2023)
 # First we work vertically (within a given SM column)
+
 
 for (column in names(params$to_combine_vertically)) {
   col_info <- params$to_combine_vertically[[column]]
   col_name <- col_info$factor_name
+  col_name <- tolower(col_name)
 
   # Initialize aggregated groups with original condition variable
-  SM[paste(col_info$factor_name, "simplified", sep = "_")] <- as.factor(SM[[col_info$factor_name]])
+  SM[paste(col_name, "simplified", sep = "_")] <- as.factor(SM[[col_name]])
 
   # Iterate over each group in params$tocomb
   for (group in names(col_info$groups)) {
@@ -759,8 +761,9 @@ for (column in names(params$to_combine_vertically)) {
     # We create a new label for the current group by concatenating the levels value with a "_"
     new_label <- paste(levels, collapse = "_")
 
+
     # Combine levels for the current group
-    SM[paste(col_info$factor_name, "simplified", sep = "_")] <- combineLevels(SM[[paste(col_info$factor_name, "simplified", sep = "_")]], levs = levels, newLabel = c(new_label))
+    SM[paste(col_name, "simplified", sep = "_")] <- combineLevels(SM[[paste(col_name, "simplified", sep = "_")]], levs = levels, newLabel = c(new_label))
   }
 }
 
