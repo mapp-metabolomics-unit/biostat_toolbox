@@ -71,5 +71,14 @@ sudo apt-get update
 sudo apt-get install libcurl4-openssl-dev libzmq3-dev
 ```
 
+On mac
+
+ brew install uchardet
+
+ brew install udunits
+
+Install remotes and
+
+https://gitlab.com/artemklevtsov/uchardet
 
 
