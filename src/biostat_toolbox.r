@@ -49,6 +49,7 @@ usePackage("htmltools")
 usePackage("iheatmapr")
 usePackage("janitor")
 usePackage("microshades")
+usePackage("orca")
 usePackage("plotly")
 usePackage("pls")
 usePackage("pmp")
@@ -61,6 +62,8 @@ usePackage("webchem")
 usePackage("wesanderson")
 usePackage("WikidataQueryServiceR")
 usePackage("yaml")
+
+
 
 # renv::install("bioc::pmp")
 # renv::install("emmeans")
@@ -217,6 +220,7 @@ file_prefix <- paste("")
 
 
 filename_box_plots <- paste(file_prefix, "Boxplots.pdf", sep = "")
+filename_box_plots_svg <- paste(file_prefix, "Boxplots.svg", sep = "")
 filename_box_plots_interactive <- paste(file_prefix, "Boxplots_interactive.html", sep = "")
 filename_DE <- paste(file_prefix, "DE.rds", sep = "")
 filename_DE_original <- paste(file_prefix, "DE_original.rds", sep = "")
@@ -235,12 +239,15 @@ filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = 
 filename_params <- paste(file_prefix, "params.yaml", sep = "")
 filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
 filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
+filename_PCA_svg <- paste(file_prefix, "PCA.svg", sep = "")
 filename_PCA_scores <- paste(file_prefix, "PCA_scores.tsv", sep = "")
 filename_PCA_loadings <- paste(file_prefix, "PCA_loadings.tsv", sep = "")
 filename_PCA3D <- paste(file_prefix, "PCA3D.html", sep = "")
 filename_PCoA <- paste(file_prefix, "PCoA.pdf", sep = "")
+filename_PCoA_svg <- paste(file_prefix, "PCoA.svg", sep = "")
 filename_PCoA3D <- paste(file_prefix, "PCoA3D.html", sep = "")
 filename_PLSDA <- paste(file_prefix, "PLSDA.pdf", sep = "")
+filename_PLSDA_svg <- paste(file_prefix, "PLSDA.svg", sep = "")
 filename_PLSDA_loadings <- paste(file_prefix, "PLSDA_loadings.tsv", sep = "")
 filename_PLSDA_scores <- paste(file_prefix, "PLSDA_scores.tsv", sep = "")
 filename_PLSDA_VIP_plot <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
@@ -343,8 +350,8 @@ feature_table$"feature_id_full" <- paste(feature_table$feature_id,
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
 feature_table_intensities <- feature_table %>%
-  select(feature_id, contains(" Peak height")) %>%
-  rename_with(~ gsub(" Peak height", "", .x)) %>%
+  select(feature_id, contains(" Peak area")) %>%
+  rename_with(~ gsub(" Peak area", "", .x)) %>%
   column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
@@ -1463,6 +1470,7 @@ fig_PCA3D <- fig_PCA3D %>% layout(
 # The files are exported
 
 ggsave(plot = fig_PCA, filename = filename_PCA, width = 10, height = 10)
+ggsave(plot = fig_PCA, filename = filename_PCA_svg, width = 10, height = 10)
 
 
 if (params$operating_system$system == "unix") {
@@ -2805,6 +2813,13 @@ for (condition in conditions) {
       },
       error = function(e) {}
     )
+    # We save the plot in a svg file
+    tryCatch(
+      {
+        ggsave(plot = gg_volcano, filename = paste0("Volcano_", first_part, "_vs_", second_part, "_", label_column, ".svg"), width = 10, height = 10)
+      },
+      error = function(e) {}
+    )
   }
 }
 
@@ -3458,7 +3473,12 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       )
     ) %>%
       layout(
-        title = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters: [", filter_sample_metadata_status, "]"),
+        title = list(
+          text = paste0("<b>Metabolic variations across ", first_part, " vs ", second_part, "</b>", "<br>", "Sample metadata filters:", "<br>", "[", filter_sample_metadata_status, "]"),
+          font = list(size = 14), # Adjust the font size
+          x = 0.15, # Align title to the left
+          xanchor = "left" # Ensure the title starts from the left
+        ),
         margin = list(
           l = 100, # Left margin in pixels, adjust as needed
           r = 100, # Right margin in pixels, adjust as needed
@@ -3474,6 +3494,9 @@ if (params$actions$run_fc_treemaps == "TRUE") {
       htmlwidgets::saveWidget(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_qual.html")
 
       htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
+
+      orca(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.svg"))
+      orca(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.svg"))
     }
 
 
