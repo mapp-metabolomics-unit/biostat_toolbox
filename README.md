@@ -61,4 +61,15 @@ You should now be able to use the updated https://github.com/mapp-metabolomics-u
 Rscript src/biostat_toolbox.R
 ```
 
+## Notes
+Add instruction for rig.
+
+On Ubuntu system. These libs might be required.
+
+```bash
+sudo apt-get update
+sudo apt-get install libcurl4-openssl-dev
+```
+
+
 
