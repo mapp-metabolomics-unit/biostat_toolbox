@@ -68,7 +68,7 @@ On Ubuntu system. These libs might be required.
 
 ```bash
 sudo apt-get update
-sudo apt-get install libcurl4-openssl-dev libzmq3-dev
+sudo apt-get install libcurl4-openssl-dev libzmq3-dev libssl-dev
 ```
 
 On mac
@@ -80,5 +80,7 @@ On mac
 Install remotes and
 
 https://gitlab.com/artemklevtsov/uchardet
+
+
 
 
