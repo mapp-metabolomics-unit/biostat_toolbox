@@ -50,7 +50,7 @@ renv::install(cran_packages)
 bioc_packages <- c(
   "structToolbox", "pmp", "XVector", "GenomicRanges", "impute", "ontologyIndex", "Biobase",
   "GenomeInfoDbData", "zlibbioc", "S4Vectors", "BiocGenerics", "GenomeInfoDb", "IRanges",
-  "DelayedArray", "SummarizedExperiment", "pcaMethods", "RCy3", "ropls", "BiocFileCache",
+  "DelayedArray", "SummarizedExperiment", "pcaMethods", "ropls", "BiocFileCache",
   "MatrixGenerics" # Moved MatrixGenerics here
 )
 
@@ -65,8 +65,8 @@ github_packages <- c(
   "mapp-metabolomics-unit/MAPPstructToolbox", # As per your script and sessionInfo
   "KarstensLab/microshades",                 # As per your script and sessionInfo
   "jcheng5/d3scatter",                     # From script comments
-  "mikemc/speedyseq"                      # From script comments
-)
+  "mikemc/speedyseq"
+  )
 
 print("Installing GitHub packages...")
 renv::install(github_packages)
