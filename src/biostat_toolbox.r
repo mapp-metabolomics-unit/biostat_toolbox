@@ -50,7 +50,6 @@ require("emmeans")
 require("iheatmapr")
 require("janitor")
 require("microshades")
-require("orca")
 require("plotly")
 require("pls")
 require("pmp")
@@ -3497,8 +3496,6 @@ if (params$actions$run_fc_treemaps == "TRUE") {
 
       htmlwidgets::saveWidget(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.html"), selfcontained = TRUE) # paste0(file_prefix, "_", first_part, "_vs_", second_part, "_treemap_quan.html")
 
-      orca(fig_treemap_qual, file = paste0("Treemap_", first_part, "_vs_", second_part, "_qual.svg"))
-      orca(fig_treemap_quan, file = paste0("Treemap_", first_part, "_vs_", second_part, "_quan.svg"))
     }
 
 

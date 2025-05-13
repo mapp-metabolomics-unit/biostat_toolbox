@@ -2110,16 +2110,6 @@
       ],
       "Hash": "0dae94b258dc5abc4713eacdbbebcb51"
     },
-    "orca": {
-      "Package": "orca",
-      "Version": "1.1-3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "db01c6087ed0e54fe2b58f9c8feb02e1"
-    },
     "pbdZMQ": {
       "Package": "pbdZMQ",
       "Version": "0.3-14",
