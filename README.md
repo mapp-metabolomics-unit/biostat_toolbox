@@ -42,10 +42,16 @@ If you are having trouble with the installation, please drop an issue [here](htt
 ## Example usage
 
 
-1. Fetch the following demon repo
+1. Fetch the following demo repo
 
 ```bash
 git clone https://github.com/mapp-metabolomics-unit/johnny-watanabe-group.git
+```
+
+or, if you use ssh authentification.
+
+```bash
+git clone git@github.com:mapp-metabolomics-unit/johnny-watanabe-group.git
 ```
 
 2. Run the MAPP copier template `update` function to update paths.
