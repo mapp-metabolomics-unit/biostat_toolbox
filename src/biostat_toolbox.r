@@ -37,32 +37,30 @@ options(repos = r)
 rm(r)
 
 # Package organized alphabetically
-
-
-require("crosstalk")
-require("digest")
-require("dplyr")
-require("DT")
-require("ggh4x")
-require("ggrepel")
-require("htmltools")
-require("emmeans")
-require("iheatmapr")
-require("janitor")
-require("microshades")
-require("plotly")
-require("pls")
-require("pmp")
-require("readr")
-require("rfPermute")
-require("rockchalk")
-require("svglite")
-require("tidyverse")
-require("vegan")
-require("webchem")
-require("wesanderson")
-require("WikidataQueryServiceR")
-require("yaml")
+library("crosstalk")
+library("digest")
+library("dplyr")
+library("DT")
+library("ggh4x")
+library("ggrepel")
+library("htmltools")
+library("emmeans")
+library("iheatmapr")
+library("janitor")
+library("microshades")
+library("plotly")
+library("pls")
+library("pmp")
+library("readr")
+library("rfPermute")
+library("rockchalk")
+library("svglite")
+library("tidyverse")
+library("vegan")
+library("webchem")
+library("wesanderson")
+library("WikidataQueryServiceR")
+library("yaml")
 
 
 
@@ -89,7 +87,7 @@ library(MAPPstructToolbox)
 
 ############################################################################################
 ############################################################################################
-################################ LOAD REQUIRED FUNCTIONS  ##################################jksahdkjhdjjdsjhdjksfhh
+################################ LOAD REQUIRED FUNCTIONS  ##################################
 ############################################################################################
 ############################################################################################
 
@@ -201,21 +199,6 @@ filter_variable_metadata_status = sanitize_string(filter_variable_metadata_statu
 ################### Filename and paths establishment ##########################################
 #################################################################################################
 
-
-# The Figures filename is conditionally defined according to the user's choice of filtering the dataset according to CANOPUS NPClassifier classifications or not.
-
-
-# file_prefix = paste(params$mapp_batch,
-#                    params$target$sample_metadata_header,
-#                    filter_variable_metadata_status,
-#                    filter_sample_metadata_status,
-#                    params$polarity,
-#                    scaling_status,
-#                    sep = "_")
-
-# file_prefix = paste(params$mapp_batch,
-#                     params$target$sample_metadata_header,
-#                     sep = "_")
 
 file_prefix <- paste("")
 
@@ -1131,21 +1114,6 @@ formatted_peak_table <- DE$data
 formatted_variable_metadata <- DE$variable_meta ### need to be filter with only usefull output
 
 
-# col_filter <- c("feature_id_full", "feature_id", "feature_mz" ,"feature_rt", "sirius_molecularformula","sirius_inchikey2d","InChI_sirius",
-# "sirius_name","sirius_smiles", "pubchemids_sirius", "molecularFormula_canopus", "canopus_npc_pathway","NPC.pathway.Probability_canopus",
-# "canopus_npc_superclass", "canopus_npc_class","ClassyFire.most.specific.class_canopus","ClassyFire.most.specific.class.Probability_canopus",
-# "ClassyFire.level.5_canopus","ClassyFire.subclass_canopus","ClassyFire.class_canopus","ClassyFire.superclass_canopus","ClassyFire.all.classifications_canopus",
-# "met_annot_structure_wikidata","met_annot_structure_inchikey","met_annot_structure_inchi","met_annot_structure_smiles","met_annot_structure_molecular_formula",
-# "met_annot_short_inchikey","met_annot_structure_taxonomy_npclassifier_01pathway","met_annot_structure_taxonomy_npclassifier_02superclass",
-# "met_annot_structure_taxonomy_npclassifier_02superclass","met_annot_organism_wikidata","met_annot_organism_name","met_annot_organism_taxonomy_ottid","met_annot_organism_taxonomy_01domain",
-# "met_annot_organism_taxonomy_02kingdom","met_annot_organism_taxonomy_03phylum","met_annot_organism_taxonomy_04class","met_annot_organism_taxonomy_05order",
-# "met_annot_organism_taxonomy_06family","met_annot_organism_taxonomy_07tribe","met_annot_organism_taxonomy_08genus","met_annot_organism_taxonomy_09species","met_annot_organism_taxonomy_10varietas",
-# "matched_domain_met_annot","matched_kingdom_met_annot","matched_phylum_met_annot","matched_class_met_annot","matched_order_met_annot","matched_family_met_annot","matched_tribe_met_annot",
-# "matched_genus_met_annot","matched_species_met_annot","met_annot_score_taxo","score_max_consistency_met_annot","final_score_met_annot","rank_final_met_annot","component_id_met_annot",
-# "met_annot_structure_taxonomy_npclassifier_01pathway_consensus","freq_met_annot_structure_taxonomy_npclassifier_01pathway","met_annot_structure_taxonomy_npclassifier_02superclass_consensus",
-# "freq_met_annot_structure_taxonomy_npclassifier_02superclass","met_annot_structure_taxonomy_npclassifier_03class_consensus","freq_met_annot_structure_taxonomy_npclassifier_02superclass")
-
-
 col_filter <- c("feature_id_full", "feature_id", "feature_mz", "feature_rt", "sirius_molecularformula")
 
 formatted_variable_metadata_filtered <- formatted_variable_metadata[col_filter]
@@ -1248,21 +1216,6 @@ write.table(formatted_sample_data_table, file = filename_formatted_sample_data_t
 ################################################################################################
 ################################################################################################
 
-# The Figures titles are conditionally defined according to the user's choices and option in the parameters file
-
-# title_PCA = paste("PCA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-# title_PLSDA = paste("PLSDA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-# title_PLSDA_VIP = paste("PLSDA selected Features of Importance", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-# title_PCA3D = paste("PCA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-# title_PCoA = paste("PCoA", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-# title_PCoA3D = paste("PCoA3D", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.","Colored according to", params$target$sample_metadata_header, sep = " ")
-# title_volcano = paste("Volcano plot", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-# title_treemap = paste("Treemap", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-# title_random_forest = paste("Random Forest results", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-# title_box_plots = paste("Top", params$boxplot$topN, "boxplots", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-# title_heatmap = paste("Heatmap of","top", params$heatmap$topN,"Random Forest filtered features", "for dataset", filter_variable_metadata_status, "and", filter_sample_metadata_status, "level.", sep = " ")
-
-# title_PCA = paste("PCA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
 title_PCA <- paste(
   paste("PCA", "for dataset", params$mapp_batch),
@@ -1272,9 +1225,6 @@ title_PCA <- paste(
   paste("Scaling Status:", scaling_status),
   sep = "\n"
 )
-
-
-# title_PLSDA = paste("PLSDA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
 title_PLSDA <- paste(
   paste("PLSDA", "for dataset", params$mapp_batch),
@@ -1287,7 +1237,6 @@ title_PLSDA <- paste(
 
 title_PLSDA_VIP <- paste("PLSDA selected Features of Importance", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
-# title_PCA3D = paste("PCA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
 title_PCA3D <- paste(
   paste("PCA3D", "for dataset", params$mapp_batch),
@@ -1298,7 +1247,6 @@ title_PCA3D <- paste(
   sep = "\n"
 )
 
-# title_PCoA = paste("PCoA", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
 title_PCoA <- paste(
   paste("PCoA", "for dataset", params$mapp_batch),
@@ -1309,7 +1257,6 @@ title_PCoA <- paste(
   sep = "\n"
 )
 
-# title_PCoA3D = paste("PCoA3D", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
 title_PCoA3D <- paste(
   paste("PCoA3D", "for dataset", params$mapp_batch),
@@ -1320,13 +1267,11 @@ title_PCoA3D <- paste(
   sep = "\n"
 )
 
-# title_volcano = paste("Volcano plot", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 title_treemap <- paste("Treemap", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 title_random_forest <- paste("Random Forest results", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 title_box_plots <- paste("Top", params$boxplot$topN, "boxplots", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 title_heatmap_rf <- paste("Heatmap of", "top", params$heatmap$topN, "Random Forest filtered features", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
-# title_heatmap_pval = paste("Heatmap of significant feature for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status,scaling_status, sep = " ")
 
 title_heatmap_pval <- paste(
   paste("Heatmap of significant feature for dataset", "for dataset", params$mapp_batch),
@@ -1351,6 +1296,7 @@ title_volcano <- paste(
 ############# Colors definition #################################################################
 #################################################################################################
 #################################################################################################
+
 # Sample and sort unique color values from wes_palettes
 wes_palettes_vec <- sample(sort(unique(unlist(wes_palettes[names(wes_palettes)]))))
 
@@ -1658,90 +1604,6 @@ if (params$actions$run_PLSDA == "TRUE") {
 #################################################################################################
 #################################################################################################
 #################################################################################################
-##### HClustering ###############################################################################
-#################################################################################################
-
-# # prepare model sequence
-
-# MS_hclust = filter_smeta(mode = "exclude", levels = "QC", factor_name = "sample_type") +
-#   filter_smeta(mode = "exclude", levels = "BK", factor_name = "sample_type") +
-#   # filter_smeta(mode = var_filter_type, levels= var_levels, factor_name = var_filter) +
-#  #log_transform(base = 10) +
-#   filter_by_name(mode = "include", dimension = "variable", names = names_var)
-
-# # apply model sequence
-
-# DE_MS_hclust = model_apply(MS_hclust, DE)
-# DE_MS_hclust = DE_MS_hclust[length(DE_MS_hclust)]
-
-# ######################################################
-# ######################################################
-
-# data_RF = DE_MS_hclust@filtered
-
-# data_subset_norm_rf = data_RF$data
-# data_subset_norm_rf[sapply(data_subset_norm_rf, is.infinite)] = NA
-# data_subset_norm_rf[is.na(data_subset_norm_rf)] = 0
-
-# dist_metabo = vegdist(data_subset_norm_rf, method = "bray") # method="man" # is a bit better
-# hclust_metabo = hclust(dist_metabo, method = "complete")
-
-# dendro_metabo_noqc = as.phylo(hclust_metabo)
-
-# #### remove_QC
-
-# plot(dendro_metabo_noqc)
-
-# ############ circular plot
-
-# var_treatment2 = data_RF$sample_meta[var_treatment]
-# var_treatment2 = var_treatment2[, 1]
-# fact_plot = as.factor(var_treatment2)
-# g2 = split(as.factor(row.names(data_RF$sample_meta)), fact_plot)
-# tree_plot2 = ggtree::groupOTU(dendro_metabo_noqc, g2, group_name = "grouper")
-
-
-# # cols = wes_palette("Cavalcanti1") ## few factor
-# cols = distinctColorPalette(length(unique(fact_plot))) ## several factor
-# # cols = cols = myColorRamp(c("white", "darkgreen", "black", "black", "black"), sort(as.numeric(as.vector(fact_plot)))) ## continiou svalue
-
-# cols = cols[1:length(unique(fact_plot))]
-
-# circ = ggtree(tree_plot2, aes(color = grouper), size = 2) +
-#   geom_tiplab(size = 2, offset = 0) +
-#   scale_color_manual(values = cols) + theme(legend.position = "none")
-
-# df = data.frame(fact_plot)
-# colnames(df) = c("grouper")
-
-# rownames(df) = as.factor(row.names(data_RF$sample_meta))
-
-
-# if (!(molecular_pathway_target == "all")) {
-#   mol_family = molecular_pathway_target
-# }
-# if (molecular_pathway_target == "all") {
-#   mol_family = ""
-# }
-
-
-# title_hclust = paste("hclust", var_treatment, mol_family, sep = " ")
-
-
-# ggheat_plot = gheatmap(circ, df[, "grouper", drop = F],
-#   offset = 0.05, width = 0.1, colnames = FALSE,
-#   colnames_angle = 90, colnames_offset_y = 1
-# ) + scale_fill_manual(values = cols) + ggtitle(title_hclust)
-
-# ggheat_plot
-
-# # setwd("G:/My Drive/taf/git_repository/andrea-brenna-group/docs/mapp_project_00021/mapp_batch_00037/results/stats")
-# ggsave(paste("tree_plot_", var_treatment, "_", mol_family, ".pdf", sep = ""), width = 15, height = 20)
-
-
-#################################################################################################
-#################################################################################################
-#################################################################################################
 ##### PCoA ##########################################################################
 
 
@@ -1837,56 +1699,6 @@ if (params$operating_system$system == "windows") {
   unlink("lib", recursive = FALSE)
 }
 
-#################################################################################################
-#################################################################################################
-#################################################################################################
-##### group detection with DBSCAN 3D ############################################################
-#################################################################################################
-
-
-# df = data_PCOA_merge[, 1:2]
-
-# # Compute DBSCAN using fpc package
-# db = fpc::dbscan(df, eps = 0.01, MinPts = 3)
-# # Plot DBSCAN results
-# plot(db, df, main = "DBSCAN", frame = FALSE)
-
-
-# db_cluster = db$cluster
-# PC1 = data_PCOA_merge$X1
-# PC2 = data_PCOA_merge$X2
-# PC3 = data_PCOA_merge$X3
-# sample_raw_id = row.names(data_PCOA_merge)
-# id = data_PCOA_merge$sample_name
-# ATTRIBUTE = data_PCOA_merge$age_genotype ### check
-# data_dbclust_merge = data.frame(sample_raw_id, ATTRIBUTE, db_cluster, PC1, PC2, PC3)
-
-
-# write.table(data_dbclust_merge, file = file.path(working_directory, "results", "stats", paste(params$mapp_batch, "_", "data_dbclust_merge", ".csv", sep = "")), sep = ",")
-
-# ellipse = ellipse3d(cov(data_dbclust_merge[c("PC1", "PC2", "PC3")]))
-
-
-# title_dbclut = paste("Density Cbased Clustering", var_treatment, mol_family, sep = " ")
-
-
-# DBscan_3D = plot_ly(
-#   x = data_dbclust_merge$PC1, y = data_dbclust_merge$PC2, z = data_dbclust_merge$PC3,
-#   type = "scatter3d", mode = "markers", color = db_clut,
-#   hoverinfo = "text",
-#   text = ~ paste(
-#     "</br> condition: ", data_dbclust_merge$ATTRIBUTE,
-#     "</br> name: ", data_dbclust_merge$sample_raw_id
-#   )
-# ) %>%
-#   layout(title = title_dbclut)
-
-
-# # setwd("G:/My Drive/taf/git_repository/andrea-brenna-group/docs/mapp_project_00021/mapp_batch_00037/results/stats")
-# # Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/bin/quarto/bin/tools") ### for seflcontained
-
-# DBscan_3D %>%
-#   htmlwidgets::saveWidget(file = file.path(working_directory, "results", "stats", paste("DBscan_3D", var_treatment, "_", mol_family, ".html", sep = "")), selfcontained = TRUE)
 
 #################################################################################################
 #################################################################################################
@@ -3512,469 +3324,6 @@ if (params$actions$run_fc_treemaps == "TRUE") {
 }
 
 
-# mydata_meta <- select(DE_foldchange_pvalues, "sirius_inchikey2d", "row_id","sirius_name","sirius_smiles",
-# "gnps_cluster_index","feature_rt","feature_mz")
-# mydata_meta$name_comp<- "unknown"
-# mydata_meta$name_comp[!is.na(mydata_meta$sirius_inchikey2d)] <- mydata_meta$sirius_name[!is.na(mydata_meta$sirius_inchikey2d)]
-
-
-
-
-# mydata1 <- select(DE_foldchange_pvalues,
-# "C_WT_fold_change_log2","sirius_name", "row_id",
-# "canopus_npc_class")  %>%
-# # this line remove rows with NA in the canopus_npc_class column using the filter function
-# filter(!is.na(canopus_npc_class))  %>%
-# filter(!is.na(C_WT_fold_change_log2))
-
-
-# mydata1 <- merge(mydata1,npclassifier_newpath,by="canopus_npc_class")
-
-
-
-# mydata1 <- mydata1 %>%
-# mutate_if(is.numeric, function(x) ifelse(is.infinite(x), 0, x)) %>%
-# mutate_if(is.numeric, function(x) ifelse(is.nan(x), 0, x))
-
-
-# mydata1_neg <- mydata1[mydata1$C_WT_fold_change_log2 < 0,]
-# #mydata1_neg$C_WT_fold_change_log2 <- abs(mydata1_neg$C_WT_fold_change_log2)
-# mydata1_pos <- mydata1[mydata1$C_WT_fold_change_log2 >= 0,]
-
-# # Aggregate the data
-# ####
-# mydata1 = mydata1[!is.na(mydata1$canopus_npc_pathway), ]
-# mydata1$counter = 1
-
-# # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-# mydata1_neg = mydata1_neg[!is.na(mydata1_neg$canopus_npc_pathway), ]
-# mydata1_neg$counter = 1
-# mydata1_neg$fold_dir <- paste("neg",mydata1_neg$canopus_npc_superclass,sep="_")
-# # matt_donust = matt_volcano_plot[matt_volcano_plot$p.value < params$posthoc$p_value, ]
-# mydata1_pos = mydata1_pos[!is.na(mydata1_pos$canopus_npc_superclass), ]
-# mydata1_pos$counter = 1
-# mydata1_pos$fold_dir <- paste("pos",mydata1_pos$canopus_npc_superclass,sep="_")
-
-# #####################################################################
-# #####################################################################
-
-# dt_se_prop_prep_count_tot = dt_for_treemap(
-#   datatable = mydata1,
-#   parent_value = canopus_npc_pathway,
-#   value = canopus_npc_superclass,
-#   count = counter
-# )
-
-
-# dt_se_prop_prep_fold_tot = dt_for_treemap_mean(
-#   datatable = mydata1,
-#   parent_value = canopus_npc_pathway,
-#   value = canopus_npc_superclass,
-#   count = C_WT_fold_change_log2
-# )
-
-# dt_se_prop_prep_fold_tot <- dt_se_prop_prep_fold_tot %>%
-# select(-c("value","parent.value"))
-# matt_class_fig_tot <- merge(dt_se_prop_prep_count_tot,dt_se_prop_prep_fold_tot,by="ids")
-
-# #####################################################################
-# #####################################################################
-# #####################################################################
-# #####################################################################
-
-# dt_se_prop_prep_count_pos = dt_for_treemap(
-#   datatable = mydata1_pos,
-#   parent_value = canopus_npc_superclass,
-#   value = fold_dir,
-#   count = counter
-# )
-
-# dt_se_prop_prep_fold_pos = dt_for_treemap_mean(
-#   datatable = mydata1_pos,
-#   parent_value = canopus_npc_superclass,
-#   value = fold_dir,
-#   count = C_WT_fold_change_log2
-# )
-
-# dt_se_prop_prep_fold_pos <- dt_se_prop_prep_fold_pos %>%
-# select(-c("value","parent.value"))
-# matt_class_fig_pos_dir <- merge(dt_se_prop_prep_count_pos,dt_se_prop_prep_fold_pos,by="ids")
-
-# matt_class_fig_pos_dir <- matt_class_fig_pos_dir[!(matt_class_fig_pos_dir$parent.value == ""),]
-# matt_class_fig_pos_dir <- na.omit(matt_class_fig_pos_dir)
-
-# #####################################################################
-# #####################################################################
-
-# dt_se_prop_prep_count_neg = dt_for_treemap(
-#   datatable = mydata1_neg,
-#   parent_value = canopus_npc_superclass,
-#   value = fold_dir,
-#   count = counter
-# )
-
-# dt_se_prop_prep_fold_neg = dt_for_treemap_mean(
-#   datatable = mydata1_neg,
-#   parent_value = canopus_npc_superclass,
-#   value = fold_dir,
-#   count = C_WT_fold_change_log2
-# )
-
-# dt_se_prop_prep_fold_neg <- dt_se_prop_prep_fold_neg %>%
-# select(-c("value","parent.value"))
-# matt_class_fig_neg_dir <- merge(dt_se_prop_prep_count_neg,dt_se_prop_prep_fold_neg,by="ids")
-
-# matt_class_fig_neg_dir <- matt_class_fig_neg_dir[!(matt_class_fig_neg_dir$parent.value == ""),]
-# matt_class_fig_neg_dir <- na.omit(matt_class_fig_neg_dir)
-
-# #####################################################################
-# #####################################################################
-# #####################################################################
-# #####################################################################
-
-# dt_se_prop_prep_count_pos_sirius = dt_for_treemap(
-#   datatable = mydata1_pos,
-#   parent_value = fold_dir,
-#   value = row_id,
-#   count = counter
-# )
-
-# dt_se_prop_prep_fold_pos_sirius = dt_for_treemap_mean(
-#   datatable = mydata1_pos,
-#   parent_value = fold_dir,
-#   value = row_id,
-#   count = C_WT_fold_change_log2
-# )
-
-# dt_se_prop_prep_fold_pos_sirius <- dt_se_prop_prep_fold_pos_sirius %>%
-# select(-c("value","parent.value"))
-# matt_class_fig_pos_dir_sirius <- merge(dt_se_prop_prep_count_pos_sirius,dt_se_prop_prep_fold_pos_sirius,by="ids")
-
-# matt_class_fig_pos_dir_sirius <- matt_class_fig_pos_dir_sirius[!(matt_class_fig_pos_dir_sirius$parent.value == ""),]
-# matt_class_fig_pos_dir_sirius <- na.omit(matt_class_fig_pos_dir_sirius)
-
-
-# #####################################################################
-# #####################################################################
-
-# dt_se_prop_prep_count_neg_sirius = dt_for_treemap(
-#   datatable = mydata1_neg,
-#   parent_value = fold_dir,
-#   value = row_id,
-#   count = counter
-# )
-
-# dt_se_prop_prep_fold_neg_sirius = dt_for_treemap_mean(
-#   datatable = mydata1_neg,
-#   parent_value = fold_dir,
-#   value = row_id,
-#   count = C_WT_fold_change_log2
-# )
-
-# dt_se_prop_prep_fold_neg_sirius <- dt_se_prop_prep_fold_neg_sirius %>%
-# select(-c("value","parent.value"))
-# matt_class_fig_neg_dir_sirius <- merge(dt_se_prop_prep_count_neg_sirius,dt_se_prop_prep_fold_neg_sirius,by="ids")
-
-# matt_class_fig_neg_dir_sirius <- matt_class_fig_neg_dir_sirius[!(matt_class_fig_neg_dir_sirius$parent.value == ""),]
-# matt_class_fig_neg_dir_sirius <- na.omit(matt_class_fig_neg_dir_sirius)
-
-
-
-# #####################################################################
-# #####################################################################
-# #####################################################################
-# #####################################################################
-
-# matttree <- rbind(matt_class_fig_tot,matt_class_fig_pos_dir,matt_class_fig_neg_dir,matt_class_fig_pos_dir_sirius,matt_class_fig_neg_dir_sirius)
-# matttree$labels_adjusted <- matttree$value
-# matttree$labels_adjusted[grep("pos_",matttree$labels_adjusted)] <- "+"
-# matttree$labels_adjusted[grep("neg_",matttree$labels_adjusted)] <- "-"
-# matttree$labels_adjusted <- gsub(" x"," ",matttree$labels_adjusted)
-
-# matttree <- merge(matttree,mydata_meta,by.x="labels_adjusted",by.y="row_id",all.x =T)
-
-# matttree$labels_adjusted[!is.na(matttree$name_comp)] <- matttree$name_comp[!is.na(matttree$name_comp)]
-# matttree$value[matttree$labels_adjusted== "unknown"] <- ""
-# matttree$value[matttree$labels_adjusted== "unknown"] <- ""
-# #####################################################################
-
-# # The follow function creates a new hyperlink column based on the labels_adjusted columns
-
-# # matttree$hl <- paste0("https://en.wikipedia.org/wiki/", matttree$labels_adjusted)
-
-# # # <a href='https://example.com/box1' target='_blank'>Box 1</a>
-# # matttree$full_hl <- paste0("<a href='", matttree$hl, "' target='_blank'>", matttree$labels_adjusted, "</a>")
-# # matttree$full_hl <- paste0(
-# #   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
-# # )
-
-# matttree$hl <- paste0("https://pubchem.ncbi.nlm.nih.gov/#query=", matttree$sirius_inchikey2d, "&sort=annothitcnt")
-
-# # <a href='https://example.com/box1' target='_blank'>Box 1</a>
-# matttree$full_hl <- paste0(
-#   "<a href='", matttree$hl, "' target='_blank' style='color: black;'>", matttree$labels_adjusted, "</a>"
-# )
-
-# # <a href='https://example.com/box1' target='_blank'>Box 1</a>
-# matttree$smiles_url <- paste0(
-#   "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=", matttree$sirius_smiles, "&zoom=2.0&annotate=cip"
-# )
-
-
-# matttree <- matttree[order(matttree$value),]
-# ####################### annoation structure
-# #########################################################
-
-# ############# ad mol
-# #mol_list_2d <- list()
-# #for (i in c(1:length(matttree$sirius_smiles))) {
-# #  psml <- parse.smiles(matttree$sirius_smiles[i], omit.nulls = TRUE)
-# #  if (length(psml) == 0) {
-# #    psml <- parse.smiles("C")
-# #  }
-
-# #  img <- view.image.2d(psml[1][[1]])
-
-# #  r <- as.raster(img)
-# #  mol_list_2d[[i]] <- r
-# #}
-
-# #########################################################
-# #########################################################
-
-# txt <- as.character(paste0
-# ("feature id: ",matttree$gnps_cluster_index,"<br>",
-#  "RT: ", round(matttree$feature_rt,2),"<br>",
-#  "m/z: ", round(matttree$feature_mz,4),
-#  "<extra></extra>"
-# ))
-# matttree$txt <- txt
-
-# fig_treemap = plot_ly(
-#   data = matttree,
-#   type = "treemap",
-#   ids = ~value,
-#   labels = ~matttree$full_hl,
-#   parents = ~parent.value,
-#   values = ~count.x,
-#   branchvalues = "total",
-#   maxdepth=3,
-#   hovertemplate = ~txt
-# )
-
-
-
-# # d3 <- htmltools::htmlDependency(
-# #   "d3", "7.3",
-# #   src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/"),
-# #   script = "d3.min.js"
-# # )
-
-# # p = plot_ly(
-# #   data = matttree,
-# #   type = "treemap",
-# #   ids = ~value,
-# #   labels = ~matttree$full_hl,
-# #   parents = ~parent.value,
-# #   values = ~count.x,
-# #   branchvalues = "total",
-# #   maxdepth=3
-# # ) %>%
-# # add_text(x = matttree$value, y = matttree$value, customdata = ~matttree$smiles_url, text = ~matttree$value) %>%
-# # htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
-
-# # p$dependencies <- c(p$dependencies, list(d3))
-# # p
-
-
-# # library(htmlwidgets)
-# # library(magrittr)
-# # library(plotly)
-
-# # x <- 1:3
-# # y <- 1:3
-
-# # artists <- c("Bethoven", "Mozart", "Bach")
-
-# # image_links <- c(
-# #   "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
-# #   "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
-# #   "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
-# # )
-
-
-# # x <- 1:3
-# # y <- 1:3
-
-# # # hoverinfo = "none" will hide the plotly.js tooltip, but the
-# # # plotly_hover event will still fire
-# # p <- plot_ly(hoverinfo = "none") %>%
-# #   add_text(x = x, y = y, customdata = image_links, text = artists) %>%
-# #   htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip.js"))
-
-# # p$dependencies <- c(p$dependencies, list(d3))
-# # p
-
-# ## ChatGPT adapted prompts for treemap
-# ######################################
-# ######################################
-
-# # usePackage('highcharter')
-
-
-# # library(highcharter)
-
-# # # Sample data
-# # labels <- c("Beethoven", "Mozart", "Chemical Structure")
-# # sizes <- c(20, 30, 50)
-# # urls <- c(
-# #   "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven.jpg",
-# #   "https://upload.wikimedia.org/wikipedia/commons/4/47/Croce-Mozart-Detail.jpg",
-# #   "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=CC1C(C(C(C(%3DO)C(CC(C(C(C(C(C(%3DO)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O&zoom=2.0&annotate=cip"
-# # )
-
-# # # Create the data frame
-# # data <- data.frame(
-# #   name = labels,
-# #   value = sizes,
-# #   link = urls,
-# #   stringsAsFactors = FALSE
-# # )
-
-# # # Create the treemap using highchart
-# # treemap <- highchart() %>%
-# #   hc_chart(type = "treemap") %>%
-# #   hc_title(text = "Treemap with Hover Images") %>%
-# #   hc_tooltip(
-# #     useHTML = TRUE,
-# #     pointFormat = "<b>{point.name}</b><br/><img src='{point.link}' width='100' height='100'>"
-# #   ) %>%
-# #   hc_plotOptions(
-# #     series = list(
-# #       borderWidth = 0,
-# #       dataLabels = list(enabled = FALSE),
-# #       cursor = "pointer"
-# #     )
-# #   ) %>%
-# #   hc_series(
-# #     data = list_parse(data),
-# #     levels = list(
-# #       list(level = 1, layoutAlgorithm = "stripes"),
-# #       list(level = 2)
-# #     )
-# #   )
-
-# # # Display the treemap
-# # treemap
-
-
-# # htmlwidgets::saveWidget(widget, file = "fig_treemap.html", selfcontained = TRUE)
-
-
-
-
-
-# # library(treemap)
-# # library(gridSVG)
-# # library(XML
-# # df <- data.frame(
-# #     character=c("Homer","Marge", "Bart", "Lisa","Maggie", "Moe", "Blinky","Bumblebee Man","Duffman","Maude Flanders","Ned Flanders","Rod Flanders","Todd","Jimbo","Otto Mann","Snowball")
-# #     ,score=c(268,267,495, 432, 219, 373, 152, 356, 461, 116,107,165, 305,228, 461, 608)
-
-# # tm <- treemap( df, index = "character", vSize = "score"
-# # svg <- grid.export()$sv
-# # # see http://stackoverflow.com/questions/10688516/fill-svg-path-with-a-background-image-without-knowing-heightwidth?rq=1
-# # pattern <- newXMLNode(
-# #     "defs"
-# #     ,.children = list(
-# #         newXMLNode(
-# #             "pattern"
-# #             , attrs = c(
-# #                 id = "img_homer"
-# #                 ,patternUnits="userSpaceOnUse"
-# #                 ,patternTransform="translate(0, 0) scale(1, -1) rotate(0)"
-# #                 ,width="106"
-# #                 ,height="98"
-# #             )
-# #             , .children = newXMLNode(
-# #                 "image"
-# #                 , attrs = c(
-# #                     "xlink:href" = "http://i.imgur.com/JP4s21O.jpg"
-# #                     ,width = 106
-# #                     ,height = 80
-# #                 )
-# #             )
-# #         )
-# #     )
-
-# # addChildren( svg, pattern
-# # homer <- getNodeSet(
-# #     getNodeSet( svg, "//*[contains(@id,'data.2')]")[[1]]
-# #     ,"//*[local-name()='rect']"
-# # )[[5]
-# # homer_attrs <- xmlAttrs(homer)
-# # homer_attrs[["fill"]] <- "url(#img_homer)"
-# # xmlAttrs(homer) <- homer_attr
-# # library(htmltools)
-# # browsable(HTML(saveXML(svg)))
-
-
-
-
-
-# # g <- ggplot(iris, aes(x = Sepal.Length,
-# #                       y = Petal.Length,
-# #                       color = Species,
-# #                       text = Species)) + geom_point()
-# # p <- ggplotly(g, tooltip = "text") %>% partial_bundle()
-
-
-# # p %>% htmlwidgets::onRender(readLines("/Users/pma/Dropbox/git_repos/mapp-metabolomics-unit/biostat_toolbox/hover_tooltip_adapted.js"))
-
-# fig_treemap <- plot_ly(
-#   data = matttree,
-#   type = "treemap",
-#   ids = ~value,
-#   labels = ~matttree$full_hl,
-#   parents = ~parent.value,
-#   values = ~count.x,
-#   branchvalues = "total",
-#   maxdepth = 3,
-#   marker = list(
-#     colors = matttree$count.y,
-#     colorscale = list(
-#       c(0, 0.5, 1),
-#       c("#A89639", "#FFFFFF", "#337AB7")),
-#     cmin = max(abs(matttree$count.y)) * (-1),
-#     cmax = max(abs(matttree$count.y)),
-#     showscale = TRUE,
-#     colorbar = list(
-#     # the title html is set to add a line return
-#      title = '<b>Increased in </b> <br> <br> <br>',
-#       tickmode = "array",
-#       tickvals = c((quantile(abs(matttree$count.y),probs=0.5)*(-1)), 0, (quantile(abs(matttree$count.y),probs=0.5))),
-#       ticktext = c("wild-type","", "Control"),
-#       len = 0.5,
-#       thickness = 30,
-#       outlinewidth = 1,
-#       tickangle = 270
-#     ),
-#     reversescale = FALSE  # Set to FALSE to maintain the color gradient order
-#   )
-# )%>%
-#   layout(
-#     title = "<b>Metabolomic Variations Across Treatments</b>"
-#   )
-
-# fig_treemap
-
-# params$posthoc$p_value
-
-
-# # We now save the treempa as a html file locally
-
-# htmlwidgets::saveWidget(p, file = "fig_treemap.html", selfcontained = TRUE)
-
 
 #############################################################################
 #############################################################################
@@ -4169,68 +3518,6 @@ if (params$operating_system$system == "windows") {
     htmlwidgets::saveWidget(file = filename_random_forest, selfcontained = TRUE, libdir = "lib")
   unlink("lib", recursive = FALSE)
 }
-
-
-
-#############################################################################
-#############################################################################
-############## Random Forest selected Box Plots #############################
-#############################################################################
-#############################################################################
-
-# message("Preparing RF-selected Box plots ...")
-
-
-# imp.scaled = rfPermute::importance(data.rp, scale = TRUE)
-# imp.scaled = data.frame(imp.scaled)
-# imp.scaled = imp.scaled[order(imp.scaled$MeanDecreaseGini, decreasing = TRUE), ]
-# # boxplot_top_N = row.names(imp.scaled)[1:params$boxplot$topN]
-# # This below using head is safer in case the number of features is smaller than the number of features to plot
-# boxplot_top_N = row.names(head(imp.scaled, n = params$boxplot$topN))
-
-# data_subset_boxplot = data_subset_for_RF %>%
-#   select(all_of(boxplot_top_N), params$target$sample_metadata_header)
-
-# # We now establish a side by side box plot for each columns of the data_subset_norm_boxplot
-# # We use the melt function to reshape the data to a long format
-# # We then use the ggplot2 syntax to plot the data and the facet_wrap function to plot the data side by side
-
-# # Gather value columns into key-value pairs
-# df_long <- tidyr::gather(data_subset_boxplot, key = "variable", value = "value", -params$target$sample_metadata_header)
-
-
-# # Create boxplots faceted by variable and colored by age
-# # Note how we use the get function to access the variable name
-# # See here for details  https://stackoverflow.com/a/22309328/4908629
-# p = ggplot(df_long, aes(x = get(params$target$sample_metadata_header), y = value, fill = get(params$target$sample_metadata_header))) +
-#   geom_boxplot() +
-#   facet_wrap(~ variable, ncol = 4) +
-#   theme_minimal()+
-#   ggtitle(title_box_plots)
-
-
-# fig_boxplot = p + facet_wrap(~variable, scales = "free", dir = "v") + theme(
-#   legend.position = "top",
-#   legend.title = element_blank()
-# )
-
-# # fig_boxplotly = data_subset_boxplot %>%
-# #   split(data_subset_boxplot$variable) %>%
-# #   map(~ {
-# #     plot_ly(data = .x, x = .x$treatment, y = .x$value, color = .x$treatment, type = "box") %>%
-# #       layout(showlegend = F, xaxis = list(title = .x$variable[1])) %>%
-# #       layout(xaxis = list(titlefont = list(size = 10), tickfont = list(size = 10))) %>%
-# #       layout(yaxis = list(titlefont = list(size = 12), tickfont = list(size = 12)))
-# #   }) %>%
-# #   subplot(margin = 0.02, nrows = 4, titleX = TRUE)  %>%
-# #   layout(title = title_box_plots,
-# #   legend = list(title = list(text = paste("<b>class </b>")))) # Find a way to define the legend title
-
-# # The files are exported
-
-# ggsave(plot = fig_boxplot, filename = filename_box_plots, width = 10, height = 10)
-# # fig_boxplotly %>%
-# #     htmlwidgets::saveWidget(file = filename_box_plots_interactive, selfcontained = TRUE)
 
 
 
@@ -4476,64 +3763,6 @@ data_subset_for_pval_hm_mat <- apply(data_subset_for_pval_hm, 2, as.numeric)
 data_subset_for_pval_hm_mat <- data_subset_for_pval_hm
 data_subset_for_pval_hm_mat[] <- lapply(data_subset_for_pval_hm_mat, as.numeric)
 
-
-# heatmap_filtered_pval = heatmaply(
-#   percentize(data_subset_for_pval_hm),
-#   seriate = "none", # none , GW , mean, OLO
-#   col_side_colors = data.frame(selected_variable_meta_NPC, check.names = FALSE),
-#   col_side_palette = ByPal,
-#   row_side_colors = data_subset_for_pval_hm_sel,
-#   # row_side_palette = ByPal,
-#   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
-#   labCol = selected_variable_meta$feature_id_full_annotated,
-#   subplot_margin = 0.01,
-#   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-#     low = "lightsteelblue2",
-#     # mid = "goldenrod1",
-#     high = "firebrick3",
-#     midpoint = 0.5,
-#     limits = c(0, 1),
-#     position = "left"
-#   ),
-#   hide_colorbar = TRUE,
-#   branches_lwd = 0.3,
-#   k_row = 4,
-#   distfun_row = "pearson",
-#   distfun_col = "pearson",
-#   fontsize_row = 9,
-#   fontsize_col = 9,
-#   Rowv = FALSE,
-#   side_color_colorbar_len = 1
-#   # # # # # Colv = NULL,
-#   # plot_method = "plotly"
-# )  %>% layout(
-#   title = list(text = title_heatmap_pval, font = list(size = 14), x = 0.1),
-#   margin = list(t = 150, b = 20) # Adjust the top margin value (e.g., 80) to move the title to the top
-# )
-
-# heatmap_filtered_pval
-
-
-
-# # The file is exported
-
-
-# if (params$operating_system$system == "unix") {
-# ### linux version
-
-# heatmap_filtered_pval %>%
-#     htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE)
-# }
-
-# if (params$operating_system$system == "windows") {
-# ### windows version
-# Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-# heatmap_filtered_pval %>%
-#     htmlwidgets::saveWidget(file = filename_heatmap_pval, selfcontained = TRUE,libdir = "lib")
-# unlink("lib", recursive = FALSE)
-
-# }
-
 #### Iheatmapr
 
 
@@ -4727,23 +3956,7 @@ fixed_custom_create_color_dfs <- function(mdf,
     tidyr::nest() %>%
     arrange(!!sym(col_name_group))
 
-  # Loop through top group and add colors by nested data frame
-  # Higher row number = less abundant = lighter color
 
-  # if ("Other" %in% mdf[[col_name_group]])
-  # {
-  #   start <- 1
-  # } else
-  # {
-  #   start <- 2
-  #   num_group_colors <- num_group_colors -1
-  # }
-
-  # for (i in 1:num_group_colors) {
-  #   cdf$data[[i]]$hex <- hex_df[1:length(cdf$data[[i]]$group),start]
-  #   start = start + 1
-  # }
-  # 1 is micro_cvd_gray
 
   # Define a function to create a pathway tibble
   create_pathway_tibble <- function(pathway_name, hex_column_name) {
@@ -4817,15 +4030,6 @@ fixed_custom_create_color_dfs <- function(mdf,
     cdf = cdf
   )
 }
-
-# mdf = selected_variable_meta_NPC_simple_resolved
-# # selected_groups = c("Terpenoids", "Fatty acids", "Polyketides", "Alkaloids", "Shikimates and Phenylpropanoids", "Amino acids and Peptides", "Carbohydrates")
-# selected_groups = selected_variable_meta_NPC_simple_resolved_count
-# group_level = "canopus_npc_pathway"
-# subgroup_level = "canopus_npc_superclass"
-# cvd = TRUE
-# top_n_subgroups = 4
-# top_orientation = FALSE
 
 
 
@@ -4988,33 +4192,11 @@ iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)), #
     size = 0.45,
     font = list(size = 9)
   ) %>%
-  # add_row_annotation(selected_variable_meta_NPC_simple,
-  #   side = "right",
-  #   buffer = 0.005
-  # colors = list(ByPal, ByPal, ByPal) %>%
-  # add_row_annotation(data.frame("NPC_Class" = selected_variable_meta_NPC_simple_resolved$canopus_npc_class),
-  #   side = "right",
-  #   buffer = 0.005,
-  #   colors = list("NPC_Class" = col_np_class)
-  # ) %>%
-  # add_row_annotation(data.frame("NPC_SuperClass" = selected_variable_meta_NPC_simple_resolved$canopus_npc_superclass),
-  #   side = "right",
-  #   buffer = 0.005,
-  #   colors = list("NPC_SuperClass" = col_np_superclass)
-  # ) %>%
   add_row_annotation(data.frame("Classification" = mdf_selected_variable_meta_NPC_simple_resolved_colored$group),
     side = "right",
     buffer = 0.05,
     colors = list("Classification" = col_np_pathway)
   ) %>%
-  # add_row_annotation(selected_variable_meta_NPC_simple$canopus_npc_superclass,
-  #   side = "right",
-  #   buffer = 0.005
-  # colors = list(ByPal, ByPal, ByPal) %>%
-  # add_row_annotation(selected_variable_meta_NPC_simple$canopus_npc_pathway,
-  #   side = "right",
-  #   buffer = 0.005
-  # colors = list(ByPal, ByPal, ByPal) %>%
   add_row_clustering(side = "right") %>%
   add_col_annotation(data.frame("Condition" = target_metadata),
     colors = list("Condition" = custom_colors_heatmap),
@@ -5029,28 +4211,6 @@ iheatmap <- iheatmapr::main_heatmap(as.matrix(t(data_subset_for_pval_hm_mat)), #
     font = list(size = 10)
   )
 
-# iheatmap
-
-# library(iheatmapr)
-# data(measles, package = "iheatmapr")
-
-# main_heatmap(measles, name = "Measles<br>Cases", x_categorical = FALSE,
-#              layout = list(font = list(size = 8))) %>%
-#   add_col_groups(ifelse(1930:2001 < 1961,"No","Yes"),
-#                   side = "bottom", name = "Vaccine<br>Introduced?",
-#                   title = "Vaccine?",
-#                   colors = c("lightgray","blue")) %>%
-#   add_col_labels(ticktext = seq(1930,2000,10),font = list(size = 8)) %>%
-#   add_row_labels(size = 0.3,font = list(size = 6)) %>%
-#   add_col_summary(layout = list(title = "Average<br>across<br>states"),
-#                   yname = "summary")  %>%
-#   add_col_title("Measles Cases from 1930 to 2001", side= "top") %>%
-#   add_row_summary(groups = TRUE,
-#                   type = "bar",
-#                   layout = list(title = "Average<br>per<br>year",
-#                                 font = list(size = 8)))
-
-
 
 # The file is exported
 
@@ -5058,162 +4218,6 @@ iheatmap %>% save_iheatmap(file = filename_heatmap_pval) # Save interactive HTML
 
 
 
-# unique(selected_variable_meta_NPC_simple_resolved$canopus_npc_superclass)
-
-# col_np_superclass
-
-
-# hex_values <-c(microshades_palette("micro_green", 5, lightest = FALSE),
-#                microshades_palette("micro_blue", 3, lightest = FALSE),
-#                microshades_palette("micro_purple", 3, lightest = FALSE))
-
-
-# library(RColorBrewer)
-
-# col.g <- c(brewer.pal(9,"Greens"))[1:102] # select 5 colors from class Greens
-# col.r <- c(brewer.pal(9,"Reds"))[6:9] # select 4 colors from class Reds
-# col.b <- c(brewer.pal(9,"Blues"))[6:9] # select 4 colors from class Blues
-# my.cols <- c(col.g,col.r,col.b)
-
-
-# # df_col <- treepalette(
-# #   selected_variable_meta_NPC_simple_ordered,
-# #   index = names(selected_variable_meta_NPC_simple_ordered),
-# #   method = "HCL",
-# #   palette = NULL,
-# #   return.parameters = TRUE,
-# #   prepare.dat = TRUE
-# # )
-
-# df_col_np <- treepalette(
-#   npclassifier_origin_ordered,
-#   index = names(npclassifier_origin_ordered),
-#   method = "HCL",
-#   palette = NULL,
-#   palette.HCL.options = list(hue_perm = TRUE),
-#   return.parameters = TRUE,
-#   prepare.dat = TRUE
-# )
-
-# show_col(df_col_np$HCL.color, cex_label = 0.5)
-
-
-# npclassifier_origin_ordered
-
-# # we drop the row with the NA value in all columns
-
-# npclassifier_origin_ordered = npclassifier_origin_ordered[complete.cases(npclassifier_origin_ordered), ]
-
-
-
-# library(scales)
-# pal <- rgb(ddf$r, ddf$g, ddf$b)
-
-
-
-# show_col(paired, cex_label = 0.5)
-
-
-
-# selected_variable_meta_NPC
-
-# colnames(data_subset_for_pval_hm_mat) = selected_variable_meta$feature_id_full_annotated
-
-# typeof(measles)
-# DE$sample_meta[[params$target$sample_metadata_header]]
-
-
-# Indometh_matrix <- acast(Indometh, Subject ~ time, value.var = "conc")
-# Indometh_matrix <- Indometh_matrix[as.character(1:6),]
-# rownames(Indometh_matrix) <- paste("Patient",rownames(Indometh_matrix))
-# Indometh_patient_cor <- cor(t(Indometh_matrix))
-
-# patient_max_conc <- apply(Indometh_matrix,1,max)
-# patient_min_conc <- apply(Indometh_matrix,1,min)
-# patient_groups <- c("A","A","B","A","B","A") # Arbitrary groups
-
-# example_heatmap <- main_heatmap(Indometh_patient_cor, name = "Correlation")
-
-# example_heatmap
-# typeof(Indometh_patient_cor)
-
-# data_subset_for_pval_hm
-
-# rownames(data_subset_for_pval_hm) <- my_sample_col
-
-#############################################################################
-#############################################################################
-############## Random Forest filtered Heat Map  #############################
-#############################################################################
-#############################################################################
-
-# message("Preparing Random Forest filtered Heatmap ...")
-
-# imp_table_rf_order = imp_table_rf[order(imp_table_rf$MeanDecreaseGini, decreasing = TRUE), ] # imp_table_rf[order(imp_table_rf$MeanDecreaseGini,decreasing=TRUE),]
-
-# imp_filter2X = row.names(imp_table_rf_order)[1:params$heatmap$topN]
-# imp_filter2 = gsub("X", "", imp_filter2X)
-
-# data_subset_for_RF = data_subset_for_RF[, colnames(data_subset_for_RF) %in% imp_filter2X]
-# # my_sample_col = DE$sample_meta$sample_id
-
-# my_sample_col = paste(DE$sample_meta$sample_id, DE$sample_meta[[params$target$sample_metadata_header]], sep = "_")
-
-# annot_col = data.frame(paste(DE$variable_meta$canopus_npc_pathway, DE$variable_meta$canopus_npc_superclass, sep = "_"), DE$variable_meta$canopus_npc_pathway)
-
-# colnames(annot_col) = c("Superclass", "Pathway")
-
-# rownames(annot_col) = DE$variable_meta$feature_id
-# annot_col_filter = annot_col[rownames(annot_col) %in% imp_filter2, ]
-
-
-# ByPal = colorRampPalette(c(wes_palette("Zissou1")))
-
-# data_subset_for_RF = apply(data_subset_for_RF, 2, as.numeric)
-# # heatmap(as.matrix(data_subset_norm_rf_filtered), scale="column")
-
-
-# heatmap_filtered_rf = heatmaply(
-#   percentize(data_subset_for_RF),
-#   seriate = "mean", # none , GW , mean, OLO
-#   col_side_colors = data.frame(annot_col_filter, check.names = FALSE),
-#   col_side_palette = ByPal,
-#   labRow = as.vector(as.character(my_sample_col)), # [vec_plot]
-#   subplot_margin = 0.01,
-#   scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-#     low = "lightsteelblue2",
-#     # mid = "goldenrod1",
-#     high = "firebrick3",
-#     midpoint = 0.5,
-#     limits = c(0, 1)
-#   ),
-#   fontsize_col = 5,
-#   branches_lwd = 0.3,
-#   k_row = 4,
-#   distfun_row = "pearson",
-#   distfun_col = "pearson"
-# )
-
-# heatmap_filtered_rf = heatmap_filtered_rf %>% layout(title = list(text = title_heatmap_rf, y = 0.05))
-
-# # The file is exported
-
-
-# if (params$operating_system$system == "unix") {
-# ### linux version
-
-# heatmap_filtered_rf %>%
-#     htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE)
-# }
-
-# if (params$operating_system$system == "windows") {
-# ### windows version
-# Sys.setenv(RSTUDIO_PANDOC = params$operating_system$pandoc)
-# heatmap_filtered_rf %>%
-#     htmlwidgets::saveWidget(file = filename_heatmap_rf, selfcontained = TRUE,libdir = "lib")
-# unlink("lib", recursive = FALSE)
-
-# }
 
 #############################################################################
 #############################################################################
@@ -5226,31 +4230,7 @@ message("Outputing Summary Table ...")
 # Output is not clean. Feature id are repeated x times.
 # To tidy ---
 
-# feature_id = DE$variable_meta$feature_id_full
-# sample_raw_id = paste("X", DE$variable_meta$feature_id_full, sep = "")
-# sirius_name = DE$variable_meta$sirius_name
-# sirius_smiles = DE$variable_meta$sirius_smiles
-# InChI_sirius = DE$variable_meta$InChI_sirius
-# canopus_npc_pathway = DE$variable_meta$canopus_npc_pathway
-# canopus_npc_superclass = DE$variable_meta$canopus_npc_superclass
-# Annotation_merge = data.frame(feature_id, sample_raw_id, sirius_name, sirius_smiles, InChI_sirius, canopus_npc_pathway, canopus_npc_superclass)
 
-# RF_importance = imp_table_rf$MeanDecreaseGini
-# sample_raw_id = row.names(imp_table_rf)
-# RF_importance_merge = data.frame(sample_raw_id, RF_importance)
-
-# summary_matt1 = merge(Annotation_merge, RF_importance_merge, by = "sample_raw_id", all = TRUE)
-
-# sample_raw_id = paste("X", matt_volcano_tot$mol, sep = "")
-# group = matt_volcano_tot$X1
-# posthoc_Pvalue = matt_volcano_tot$p.value
-# log10P = matt_volcano_tot$log10P
-# posthoc_result_merge = data.frame(sample_raw_id, group, posthoc_Pvalue, log10P)
-# split_group = split(posthoc_result_merge, group)
-# matt_split = do.call("cbind", split_group)
-# matt_split$sample_raw_id = matt_split[, 1]
-
-# summary_stat_output = merge(summary_matt1, matt_split, by = "sample_raw_id", all = TRUE)
 
 summary_stat_output_full <- DE_foldchange_pvalues
 
@@ -5408,41 +4388,6 @@ summary_stat_output_selected_simple <- DE_foldchange_pvalues %>%
   )
 
 
-# mol_list_2d <- list()
-
-# for (i in c(1:nrow(summary_stat_output_selected_simple))) {
-#   psml <- parse.smiles(summary_stat_output_selected_simple$sirius_smiles[i], omit.nulls = TRUE)
-#   if (length(psml) == 0) {
-#     psml <- parse.smiles("C")
-#   }
-# img <- view.image.2d(psml[1][[1]])
-# test <-  as.matrix(as.raster(img))
-# matrice_df <- melt(test)
-# # Renommer les colonnes
-# colnames(matrice_df) <- c("y", "x", "couleur")
-# mol_list_2d[[i]] = ggplot(matrice_df, aes(x = x, y = rev(y), fill = couleur)) +
-#                    geom_tile() +
-#                    scale_fill_identity() +
-#                    labs(x = "Axe X", y = "Axe Y") +
-#                   theme(legend.position="none") + theme_void()
-# }
-
-
-
-
-# summary_stat_output_selected_simple$plots  <- mol_list_2d
-# summary_stat_output_selected_simple$ggplot  <- rep(NA,length(mol_list_2d))
-
-# tab_1 <- summary_stat_output_selected_simple %>%
-#     select(-plots) %>%
-#     gt() %>%
-#   text_transform(locations = cells_body(c(ggplot)),
-#                  fn = function(x) {
-#                   map(summary_stat_output_selected_simple$plots, ggplot_image, height = px(100))
-#                  }
-#                  )
-
-# tab_1 %>% gtsave(filename = filename_interactive_table, inline_css = TRUE) ### add path to save
 
 #############################################################################
 #############################################################################
@@ -5653,93 +4598,3 @@ message("Done !")
 
 
 
-
-######### run cytoscape
-######### Mind that here you need to have a Cytoscape instance up and running in parralel !
-
-# We launch the Cytoscape connector conditionally 
-
-if (params$actions$run_cytoscape_connector == TRUE) {
-  message("Running Cytoscape connector ...")
-  # We launch the Cytoscape connector
-
-library(RCy3) # Should be launched at the end as else it will cause conflicts with the previously loaded packages.
-library(pdftools)
-setwd(output_directory)
-
-cytoscapePing()
-
-createNetworkFromIgraph(generated_g, "myIgraph")
-
-
-
-setNodeSizeMapping("node_size", sizes = c(20, 150), style.name = "Solid")
-
-
-colnames_piechart <- paste("mean_int", params$target$sample_metadata_header, names(custom_colors), sep = "_")
-colnames_piechart <- gsub(" ", ".", colnames_piechart)
-
-# Note that since we have a named vectors. The vector needs to be unnamed when passed to the colors argument
-
-setNodeCustomPieChart(colnames_piechart,
-  colors = unname(custom_colors)
-, style.name = "Solid"
-)
-
-# The edge label is set 
-
-setEdgeLabelMapping('EdgeAnnotation', style.name = "Solid")
-
-# The Node label is set
-
-setNodeLabelMapping('parent_mass_gnps', style.name = "Solid")
-
-
-
-saveSession("cytoscape_piechart")
-exportPDF(filename = "cytoscape_piechart", pageSize = "Auto")
-
-
-size_gradient <- c(1:4)
-pdf("color_legend.pdf")
-# Create a legend
-plot(NULL, xaxt = "n", yaxt = "n", bty = "n", ylab = "", xlab = "", xlim = 0:1, ylim = 0:1)
-legend("topleft",
-  legend = names(custom_colors), pch = 15, pt.cex = 2, cex = 1, bty = "n",
-  col = custom_colors
-)
-mtext(params$target$sample_metadata_header, at = 0, cex = 1)
-legend("topright",
-  legend = size_gradient, pch = 16, pt.cex = size_gradient * 0.7, cex = 1, bty = "n",
-  col = "black"
-)
-mtext("Importance", at = 0.95, cex = 1)
-dev.off()
-
-
-files <- c("cytoscape_piechart.pdf", "color_legend.pdf") # get pdf filenames
-pdfs <- Reduce(c, lapply(files, image_read_pdf)) # read in and combine
-montage <- image_montage(pdfs, tile = "1x2", geometry = "x1200") # create pages of 4
-image_write(montage, format = "pdf", "cytoscape_piechart_legend.pdf") # save as single pdf
-
-file.remove("color_legend.pdf")
-
-
-
-# Read the PDF files individually
-cytoscape_piechart <- image_read_pdf("cytoscape_piechart.pdf", density = 300)
-color_legend <- image_read_pdf("color_legend.pdf", density = 300)
-
-# Check the number of images/pages in each file
-print(image_info(cytoscape_piechart))
-print(image_info(color_legend))
-
-montage <- image_montage(c(cytoscape_piechart, color_legend), tile = "1x2")
-# Example with a simple border specified, adjust values as needed
-montage <- image_montage(c(cytoscape_piechart, color_legend))
-
-# Save the combined content as a single PDF
-image_write(montage, path = "cytoscape_piechart_legend4.pdf", format = "pdf")
-
-
-}

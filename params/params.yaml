@@ -1,11 +1,11 @@
-mapp_project : mapp_project_00055
-mapp_batch : mapp_batch_00153
-met_annot_enhancer_folder : mapp_batch_00153
-gnps_job_id : f9b80e836ed04766994fff23c2827c59
+mapp_project : mapp_project_00051
+mapp_batch : mapp_batch_00114
+met_annot_enhancer_folder : mapp_batch_00114
+gnps_job_id : 9e16a42412034ce4b1a8ef6b6cf137cd
 
 dataset_experiment : 
-  name: "mapp_batch_00153 LCMS metabolomics dataset"
-  description: "Pilot profiles of hemolymph - HILIC - QTOF - pos gf"
+  name: "mapp_batch_00114 LCMS metabolomics dataset"
+  description: "Untargeted metabolomics of Yeast cultures. Positive mode."
 
 ms_files_extension: ".mzML"
 
@@ -20,7 +20,7 @@ actions:
   run_PLSDA : TRUE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
-  run_with_gap_filled: TRUE
+  run_with_gap_filled: FALSE
   run_cytoscape_connector : FALSE
 
 
@@ -43,10 +43,10 @@ filter_sample_type :
    - 'sample'
 
 filter_sample_metadata_one :
-  mode : 'exclude' # 'include' or 'exclude', if '', the filter is not applied
-  factor_name : 'ATTRIBUTE_group' 
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : '' 
   levels : 
-    - 'D'
+    - ''
 
 filter_sample_metadata_two :
   mode : '' # 'include' or 'exclude', if '', the filter is not applied
@@ -77,7 +77,7 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "ATTRIBUTE_group_simplified" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -85,8 +85,10 @@ colors:
   continuous: FALSE
   all:
    key:
-    - 'A_B'
-    - 'C'
+    - 'pDelta'
+    - 'psDelta'
+    - 'sDelta'
+    - 'WT'
 
    value:
       # - "darkorchid" # 'blastogenesis'
@@ -94,8 +96,8 @@ colors:
       # - "chartreuse" # 'regeneration'
       - "coral" # 'pDelta'
       - "cornflowerblue" # 'psDelta'
-      # - "cyan" # 'sDelta'
-      # - "darkblue" # 'WT'
+      - "cyan" # 'sDelta'
+      - "darkblue" # 'WT'
 
 
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
@@ -142,16 +144,13 @@ to_mean:
 
 
 to_combine_vertically: 
-  column1: 
-    factor_name: "ATTRIBUTE_group"
-    groups:
-      group1:
-        levels:
-          - 'A'
-          - 'B'
-      group2: 
-        levels:
-          - 'C'
+  # column1: 
+  #   factor_name:
+  #   groups:
+  #     group1:
+  #       levels:
+  #     group2: 
+  #       levels:
   # # column2: 
   #   name: "sample_type"
   #   groups:
