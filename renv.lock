@@ -2996,6 +2996,23 @@
       ],
       "Hash": "b3d0cf0b228fcec144cd0c1a43151719"
     },
+    "svglite": {
+      "Package": "svglite",
+      "Version": "2.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "base64enc",
+        "cli",
+        "cpp11",
+        "lifecycle",
+        "rlang",
+        "systemfonts",
+        "textshaping"
+      ],
+      "Hash": "a8a754856a1b29a24cbe269b8e03989a"
+    },
     "swfscMisc": {
       "Package": "swfscMisc",
       "Version": "1.6.5",
