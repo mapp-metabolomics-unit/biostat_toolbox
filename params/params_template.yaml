@@ -1,0 +1,195 @@
+mapp_project : mapp_project_00055
+mapp_batch : mapp_batch_00153
+met_annot_enhancer_folder : mapp_batch_00153
+gnps_job_id : afe52ca0fbf24fbfb03e62ca14b14b9a
+
+dataset_experiment : 
+  name: "mapp_batch_00153 LCMS metabolomics dataset"
+  description: "Pilot profiles of hemolymph - HILIC - QTOF - pos"
+
+ms_files_extension: ".mzML"
+
+
+actions:
+  scale_method : 'pareto' # 'autoscale' or 'pareto' or 'none'
+  ponderate_data :
+    run : FALSE
+    factor_name : ''
+  prune_data :
+    threshold : 
+  run_PLSDA : TRUE
+  calculate_multi_series_fc : FALSE
+  run_fc_treemaps : TRUE
+  run_with_gap_filled: FALSE
+  run_cytoscape_connector : FALSE
+
+
+
+options:
+  gnps_column_for_boxplots : 
+    factor_name : 'source_taxon'
+
+filter_blank :
+  fold_change : # (numeric) Features with fold change less than this value are removed. The default is 20.
+  factor_name : '' # (character) The factor name in the sample metadata file that contains the sample type. The default is "sample_type".
+  blank_label : '' # (character) The label used for the blanks in the sample metadata file. The default is "BK".
+  qc_label : '' # (character) The label used for the QC samples in the sample metadata file. The default is "QC". Else use NULL, If set to NULL then the median of the samples is used.
+  fraction_in_blank : # (numeric) Features present in less than this proportion of the blanks are not considered for removal. The default is 0.
+
+filter_sample_type :
+  mode : 'include' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : 'sample_type'
+  levels :
+   - 'sample'
+
+filter_sample_metadata_one :
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : '' 
+  levels : 
+    - ''
+
+filter_sample_metadata_two :
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : '' 
+  levels : 
+      - ''
+
+filter_variable_metadata_one :
+  mode : ''
+  factor_name : '' # E.g. 'canopus_npc_pathway'
+  levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'NPC.pathway_canopus'
+
+filter_variable_metadata_two :
+  mode : ''
+  factor_name : '' # E.g. 'canopus_npc_pathway'
+  levels : '' # E.g. One of "Alkaloids", "Amino acids and Peptides", "Terpenoids", "Fatty acids", "Carbohydrates", "Polyketides", "Shikimates and Phenylpropanoids" for levels if you use factor_name : 'canopus_npc_pathway_probability'
+
+
+filter_variable_metadata_annotated :
+  mode : ''
+  factor_name : '' # E.g. 'canopus_npc_pathway'
+  levels : '' # E.g. 'NA' 
+
+filter_variable_metadata_num :
+  mode : '' # 'above' or 'below', if '', the filter is not applied
+  factor_name : '' # e.g e.g 'sirius_confidencescore' or 'canopus_npc_pathway_probability'
+  level :  # Numerical value. E.g 0.5
+
+
+target:
+  sample_metadata_header: "ATTRIBUTE_group" # This variable will be used throughout the whole script as you can see
+   ## XXX_simplified  for combined horizontally
+
+
+colors:
+  continuous: FALSE
+  all:
+   key:
+    - 'A'
+    - 'B'
+    - 'C'
+    - 'D'
+
+   value:
+      # - "darkorchid" # 'blastogenesis'
+      # - "goldenrod" # 'healing'
+      # - "chartreuse" # 'regeneration'
+      - "coral" # 'pDelta'
+      - "cornflowerblue" # 'psDelta'
+      - "cyan" # 'sDelta'
+      - "darkblue" # 'WT'
+
+
+# Only colors without a numeric (for some reason iheatmapr appears to not like these)
+
+# http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+# https://r-charts.com/colors/
+# https://colors.dopely.top/color-mixer/333399-50-cc9933-50
+# https://www.colorhexa.com/483d8b
+# 
+
+# "aliceblue", "antiquewhite", "aquamarine", "azure", "beige", "bisque", "blanchedalmond",
+# "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
+# "cornflowerblue", "cornsilk", "crimson", "darkblue", "darkcyan", "darkgoldenrod",
+# "darkgray", "darkgreen", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange",
+# "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategray",
+# "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray", "dodgerblue",
+# "firebrick", "floralwhite", "forestgreen", "gainsboro", "ghostwhite", "gold", "goldenrod",
+# "greenyellow", "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender",
+# "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan",
+# "lightgoldenrodyellow", "lightgray", "lightgreen", "lightpink", "lightsalmon",
+# "lightseagreen", "lightskyblue", "lightslategray", "lightsteelblue", "lightyellow",
+# "limegreen", "linen", "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid",
+# "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+# "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin", "navajowhite",
+# "navy", "oldlace", "olivedrab", "orange", "orangered", "orchid", "palegoldenrod",
+# "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", "pink",
+# "plum", "powderblue", "purple", "rosybrown", "royalblue", "saddlebrown", "salmon",
+# "sandybrown", "seagreen", "seashell", "sienna", "skyblue", "slateblue", "slategray",
+# "snow", "springgreen", "steelblue", "tan", "thistle", "tomato", "turquoise", "violet",
+# "wheat", "whitesmoke", "yellowgreen"
+
+
+
+# The data intensity (using DE_original, that is unscaled data) for all levels within the following list of factor_names will be meaned and outputted in their respective new columns. This can be usefull e.g. for pie charts groups used in Cytoscape.
+to_mean:
+  factor_name:
+    - "source_taxon"
+
+
+# Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
+# First we work vertically (within a given SM column)
+# The new levels will be named as follows: alphabetically ordered and separated by an underscore.
+# E.g. if you choose to combine Ag and Ab the resulting level will be Ab_Ag. These will appear in a new column which will be name by the name of the original colum suffixed by '_simplified'
+
+
+to_combine_vertically: 
+  # column1: 
+  #   factor_name:
+  #   groups:
+  #     group1:
+  #       levels:
+  #     group2: 
+  #       levels:
+  # # column2: 
+  #   name: "sample_type"
+  #   groups:
+  #     group1:
+  #       cols: 
+  #       - "sample"
+  #       - "QC"
+
+# Then we work horizontally (across SM columns)
+# This action is restricted to rows where sample_type == "sample"
+# The levels are combined row-wise using _ as separator.
+# The resulting column is named by the alphabetically ordered, _ separated, combination of the combined factor_names. (e.g. genotype_period)
+
+
+to_combine_horizontally:
+  factor_name: 
+    #  - "source_taxon"
+
+
+multi_series:
+  # colname: 'time.point'
+  # points:
+  #    - '00'
+  #    - '04'
+  #    - '08'
+  #    - '12'
+  #    - '16'
+  #    - '20'
+
+
+boxplot:
+  topN : 16 # N for TopN boxplots to output 
+
+posthoc:
+  p_value: 0.05 # p-Value for filtering th RF inputs
+
+heatmap:
+  topN : 100 # N for TopN features to output in the heatmap
+
+
+feature_to_filter :
+
