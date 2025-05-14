@@ -1,11 +1,11 @@
-mapp_project : mapp_project_00051
-mapp_batch : mapp_batch_00114
-met_annot_enhancer_folder : mapp_batch_00114
-gnps_job_id : 9e16a42412034ce4b1a8ef6b6cf137cd
+mapp_project : mapp_project_00055
+mapp_batch : mapp_batch_00153
+met_annot_enhancer_folder : mapp_batch_00153
+gnps_job_id : afe52ca0fbf24fbfb03e62ca14b14b9a
 
 dataset_experiment : 
-  name: "mapp_batch_00114 LCMS metabolomics dataset"
-  description: "Untargeted metabolomics of Yeast cultures. Positive mode."
+  name: "mapp_batch_00153 LCMS metabolomics dataset"
+  description: "Pilot profiles of hemolymph - HILIC - QTOF - pos"
 
 ms_files_extension: ".mzML"
 
@@ -77,7 +77,7 @@ filter_variable_metadata_num :
 
 
 target:
-  sample_metadata_header: "source_taxon" # This variable will be used throughout the whole script as you can see
+  sample_metadata_header: "ATTRIBUTE_group" # This variable will be used throughout the whole script as you can see
    ## XXX_simplified  for combined horizontally
 
 
@@ -85,10 +85,10 @@ colors:
   continuous: FALSE
   all:
    key:
-    - 'pDelta'
-    - 'psDelta'
-    - 'sDelta'
-    - 'WT'
+    - 'A'
+    - 'B'
+    - 'C'
+    - 'D'
 
    value:
       # - "darkorchid" # 'blastogenesis'

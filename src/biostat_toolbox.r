@@ -333,12 +333,34 @@ feature_table$"feature_id_full" <- paste(feature_table$feature_id,
 # We then remove the ` Peak area` pattern from the column names using the rename_with function from the dplyr package
 # We then set the `feature_id_full` column as the rownames of the dataframe and transpose it
 
+# feature_table_intensities <- feature_table %>%
+#   select(feature_id, contains(" Peak height")) %>%
+#   rename_with(~ gsub(" Peak height", "", .x)) %>%
+#   column_to_rownames(var = "feature_id") %>%
+#   as.data.frame() %>%
+#   t()
+
+# We check if both ` Peak area` and ` Peak height` patterns are present in the dataframe
+
+if (any(grepl(" Peak area", colnames(feature_table))) && any(grepl(" Peak height", colnames(feature_table)))) {
+  warning("Both ` Peak area` and ` Peak height` patterns are present in the dataframe. Keeping only the ` Peak area` pattern.")
+}
+
+
+# We make the same operation but we make it work both for ` Peak area` and ` Peak height` patterns. If both are present in the dataframe we
+# raise a warning and keep only the ` Peak area` pattern
+
 feature_table_intensities <- feature_table %>%
-  select(feature_id, contains(" Peak area")) %>%
+  select(feature_id, contains(" Peak area"), contains(" Peak height")) %>%
   rename_with(~ gsub(" Peak area", "", .x)) %>%
+  rename_with(~ gsub(" Peak height", "", .x)) %>%
   column_to_rownames(var = "feature_id") %>%
   as.data.frame() %>%
   t()
+
+
+
+
 
 # We keep the feature_table_intensities dataframe in a separate variable
 
