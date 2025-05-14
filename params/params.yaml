@@ -1,11 +1,11 @@
 mapp_project : mapp_project_00055
-mapp_batch : mapp_batch_00154
-met_annot_enhancer_folder : mapp_batch_00154
-gnps_job_id : 18cdafa6d6474891abbdc6ef141bd396
+mapp_batch : mapp_batch_00153
+met_annot_enhancer_folder : mapp_batch_00153
+gnps_job_id : afe52ca0fbf24fbfb03e62ca14b14b9a
 
 dataset_experiment : 
-  name: "mapp_batch_00154 LCMS metabolomics dataset"
-  description: "Pilot profiles of hemolymph - HILIC - QTOF - neg"
+  name: "mapp_batch_00153 LCMS metabolomics dataset"
+  description: "Pilot profiles of hemolymph - HILIC - QTOF - pos"
 
 ms_files_extension: ".mzML"
 
