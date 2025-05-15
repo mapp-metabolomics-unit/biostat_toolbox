@@ -4,21 +4,38 @@ The MAPP Biostat toolbox
 
 ## How to install the biostat_toolbox
 
-1. Clone the current repository to your local machine
+Note this has been tested on UNIX platforms (Ubuntu and MacOS non ARM).
+Not guaranteed to work in other setups.
+
+
+### Clone the current repository to your local machine
 
 ```bash
 git clone https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
 ```
+### Install the cappropriate R version (4.2.2)
 
-2. Install the biostat_toolbox package
+For this we recommend using [rig](https://github.com/r-lib/rig) 
 
-Here we use `renv` ton manage the libraries required for bioastat_toolbox. 
+### Install the biostat_toolbox package
+
+Here we use [renv](https://github.com/rstudio/renv) to manage the libraries required for bioastat_toolbox. 
+
+```bash
+install.packages("renv")
+```
 
 The first step once you have navigated to the cloned repository is to activate a R session.
 Radian is recommended for this purpose. 
 
 ```bash
 radian
+```
+
+Alternatively R works of course
+
+```bash
+R
 ```
 
 Then, you can activate the `renv` environment by running the following command:
@@ -66,26 +83,6 @@ You should now be able to use the updated https://github.com/mapp-metabolomics-u
 ```bash
 Rscript src/biostat_toolbox.R
 ```
-
-## Notes
-Add instruction for rig.
-
-On Ubuntu system. These libs might be required.
-
-```bash
-sudo apt-get update
-sudo apt-get install libcurl4-openssl-dev libzmq3-dev libssl-dev
-```
-
-On mac
-
- brew install uchardet
-
- brew install udunits
-
-Install remotes and
-
-https://gitlab.com/artemklevtsov/uchardet
 
 
 
