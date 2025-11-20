@@ -682,7 +682,7 @@ sample_metadata <- read_delim(file.path(working_directory, "metadata", "treated"
 
 # Here we establish a small test which will check if the sample metadata file contains the required columns (filename, sample_id, sample_type and species)
 
-required_columns <- c("filename", "sample_id", "sample_type", "source_taxon", "sample_type", "source_taxon")
+required_columns <- c("filename", "sample_id", "sample_type", "source_taxon")
 
 if (!all(required_columns %in% colnames(sample_metadata))) {
   stop("The sample metadata file does not contain the required columns (filename, sample_id, sample_type and source_taxon). Please check your metadata file and try again.")
@@ -854,6 +854,8 @@ if (params$actions$ponderate_data$run == "TRUE" && !is.null(params$actions$ponde
 # Check if the pruning threshold is set in the params
 if (!is.null(params$actions$prune_data$threshold)) {
   threshold <- params$actions$prune_data$threshold  # Define the threshold value from params
+
+  threshold <- as.numeric(threshold)
   
   # Print a message to the console to inform the user that pruning is being applied
   print(paste("Pruning is being applied using the threshold:", threshold))
@@ -2870,6 +2872,12 @@ if (params$actions$run_fc_treemaps == "TRUE") {
     # Perform filtering using the prefix as a condition
     DE_foldchange_pvalues_signi <- DE_foldchange_pvalues %>%
       filter(!!sym(paste0(condition, "_p_value")) < params$posthoc$p_value)
+    # Check that the filtered data frame has at least 10 rows.
+    # Else exit the loop and print a message.
+    if (nrow(DE_foldchange_pvalues_signi) < 10) {
+      message("Not enough significant features for condition: ", condition, ". Skipping treemap generation.\n")
+      next
+    }
 
     # Print the filtered data
     message("Filtered data for condition: ", condition, ":\n")
