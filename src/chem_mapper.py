@@ -1,11 +1,11 @@
 """
-Utility for mapping SIRIUS structure identifications to SwissLipids IDs or
-LipidMaps metadata.
+Utility for mapping SIRIUS structure identifications to SwissLipids, LipidMaps,
+or ChEBI database records.
 
 The tool expects a TSV file such as ``structure_identifications.tsv`` created by
-SIRIUS.  For every row it extracts ``InChIkey2D`` and ``mappingFeatureId``, runs
-the selected lipid database lookup and writes a compact TSV with the feature id,
-the 2D InChIKey and the retrieved identifiers/metadata.
+SIRIUS. For every row it extracts ``InChIkey2D`` and ``mappingFeatureId``, runs
+the selected chemical database lookup and writes a compact TSV with the feature
+id, the 2D InChIKey and the retrieved identifiers/metadata.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+import json
 from typing import Dict, Iterable, Optional
 
 import requests
@@ -23,6 +24,7 @@ SWISSLIPIDS_SEARCH_URL = "https://www.swisslipids.org/api/index.php/advancedSear
 LIPIDMAPS_URL_TEMPLATE = (
     "https://www.lipidmaps.org/rest/compound/inchi_key/{inchikey}/all"
 )
+CHEBI_SEARCH_URL = "https://www.ebi.ac.uk/chebi/backend/api/public/es_search/"
 BASE_HEADERS = ("mappingFeatureId", "InChIkey2D")
 SWISS_HEADERS = ("SwissLipidsID",)
 LIPIDMAPS_FIELDS = [
@@ -127,12 +129,39 @@ def fetch_lipidmaps_data(
     return normalized
 
 
-def output_headers_for_source(source: str) -> Iterable[str]:
-    if source == "swisslipids":
-        return BASE_HEADERS + SWISS_HEADERS
-    if source == "lipidmaps":
-        return BASE_HEADERS + LIPIDMAPS_HEADERS
-    raise ValueError(f"Unsupported source: {source}")
+def fetch_chebi_data(
+    inchikey: str, *, session: requests.Session, progress=None
+) -> Optional[Dict[str, str]]:
+    """Query the ChEBI elasticsearch API for an InChIKey."""
+    term = ensure_standard_inchikey(inchikey)
+    params = {"term": term, "page": 1, "size": 1}
+    try:
+        response = session.get(CHEBI_SEARCH_URL, params=params, timeout=30)
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        log_warning(f"ChEBI lookup failed for {inchikey}: {exc}", progress=progress)
+        return None
+
+    results = payload.get("results") if isinstance(payload, dict) else None
+    if not results:
+        return None
+
+    record = results[0]
+    normalized: Dict[str, str] = {}
+
+    source = record.get("_source") or {}
+    if isinstance(source, dict):
+        for key, value in source.items():
+            normalized[f"chebi_{key}"] = format_metadata_value(value)
+
+    for meta_key in ("_id", "_score"):
+        if meta_key in record:
+            normalized[f"chebi{meta_key}"] = format_metadata_value(record[meta_key])
+
+    return normalized or None
 
 
 def fetcher_for_source(source: str):
@@ -140,7 +169,23 @@ def fetcher_for_source(source: str):
         return fetch_swisslipids_data
     if source == "lipidmaps":
         return fetch_lipidmaps_data
+    if source == "chebi":
+        return fetch_chebi_data
     raise ValueError(f"Unsupported source: {source}")
+
+
+def build_output_headers(source: str, metadata_keys: Iterable[str]) -> Iterable[str]:
+    """Order metadata columns depending on the selected source."""
+    metadata_keys = list(metadata_keys)
+    if source == "swisslipids":
+        extras = [col for col in SWISS_HEADERS if col in metadata_keys]
+    elif source == "lipidmaps":
+        extras = [col for col in LIPIDMAPS_HEADERS if col in metadata_keys]
+    elif source == "chebi":
+        extras = sorted(metadata_keys)
+    else:
+        raise ValueError(f"Unsupported source: {source}")
+    return BASE_HEADERS + tuple(extras)
 
 
 def map_structures(input_path: Path, output_path: Path, source: str) -> None:
@@ -148,17 +193,14 @@ def map_structures(input_path: Path, output_path: Path, source: str) -> None:
     cache: Dict[str, Optional[Dict[str, str]]] = {}
     total_rows = 0
     mapped = 0
+    results: list[Dict[str, str]] = []
+    metadata_keys: set[str] = set()
 
     total_expected = count_data_rows(input_path)
-    output_headers = output_headers_for_source(source)
     fetch_entry = fetcher_for_source(source)
 
-    with input_path.open("r", encoding="utf-8", newline="") as handle_in, output_path.open(
-        "w", encoding="utf-8", newline=""
-    ) as handle_out:
+    with input_path.open("r", encoding="utf-8", newline="") as handle_in:
         reader = csv.DictReader(handle_in, delimiter="\t")
-        writer = csv.DictWriter(handle_out, delimiter="\t", fieldnames=output_headers)
-        writer.writeheader()
 
         session = requests.Session()
         progress_label = f"{source.capitalize()} lookups"
@@ -192,10 +234,18 @@ def map_structures(input_path: Path, output_path: Path, source: str) -> None:
 
             base_entry = {"mappingFeatureId": feature_id, "InChIkey2D": inchikey}
             base_entry.update(metadata)
-            writer.writerow(base_entry)
+            results.append(base_entry)
+            metadata_keys.update(metadata.keys())
             progress.update(1)
 
         progress.close()
+
+    output_headers = build_output_headers(source, metadata_keys)
+    with output_path.open("w", encoding="utf-8", newline="") as handle_out:
+        writer = csv.DictWriter(handle_out, delimiter="\t", fieldnames=output_headers)
+        writer.writeheader()
+        for entry in results:
+            writer.writerow(entry)
 
     log_info(
         f"processed {total_rows} rows -> {mapped} {source} hits",
@@ -210,6 +260,17 @@ def count_data_rows(path: Path) -> int:
     return max(total - 1, 0)
 
 
+def format_metadata_value(value) -> str:
+    """Normalize API values for safe TSV output."""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        return ";".join(format_metadata_value(item) for item in value)
+    if isinstance(value, dict):
+        return json.dumps(value, sort_keys=True)
+    return str(value)
+
+
 def ensure_standard_inchikey(inchikey: str) -> str:
     """Append the standard key suffix if missing (required by LipidMaps endpoint)."""
     suffix = "-UHFFFAOYSA-N"
@@ -221,7 +282,7 @@ def ensure_standard_inchikey(inchikey: str) -> str:
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Map SIRIUS structure_identifications.tsv entries to lipid databases",
+        description="Map SIRIUS structure_identifications.tsv entries to chemical databases",
     )
     parser.add_argument(
         "--input",
@@ -237,7 +298,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--source",
-        choices=("swisslipids", "lipidmaps"),
+        choices=("swisslipids", "lipidmaps", "chebi"),
         default="swisslipids",
         help="Which API to query for mappings",
     )
