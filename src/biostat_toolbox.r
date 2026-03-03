@@ -2002,7 +2002,7 @@ DE_foldchange_pvalues <- merge(DE_foldchange_pvalues, DE$variable_meta, by.x = "
 
 # The file is exported
 
-write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ",")
+write.table(DE_foldchange_pvalues, file = filename_foldchange_pvalues, sep = ",", row.names = FALSE)
 
 
 
@@ -4625,6 +4625,5 @@ file.copy(script_name, file.path(output_directory, filename_R_script), overwrite
 
 
 message("Done !")
-
 
 
