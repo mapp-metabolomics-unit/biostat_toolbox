@@ -87,3 +87,13 @@ Rscript src/biostat_toolbox.R
 
 
 
+## nOtes 
+
+Make sure to be using R 4.2
+
+rig
+and select 4.2
+
+  ponderate_data :
+    run : TRUE
+    factor_name : 'weight_of_samples_mg'
