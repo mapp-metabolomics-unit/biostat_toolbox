@@ -3,7 +3,7 @@
 
 r_version:    "4.2"
 bioc_version: "3.16"
-cran_snapshot: "https://packagemanager.posit.co/cran/2025-04-10"
+cran_snapshot: "https://packagemanager.posit.co/cran/2026-04-01"
 
 cran:
   - crosstalk
