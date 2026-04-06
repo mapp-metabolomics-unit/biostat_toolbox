@@ -1,2 +1,8 @@
-params_user.yaml
 params.yaml
+params_user.yaml
+params/params.yaml
+params/params_user.yaml
+.venv/
+venv/
+__pycache__/
+*.pyc

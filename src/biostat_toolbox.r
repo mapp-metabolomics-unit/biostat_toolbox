@@ -5,85 +5,90 @@
 ############################################################################################
 
 
-# install BiocManager if not present
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
+required_packages <- c(
+  "crosstalk",
+  "digest",
+  "dplyr",
+  "DT",
+  "forcats",
+  "ggh4x",
+  "ggplot2",
+  "ggrepel",
+  "htmltools",
+  "htmlwidgets",
+  "iheatmapr",
+  "janitor",
+  "jsonlite",
+  "MAPPstructToolbox",
+  "microshades",
+  "plotly",
+  "plotrix",
+  "pls",
+  "pmp",
+  "purrr",
+  "readr",
+  "rfPermute",
+  "rlang",
+  "rockchalk",
+  "stringr",
+  "structToolbox",
+  "svglite",
+  "tibble",
+  "tidyr",
+  "vegan",
+  "webchem",
+  "wesanderson",
+  "WikidataQueryServiceR",
+  "yaml"
+)
+
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages)) {
+  stop(
+    paste(
+      "Missing R packages:",
+      paste(missing_packages, collapse = ", "),
+      "\nRun `Rscript install.R` from the repository root to provision this project."
+    ),
+    call. = FALSE
+  )
 }
 
-# install structToolbox and dependencies
-# BiocManager::install("structToolbox") v1.10.0
-
-## install additional bioc packages for vignette if needed
-# BiocManager::install(c("pmp", "ropls", "BiocFileCache"))
-
-## install additional CRAN packages if needed
-# install.packages(c('cowplot', 'openxlsx'))
-
-
-# We define the following helper function in order to load or install the packages according to the condition
-
-usePackage <- function(p) {
-  if (!is.element(p, installed.packages()[, 1])) {
-    install.packages(p, dep = TRUE, Ncpus = 40)
-  }
-  require(p, character.only = TRUE)
-}
-
-# This one below is to the the default CRAN repo
-
-r <- getOption("repos")
-r["CRAN"] <- "http://cran.us.r-project.org"
-options(repos = r)
-rm(r)
-
-# Package organized alphabetically
-library("crosstalk")
-library("digest")
-library("dplyr")
-library("DT")
-library("ggh4x")
-library("ggrepel")
-library("htmltools")
-library("emmeans")
-library("iheatmapr")
-library("janitor")
-library("microshades")
-library("plotly")
-library("pls")
-library("pmp")
-library("readr")
-library("rfPermute")
-library("rockchalk")
-library("svglite")
-library("tidyverse")
-library("vegan")
-library("webchem")
-library("wesanderson")
-library("WikidataQueryServiceR")
-library("yaml")
-
-
-
-# renv::install("bioc::pmp")
-# renv::install("emmeans")
-# renv::install("KarstensLab/microshades", dependencies=TRUE)
-# renv::install("mikemc/speedyseq", dependencies=TRUE)
-
-# struct(1.10)
-
-# devtools::install_github("jcheng5/d3scatter")
-
-# install.packages("BiocManager")
-# BiocManager::install("RCy3")
-# remotes::install_gitlab("artemklevtsov/uchardet@devel")
-
-
-# We use the MAPPstructToolbox package
-# Uncomment the lines below to download the MAPPstructToolbox package from github
-
-# library(devtools)
-# install_github("mapp-metabolomics-unit/MAPPstructToolbox", force = TRUE)
-library(MAPPstructToolbox)
+suppressPackageStartupMessages({
+  library("crosstalk")
+  library("digest")
+  library("dplyr")
+  library("DT")
+  library("forcats")
+  library("ggh4x")
+  library("ggplot2")
+  library("ggrepel")
+  library("htmltools")
+  library("iheatmapr")
+  library("janitor")
+  library("jsonlite")
+  library("microshades")
+  library("plotly")
+  library("pls")
+  library("pmp")
+  library("purrr")
+  library("readr")
+  library("rfPermute")
+  library("rlang")
+  library("rockchalk")
+  library("stringr")
+  library("tibble")
+  library("tidyr")
+  library("vegan")
+  library("webchem")
+  library("wesanderson")
+  library("WikidataQueryServiceR")
+  library("yaml")
+  library(MAPPstructToolbox)
+})
 
 ############################################################################################
 ############################################################################################
@@ -94,7 +99,17 @@ library(MAPPstructToolbox)
 # We load the required functions from the MAPPstructToolbox package
 # these are in the helpers.r file
 
-source("src/helpers.r")
+args_full <- commandArgs(trailingOnly = FALSE)
+script_path <- sub("--file=", "", args_full[grep("^--file=", args_full)])
+if (length(script_path)) {
+  script_path <- normalizePath(script_path[1])
+} else {
+  script_path <- normalizePath(file.path(getwd(), "src", "biostat_toolbox.r"), mustWork = FALSE)
+}
+script_dir <- dirname(script_path)
+repo_root <- normalizePath(file.path(script_dir, ".."), mustWork = FALSE)
+
+source(file.path(script_dir, "helpers.r"))
 
 
 ############################################################################################
@@ -104,28 +119,18 @@ source("src/helpers.r")
 ############################################################################################
 
 
-# We set the wd
-current_script <- deparse(substitute())
-script_path <- file.path(getwd(), current_script)
-
 print(script_path)
 
-if (!exists("params")) {
-  my_path_params <- script_path
+if (!exists("params") || !exists("my_path_params")) {
+  my_path_params <- getwd()
 } ### conserve the path after multiple run
-if (exists("params")) {
+if (exists("params") && exists("my_path_params")) {
   setwd(my_path_params)
 } ### conserve the path after multiple run
 
 # We call the external params
-path_to_params <- "./params/params.yaml"
-path_to_params_user <- "./params/params_user.yaml"
-
-# Ensure newlines at the end of the YAML files
-
-
-ensure_newline(path_to_params)
-ensure_newline(path_to_params_user)
+path_to_params <- file.path(repo_root, "params", "params.yaml")
+path_to_params_user <- file.path(repo_root, "params", "params_user.yaml")
 
 # Load the params.yaml file
 
@@ -1080,7 +1085,7 @@ if (params$actions$scale_method == "none") {
   ##### we range all feature from 0 to 1
 
   # @Manu !!! Why do we have this ?!
-  DE$data <- apply(DE$data, 2, modEvA::range01)
+  DE$data <- apply(DE$data, 2, range01)
 
 
   # Min value imputation also after the scaling stage (to be checked !!!)
@@ -1111,7 +1116,7 @@ if (params$actions$scale_method == "none") {
   ##### we range all feature from 0 to 1
 
   # @Manu !!! Why do we have this ?!
-  DE$data <- apply(DE$data, 2, modEvA::range01)
+  DE$data <- apply(DE$data, 2, range01)
 
 } else {
 stop("Please check the value of the 'scale_method' parameter in the params file.")
@@ -4606,7 +4611,7 @@ message("... and the R script file !")
 
 print(getwd())
 
-setwd(script_path)
+setwd(script_dir)
 
 # Print the current wd
 print(getwd())
@@ -4625,5 +4630,3 @@ file.copy(script_name, file.path(output_directory, filename_R_script), overwrite
 
 
 message("Done !")
-
-
