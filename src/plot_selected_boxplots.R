@@ -29,10 +29,11 @@ source(file.path(script_dir, "helpers.r"), local = TRUE)
 option_list <- list(
   make_option(c("-p", "--params"), default = "params/params.yaml", help = "Path to params.yaml [default %default]"),
   make_option(c("-u", "--params-user"), default = "params/params_user.yaml", help = "Path to params_user.yaml [default %default]"),
+  make_option(c("-H", "--hash"), default = NULL, help = "Hash of the result directory under the configured stats output path"),
   make_option(c("-r", "--results-dir"), default = NULL, help = "Override directory that contains DE.rds and foldchange_pvalues.csv"),
   make_option(c("-f", "--features"), default = NULL, help = "Comma separated list of feature IDs to plot"),
   make_option(c("-F", "--features-file"), default = NULL, help = "Optional file that lists feature IDs (one per line)"),
-  make_option(c("-o", "--output-dir"), default = NULL, help = "Directory used to save plots and data (default results_dir/selected_boxplots_cli)"),
+  make_option(c("-o", "--output-dir"), default = NULL, help = "Directory used to save plots and data (default resolved results_dir; override with a custom path)"),
   make_option(c("--pvalue-column"), default = NULL, help = "Name of the p-value column to use (default: first *_p_value column)"),
   make_option(c("--data-output"), default = NULL, help = "Optional path to save the long-format table (default output_dir/selected_boxplot_data.csv)"),
   make_option(c("-t", "--plot-type"), default = "box", help = "Plot geometry: box, violin, or violin_box [default %default]")
@@ -71,6 +72,11 @@ extract_flag_value <- function(args, flag_long, flag_short = NULL) {
 explicit_results_dir <- extract_flag_value(raw_cli_args, "--results-dir", "-r")
 explicit_params <- extract_flag_value(raw_cli_args, "--params", "-p")
 explicit_params_user <- extract_flag_value(raw_cli_args, "--params-user", "-u")
+explicit_hash <- extract_flag_value(raw_cli_args, "--hash", "-H")
+explicit_features_file <- extract_flag_value(raw_cli_args, "--features-file", "-F")
+explicit_output_dir <- extract_flag_value(raw_cli_args, "--output-dir", "-o")
+explicit_pvalue_column <- extract_flag_value(raw_cli_args, "--pvalue-column")
+explicit_data_output <- extract_flag_value(raw_cli_args, "--data-output")
 explicit_plot_type <- extract_flag_value(raw_cli_args, "--plot-type", "-t")
 
 if (!is.null(explicit_results_dir)) {
@@ -82,6 +88,21 @@ if (!is.null(explicit_params)) {
 if (!is.null(explicit_params_user)) {
   opt$params_user <- explicit_params_user
 }
+if (!is.null(explicit_hash)) {
+  opt$hash <- explicit_hash
+}
+if (!is.null(explicit_features_file)) {
+  opt$features_file <- explicit_features_file
+}
+if (!is.null(explicit_output_dir)) {
+  opt$output_dir <- explicit_output_dir
+}
+if (!is.null(explicit_pvalue_column)) {
+  opt$pvalue_column <- explicit_pvalue_column
+}
+if (!is.null(explicit_data_output)) {
+  opt$data_output <- explicit_data_output
+}
 if (!is.null(explicit_plot_type)) {
   opt$plot_type <- explicit_plot_type
 }
@@ -89,7 +110,7 @@ if (!is.null(explicit_plot_type)) {
 trim_option_value <- function(value) {
   if (is.character(value) && length(value)) {
     trimmed <- trimws(value)
-    trimmed[nzchar(trimmed)]
+    return(trimmed[nzchar(trimmed)])
   }
   value
 }
@@ -107,6 +128,7 @@ has_value <- function(value) {
 
 opt$params <- trim_option_value(opt$params)
 opt$params_user <- trim_option_value(opt$params_user)
+opt$hash <- trim_option_value(opt$hash)
 opt$results_dir <- trim_option_value(opt$results_dir)
 opt$features <- trim_option_value(opt$features)
 opt$features_file <- trim_option_value(opt$features_file)
@@ -201,29 +223,58 @@ if (!plot_type %in% valid_plot_types) {
 
 config_hash <- convert_yaml_to_single_row_df_with_hash(params)$hash
 
-resolve_results_dir <- function(params, hash, override) {
+resolve_results_base_dir <- function(params) {
+  if (!is.null(params$paths$output) && nzchar(params$paths$output)) {
+    return(params$paths$output)
+  }
+  file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats")
+}
+
+resolve_results_dir <- function(params, inferred_hash, hash_override, override) {
   if (has_value(override)) {
     return(trimws(as.character(override[1])))
   }
-  if (!is.null(params$paths$output) && nzchar(params$paths$output)) {
-    return(file.path(params$paths$output, hash))
+  if (has_value(hash_override)) {
+    selected_hash <- trimws(as.character(hash_override[1]))
+  } else {
+    selected_hash <- inferred_hash
   }
-  file.path(params$paths$docs, params$mapp_project, params$mapp_batch, "results", "stats", hash)
+  file.path(resolve_results_base_dir(params), selected_hash)
 }
 
-results_dir <- resolve_results_dir(params, config_hash, opt$results_dir)
+results_base_dir <- resolve_results_base_dir(params)
+results_dir <- resolve_results_dir(params, config_hash, opt$hash, opt$results_dir)
 if (has_value(opt$results_dir)) {
   message(sprintf("Using user-specified results directory: %s", results_dir))
+} else if (has_value(opt$hash)) {
+  message(sprintf("Using results directory from user-specified hash %s: %s", opt$hash, results_dir))
 } else {
   message(sprintf("Using inferred results directory: %s", results_dir))
 }
 if (!dir.exists(results_dir)) {
+  available_hashes <- character()
+  if (dir.exists(results_base_dir)) {
+    available_hashes <- basename(list.dirs(results_base_dir, full.names = TRUE, recursive = FALSE))
+  }
+  if (!has_value(opt$results_dir) && length(available_hashes)) {
+    stop(sprintf(
+      paste(
+        "Results directory %s does not exist.",
+        "Available hashes under %s: %s",
+        "Use --hash <hash> to select one of them or --results-dir to pass a full path.",
+        sep = " "
+      ),
+      results_dir,
+      results_base_dir,
+      paste(available_hashes, collapse = ", ")
+    ))
+  }
   stop(sprintf("Results directory %s does not exist.", results_dir))
 }
 
 output_dir <- opt$output_dir
 if (is.null(output_dir) || !nzchar(output_dir)) {
-  output_dir <- file.path(results_dir, "selected_boxplots_cli")
+  output_dir <- results_dir
 }
 
 if (!dir.exists(output_dir)) {
