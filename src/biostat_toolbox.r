@@ -4,58 +4,6 @@
 ############################################################################################
 ############################################################################################
 
-
-required_packages <- c(
-  "crosstalk",
-  "digest",
-  "dplyr",
-  "DT",
-  "forcats",
-  "ggh4x",
-  "ggplot2",
-  "ggrepel",
-  "htmltools",
-  "htmlwidgets",
-  "iheatmapr",
-  "janitor",
-  "jsonlite",
-  "MAPPstructToolbox",
-  "microshades",
-  "plotly",
-  "plotrix",
-  "pls",
-  "pmp",
-  "purrr",
-  "readr",
-  "rfPermute",
-  "rlang",
-  "rockchalk",
-  "stringr",
-  "svglite",
-  "tibble",
-  "tidyr",
-  "vegan",
-  "webchem",
-  "wesanderson",
-  "WikidataQueryServiceR",
-  "yaml"
-)
-
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-
-if (length(missing_packages)) {
-  stop(
-    paste(
-      "Missing R packages:",
-      paste(missing_packages, collapse = ", "),
-      "\nRun `Rscript install.R` from the repository root to provision this project."
-    ),
-    call. = FALSE
-  )
-}
-
 suppressPackageStartupMessages({
   library("crosstalk")
   library("digest")

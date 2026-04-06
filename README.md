@@ -7,15 +7,15 @@ Script-based metabolomics analysis utilities for the MAPP biostat workflow.
 `biostat_toolbox` is supported on `macOS` and `Linux`.
 Windows is not part of the supported install path in this repository.
 
-## Simple installation
+## Installation
 
-Install these system prerequisites first:
+### System prerequisites
 
 - `R 4.2.x`
-- a working compiler toolchain for R packages
+- A working compiler toolchain for R packages (Xcode CLT on macOS, `build-essential` on Linux)
 - `pandoc` on `PATH`
 
-Then from a fresh clone:
+### Steps
 
 ```bash
 git clone https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
@@ -23,10 +23,15 @@ cd biostat_toolbox
 Rscript install.R
 cp params/params_template.yaml params/params.yaml
 cp params/params_user_template.yaml params/params_user.yaml
+```
+
+Edit `params/params.yaml` and `params/params_user.yaml` for your dataset, then verify everything is in order:
+
+```bash
 Rscript scripts/check_install.R
 ```
 
-Edit `params/params.yaml` and `params/params_user.yaml` for your machine, then run:
+### Run
 
 ```bash
 Rscript src/biostat_toolbox.r
@@ -34,13 +39,13 @@ Rscript src/biostat_toolbox.r
 
 ## Useful checks
 
-Check that the helper script resolves correctly:
+Check the boxplot helper:
 
 ```bash
 Rscript src/plot_selected_boxplots.R --help
 ```
 
-Check the current `renv` state:
+Check the current renv state:
 
 ```bash
 Rscript -e 'renv::status()'
@@ -48,7 +53,7 @@ Rscript -e 'renv::status()'
 
 ## Optional Python helpers
 
-The Python scripts are optional and are not required for the main R workflow.
+The Python scripts are optional and not required for the main R workflow.
 
 ```bash
 python3 -m venv .venv
@@ -60,10 +65,30 @@ python3 src/enrich_ik.py --help
 
 ## Maintainer notes
 
-- `renv.lock` is the single source of truth for the R environment.
-- This project disables `pak` during `renv` operations.
-- If you intentionally change R dependencies, rebuild the lockfile with:
+### How dependencies are managed
+
+All explicit R dependencies are declared in **`packages.yaml`** — this is the single file to edit when adding or removing a package:
+
+```yaml
+cran:
+  - ggplot2
+  - ...
+bioc:
+  - pmp
+github:
+  - mapp-metabolomics-unit/MAPPstructToolbox@<sha>
+```
+
+- `install.R` restores the full environment from `renv.lock` (end-user path).
+- `scripts/check_install.R` reads `packages.yaml` to verify top-level packages are present.
+- `scripts/rebuild_lockfile.R` reads `packages.yaml` to install everything and regenerate `renv.lock` (maintainer path).
+
+### Updating the lockfile
+
+After editing `packages.yaml`, regenerate `renv.lock`:
 
 ```bash
 RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript --vanilla scripts/rebuild_lockfile.R --clean
 ```
+
+Use `--clean` for a full rebuild from scratch. Omit it for incremental updates.

@@ -1,70 +1,38 @@
 #!/usr/bin/env Rscript
+# Rebuilds renv.lock from scratch. Run as maintainer when adding/updating packages.
+# Usage: Rscript scripts/rebuild_lockfile.R [--clean]
+#
+# To add a package: edit packages.yaml only, then re-run this script.
 
-snapshot_repo <- Sys.getenv(
-  "BIOSTAT_TOOLBOX_CRAN_REPO",
-  unset = "https://packagemanager.posit.co/cran/2025-04-10"
-)
-bioc_version <- "3.16"
-
-cran_packages <- c(
-  "crosstalk",
-  "digest",
-  "dplyr",
-  "DT",
-  "forcats",
-  "ggh4x",
-  "ggplot2",
-  "ggrepel",
-  "htmltools",
-  "htmlwidgets",
-  "iheatmapr",
-  "janitor",
-  "jsonlite",
-  "optparse",
-  "plotly",
-  "plotrix",
-  "pls",
-  "purrr",
-  "readr",
-  "rfPermute",
-  "rlang",
-  "rockchalk",
-  "stringr",
-  "svglite",
-  "tibble",
-  "tidyr",
-  "vegan",
-  "emmeans",
-  "mapdata",
-  "maps",
-  "viridisLite",
-  "webchem",
-  "wesanderson",
-  "WikidataQueryServiceR",
-  "yaml"
-)
-
-bioc_packages <- c("pmp")
-
-github_packages <- c(
-  "KarstensLab/microshades",
-  "mapp-metabolomics-unit/MAPPstructToolbox@e78fb8f645d75d5d060fbdf0282b1e6df02d46d3"
-)
-
-args_full <- commandArgs(trailingOnly = FALSE)
-script_path <- sub("--file=", "", args_full[grep("^--file=", args_full)])
-if (length(script_path)) {
-  script_path <- normalizePath(script_path[1])
-} else {
-  script_path <- normalizePath(file.path(getwd(), "scripts", "rebuild_lockfile.R"), mustWork = FALSE)
+get_script_path <- function() {
+  args_full <- commandArgs(trailingOnly = FALSE)
+  script_path <- sub("--file=", "", args_full[grep("^--file=", args_full)])
+  if (length(script_path)) return(normalizePath(script_path[1]))
+  normalizePath(file.path(getwd(), "scripts", "rebuild_lockfile.R"), mustWork = FALSE)
 }
-repo_root <- normalizePath(file.path(dirname(script_path), ".."))
 
-args <- commandArgs(trailingOnly = TRUE)
-clean <- "--clean" %in% args
-
-project_library <- file.path(repo_root, "renv", "library")
+repo_root    <- normalizePath(file.path(dirname(get_script_path()), ".."))
+packages_yml <- file.path(repo_root, "packages.yaml")
 lockfile_path <- file.path(repo_root, "renv.lock")
+
+if (!file.exists(packages_yml)) {
+  stop("packages.yaml not found at: ", packages_yml, call. = FALSE)
+}
+
+# Bootstrap minimal deps before renv is active
+for (pkg in c("renv", "remotes", "BiocManager", "yaml")) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg, repos = "https://cloud.r-project.org")
+  }
+}
+
+cfg <- yaml::read_yaml(packages_yml)
+
+snapshot_repo <- Sys.getenv("BIOSTAT_TOOLBOX_CRAN_REPO", unset = cfg$cran_snapshot)
+bioc_version  <- cfg$bioc_version
+cran_packages <- cfg$cran
+bioc_packages <- cfg$bioc
+github_packages <- cfg$github
 
 Sys.setenv(RENV_CONFIG_PAK_ENABLED = "FALSE")
 Sys.setenv(R_LIBS_USER = "")
@@ -73,15 +41,10 @@ options(
   repos = c(CRAN = snapshot_repo)
 )
 
-if (!requireNamespace("renv", quietly = TRUE)) {
-  install.packages("renv", repos = getOption("repos"))
-}
-if (!requireNamespace("remotes", quietly = TRUE)) {
-  install.packages("remotes", repos = getOption("repos"))
-}
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager", repos = getOption("repos"))
-}
+args  <- commandArgs(trailingOnly = TRUE)
+clean <- "--clean" %in% args
+
+project_library <- file.path(repo_root, "renv", "library")
 
 if (clean) {
   unlink(project_library, recursive = TRUE, force = TRUE)
@@ -99,21 +62,17 @@ dir.create(project_lib, recursive = TRUE, showWarnings = FALSE)
 
 install.packages(
   cran_packages,
-  lib = project_lib,
-  repos = getOption("repos"),
+  lib          = project_lib,
+  repos        = getOption("repos"),
   dependencies = c("Depends", "Imports", "LinkingTo")
 )
 
-BiocManager::install(
-  bioc_packages,
-  ask = FALSE,
-  update = FALSE
-)
+BiocManager::install(bioc_packages, ask = FALSE, update = FALSE)
 
 for (pkg in github_packages) {
   remotes::install_github(
     pkg,
-    upgrade = "never",
+    upgrade      = "never",
     dependencies = c("Depends", "Imports", "LinkingTo")
   )
 }
@@ -121,6 +80,6 @@ for (pkg in github_packages) {
 renv::snapshot(project = repo_root, prompt = FALSE, force = TRUE)
 
 cat("Lockfile rebuild complete.\n")
-cat(sprintf("Repository: %s\n", repo_root))
+cat(sprintf("Repository:   %s\n", repo_root))
 cat(sprintf("CRAN snapshot: %s\n", snapshot_repo))
-cat(sprintf("Project library: %s\n", project_lib))
+cat(sprintf("Project lib:  %s\n", project_lib))
