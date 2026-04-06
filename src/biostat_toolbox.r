@@ -31,7 +31,6 @@ required_packages <- c(
   "rlang",
   "rockchalk",
   "stringr",
-  "structToolbox",
   "svglite",
   "tibble",
   "tidyr",
@@ -1540,7 +1539,7 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   C <- pls_scores_plot(factor_name = params$target$sample_metadata_header)
 
-  plsda_plot <- structToolbox::chart_plot(C, plsda_object)
+  plsda_plot <- chart_plot(C, plsda_object)
 
 
 

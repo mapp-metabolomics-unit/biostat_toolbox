@@ -34,6 +34,9 @@ cran_packages <- c(
   "tibble",
   "tidyr",
   "vegan",
+  "emmeans",
+  "mapdata",
+  "maps",
   "viridisLite",
   "webchem",
   "wesanderson",
@@ -45,8 +48,7 @@ bioc_packages <- c("pmp")
 
 github_packages <- c(
   "KarstensLab/microshades",
-  "mapp-metabolomics-unit/MAPPstructToolbox@97e0771ed0d1a4224fa00fe3bd90aa58ad490982",
-  "computational-metabolomics/structToolbox@4fab996c859fc67b73dbc6108502ec78c5640a79"
+  "mapp-metabolomics-unit/MAPPstructToolbox@e78fb8f645d75d5d060fbdf0282b1e6df02d46d3"
 )
 
 args_full <- commandArgs(trailingOnly = FALSE)
@@ -65,6 +67,7 @@ project_library <- file.path(repo_root, "renv", "library")
 lockfile_path <- file.path(repo_root, "renv.lock")
 
 Sys.setenv(RENV_CONFIG_PAK_ENABLED = "FALSE")
+Sys.setenv(R_LIBS_USER = "")
 options(
   renv.config.pak.enabled = FALSE,
   repos = c(CRAN = snapshot_repo)
@@ -92,10 +95,11 @@ renv::settings$bioconductor.version(bioc_version, project = repo_root)
 
 project_lib <- renv::paths$library(project = repo_root)
 dir.create(project_lib, recursive = TRUE, showWarnings = FALSE)
-.libPaths(c(project_lib, .libPaths()))
+.libPaths(c(project_lib, .Library))
 
 install.packages(
   cran_packages,
+  lib = project_lib,
   repos = getOption("repos"),
   dependencies = c("Depends", "Imports", "LinkingTo")
 )
