@@ -1,99 +1,94 @@
 # biostat_toolbox
-The MAPP Biostat toolbox
 
+Script-based metabolomics analysis utilities for the MAPP biostat workflow.
 
-## How to install the biostat_toolbox
+## Supported platforms
 
-Note this has been tested on UNIX platforms (Ubuntu and MacOS non ARM).
-Not guaranteed to work in other setups.
+`biostat_toolbox` is supported on `macOS` and `Linux`.
+Windows is not part of the supported install path in this repository.
 
+## Installation
 
-### Clone the current repository to your local machine
+### System prerequisites
+
+- `R 4.2.x`
+- A working compiler toolchain for R packages (Xcode CLT on macOS, `build-essential` on Linux)
+- `pandoc` on `PATH`
+
+### Steps
 
 ```bash
 git clone https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
+cd biostat_toolbox
+Rscript install.R
+cp params/params_template.yaml params/params.yaml
+cp params/params_user_template.yaml params/params_user.yaml
 ```
-### Install the cappropriate R version (4.2.2)
 
-For this we recommend using [rig](https://github.com/r-lib/rig) 
-
-### Install the biostat_toolbox package
-
-Here we use [renv](https://github.com/rstudio/renv) to manage the libraries required for bioastat_toolbox. 
+Edit `params/params.yaml` and `params/params_user.yaml` for your dataset, then verify everything is in order:
 
 ```bash
-install.packages("renv")
+Rscript scripts/check_install.R
 ```
 
-The first step once you have navigated to the cloned repository is to activate a R session.
-Radian is recommended for this purpose. 
+### Run
 
 ```bash
-radian
+Rscript src/biostat_toolbox.r
 ```
 
-Alternatively R works of course
+## Useful checks
+
+Check the boxplot helper:
 
 ```bash
-R
+Rscript src/plot_selected_boxplots.R --help
 ```
 
-Then, you can activate the `renv` environment by running the following command:
-
-```R
-renv::activate()
-```
-
-Once the `renv` environment is activated, you can install the `biostat_toolbox` package by running the following command:
-
-```R
-renv::restore()
-```
-
-This should install all the required libraries for the `biostat_toolbox` package.
-
-
-If you are having trouble with the installation, please drop an issue [here](https://github.com/mapp-metabolomics-unit/biostat_toolbox/issues)
-
-
-## Example usage
-
-
-1. Fetch the following demo repo
+Check the current renv state:
 
 ```bash
-git clone https://github.com/mapp-metabolomics-unit/johnny-watanabe-group.git
+Rscript -e 'renv::status()'
 ```
 
-or, if you use ssh authentification.
+## Optional Python helpers
+
+The Python scripts are optional and not required for the main R workflow.
 
 ```bash
-git clone git@github.com:mapp-metabolomics-unit/johnny-watanabe-group.git
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements-helpers.txt
+python3 src/chem_mapper.py --help
+python3 src/enrich_ik.py --help
 ```
 
-2. Run the MAPP copier template `update` function to update paths.
+## Maintainer notes
+
+### How dependencies are managed
+
+All explicit R dependencies are declared in **`packages.yaml`** — this is the single file to edit when adding or removing a package:
+
+```yaml
+cran:
+  - ggplot2
+  - ...
+bioc:
+  - pmp
+github:
+  - mapp-metabolomics-unit/MAPPstructToolbox@<sha>
+```
+
+- `install.R` restores the full environment from `renv.lock` (end-user path).
+- `scripts/check_install.R` reads `packages.yaml` to verify top-level packages are present.
+- `scripts/rebuild_lockfile.R` reads `packages.yaml` to install everything and regenerate `renv.lock` (maintainer path).
+
+### Updating the lockfile
+
+After editing `packages.yaml`, regenerate `renv.lock`:
 
 ```bash
-cd johnny-watanabe-group
-copier update --trust
+RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript --vanilla scripts/rebuild_lockfile.R --clean
 ```
 
-You should now be able to use the updated https://github.com/mapp-metabolomics-unit/johnny-watanabe-group/blob/46c665c607fc3137f5f2de65288bcda11ab13a93/docs/mapp_project_00051/mapp_batch_00114/CONTRIB.md#run-biostat_toolbox params and run biostat_toolbox functions.
-
-```bash
-Rscript src/biostat_toolbox.R
-```
-
-
-
-
-## nOtes 
-
-Make sure to be using R 4.2
-
-rig
-and select 4.2
-
-  ponderate_data :
-    run : TRUE
-    factor_name : 'weight_of_samples_mg'
+Use `--clean` for a full rebuild from scratch. Omit it for incremental updates.

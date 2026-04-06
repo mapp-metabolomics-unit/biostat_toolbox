@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
   library(viridisLite)
   library(wesanderson)
   library(digest)
-  library(structToolbox)
+  library(MAPPstructToolbox)
 })
 
 args_full <- commandArgs(trailingOnly = FALSE)

@@ -1,8 +1,9 @@
-#Copy this file and rename as params_user.yaml 
+# Copy this file and rename as params_user.yaml.
+# The documented installation path in this repository targets macOS and Linux.
 paths:
   docs: '/your/input/dir/docs' #example
   output: '/your/output/dir' # Not mandatory, default is in the stats subdirectory
 
 operating_system:
-  system: windows # unix (for Mac or Linux)
-  pandoc: "C:\Program Files\RStudio\bin\quarto\bin\tools" ### only for windows #C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools
+  system: unix
+  pandoc: "pandoc"

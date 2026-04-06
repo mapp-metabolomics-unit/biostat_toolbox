@@ -1,14 +1,19 @@
 # A set of helpers functions to be used in the main script
 
-# Revised function to ensure a newline at the end of YAML files
-ensure_newline <- function(file_path) {
-  lines <- readLines(file_path, warn = FALSE)
-  if (length(lines) > 0 && nchar(tail(lines, 1)) != 0) {
-    lines <- c(lines, "")
-    writeLines(lines, file_path)
+range01 <- function(x) {
+  if (all(is.na(x))) {
+    return(x)
   }
-}
 
+  min_value <- min(x, na.rm = TRUE)
+  max_value <- max(x, na.rm = TRUE)
+
+  if (identical(min_value, max_value)) {
+    return(rep(0, length(x)))
+  }
+
+  (x - min_value) / (max_value - min_value)
+}
 
 # Flatten list with alphabetical sorting of lists and dot notation for nested keys
 flatten_list <- function(x, prefix = "") {
