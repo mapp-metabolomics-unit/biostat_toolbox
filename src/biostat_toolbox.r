@@ -189,6 +189,10 @@ filename_PLSDA_loadings <- paste(file_prefix, "PLSDA_loadings.tsv", sep = "")
 filename_PLSDA_scores <- paste(file_prefix, "PLSDA_scores.tsv", sep = "")
 filename_PLSDA_VIP_plot <- paste(file_prefix, "PLSDA_VIP.pdf", sep = "")
 filename_PLSDA_VIP_table <- paste(file_prefix, "PLSDA_VIP.tsv", sep = "")
+filename_DFA <- paste(file_prefix, "DFA.pdf", sep = "")
+filename_DFA_loadings <- paste(file_prefix, "DFA_loadings.tsv", sep = "")
+filename_DFA_scores <- paste(file_prefix, "DFA_scores.tsv", sep = "")
+filename_DFA_eigenvalues <- paste(file_prefix, "DFA_eigenvalues.tsv", sep = "")
 filename_R_script <- paste(file_prefix, "R_script_backup.R", sep = "")
 filename_random_forest <- paste(file_prefix, "RF_importance.html", sep = "")
 filename_random_forest_model <- paste(file_prefix, "RF_model.txt", sep = "")
@@ -1249,6 +1253,15 @@ title_PLSDA <- paste(
 
 title_PLSDA_VIP <- paste("PLSDA selected Features of Importance", "for dataset", params$target$sample_metadata_header, target_name, filter_variable_metadata_status, scaling_status, sep = " ")
 
+title_DFA <- paste(
+  paste("DFA", "for dataset", params$mapp_batch),
+  paste("Comparison across:", params$target$sample_metadata_header, target_name),
+  paste("Filter Sample Metadata Status:", filter_sample_metadata_status),
+  paste("Filter Variable Metadata Status:", filter_variable_metadata_status),
+  paste("Scaling Status:", scaling_status),
+  sep = "\n"
+)
+
 
 title_PCA3D <- paste(
   paste("PCA3D", "for dataset", params$mapp_batch),
@@ -1611,6 +1624,60 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   write.table(plsda_loadings, file = filename_PLSDA_loadings, sep = "\t", row.names = FALSE)
 
+}
+
+#################################################################################################
+#################################################################################################
+#################################################################################################
+# ##### DFA filtered data #########################################################################
+
+
+if (!is.null(params$actions$run_DFA) && params$actions$run_DFA == "TRUE") {
+  message("Launching DFA calculations ...")
+
+  DE$sample_meta[, params$target$sample_metadata_header] <- as.factor(DE$sample_meta[, params$target$sample_metadata_header])
+
+  dfa_seq_model <- # autoscale() +
+    filter_na_count(threshold = 1, factor_name = params$target$sample_metadata_header) +
+    DFA(factor_name = params$target$sample_metadata_header, number_components = 2)
+
+  dfa_seq_result <- tryCatch(
+    model_apply(dfa_seq_model, DE),
+    error = function(e) {
+      warning(paste("DFA failed on the full feature space:", conditionMessage(e)))
+      NULL
+    }
+  )
+
+  if (!is.null(dfa_seq_result)) {
+    dfa_object <- dfa_seq_result[length(dfa_seq_result)]
+
+    dfa_scores <- dfa_object$scores$data
+    dfa_loadings <- dfa_object$loadings
+    dfa_eigenvalues <- dfa_object$eigenvalues
+
+    C <- dfa_scores_plot(factor_name = params$target$sample_metadata_header)
+
+    dfa_plot <- chart_plot(C, dfa_object)
+
+    fig_DFA <- dfa_plot + theme_classic() + facet_wrap(~ dfa_plot$labels$title) + ggtitle(title_DFA)
+
+    fig_DFA <- fig_DFA +
+      scale_colour_manual(name = "Groups", values = custom_colors)
+
+    ggsave(plot = fig_DFA, filename = filename_DFA, width = 10, height = 10)
+
+    dfa_scores <- dfa_scores %>%
+      rownames_to_column(var = "samples")
+
+    write.table(dfa_scores, file = filename_DFA_scores, sep = "\t", row.names = FALSE)
+
+    dfa_loadings <- dfa_loadings %>%
+      rownames_to_column(var = "features")
+
+    write.table(dfa_loadings, file = filename_DFA_loadings, sep = "\t", row.names = FALSE)
+    write.table(dfa_eigenvalues, file = filename_DFA_eigenvalues, sep = "\t", row.names = TRUE)
+  }
 }
 
 #################################################################################################

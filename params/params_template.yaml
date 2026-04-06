@@ -18,6 +18,7 @@ actions:
   prune_data :
     threshold : 
   run_PLSDA : TRUE
+  run_DFA : FALSE
   calculate_multi_series_fc : FALSE
   run_fc_treemaps : TRUE
   run_with_gap_filled: FALSE
@@ -192,4 +193,3 @@ heatmap:
 
 
 feature_to_filter :
-
