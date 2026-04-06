@@ -1,6 +1,8 @@
 #!/usr/bin/env Rscript
-# Checks that all explicitly required packages (from packages.yaml) are installed.
-# Run: Rscript scripts/check_install.R
+# Quick sanity check: R version, renv library, pandoc, and param files.
+# Package installation is handled entirely by renv — run `Rscript install.R` if needed.
+
+required_r_version <- "4.2"
 
 get_script_path <- function() {
   args_full <- commandArgs(trailingOnly = FALSE)
@@ -9,59 +11,35 @@ get_script_path <- function() {
   normalizePath(file.path(getwd(), "scripts", "check_install.R"), mustWork = FALSE)
 }
 
-repo_root    <- normalizePath(file.path(dirname(get_script_path()), ".."))
-packages_yml <- file.path(repo_root, "packages.yaml")
+repo_root <- normalizePath(file.path(dirname(get_script_path()), ".."))
 issues   <- character()
 warnings <- character()
 
-# Prepend renv library so installed packages are visible
+# Prepend renv library
 if (requireNamespace("renv", quietly = TRUE)) {
-  project_library <- renv::paths$library(project = repo_root)
-  if (dir.exists(project_library)) .libPaths(c(project_library, .libPaths()))
+  lib <- renv::paths$library(project = repo_root)
+  if (dir.exists(lib)) .libPaths(c(lib, .libPaths()))
 }
 
-if (!file.exists(packages_yml)) {
-  stop("packages.yaml not found. Ensure you are running from the repository root.", call. = FALSE)
+# R version
+if (!startsWith(as.character(getRversion()), required_r_version)) {
+  issues <- c(issues, sprintf("R %s is required; found %s.", required_r_version, getRversion()))
 }
 
-cfg <- yaml::read_yaml(packages_yml)
-
-# R version check
-if (!startsWith(as.character(getRversion()), cfg$r_version)) {
-  issues <- c(issues, sprintf(
-    "R %s is required; found %s.", cfg$r_version, getRversion()
-  ))
+# renv library exists
+lockfile <- file.path(repo_root, "renv.lock")
+if (!file.exists(lockfile)) {
+  issues <- c(issues, "renv.lock not found. Clone the repository cleanly and re-run.")
+} else if (!dir.exists(renv::paths$library(project = repo_root))) {
+  issues <- c(issues, "renv library not found. Run `Rscript install.R` to provision packages.")
 }
 
-# Build list of required top-level package names
-pkg_names <- function(github_specs) {
-  # "user/repo@sha" or "user/repo" -> "repo"
-  repos <- sub("@.*$", "", github_specs)       # strip @sha
-  basename(repos)                               # strip user/
-}
-
-required_packages <- c(
-  cfg$cran,
-  cfg$bioc,
-  pkg_names(cfg$github)
-)
-
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-if (length(missing_packages)) {
-  issues <- c(issues, sprintf(
-    "Missing R packages: %s.\nRun `Rscript install.R` from the repository root.",
-    paste(missing_packages, collapse = ", ")
-  ))
-}
-
-# Pandoc check
+# Pandoc
 if (!nzchar(Sys.which("pandoc"))) {
   issues <- c(issues, "Pandoc not found on PATH. Install pandoc before generating HTML outputs.")
 }
 
-# Config file check
+# Param files
 required_paths <- c(
   file.path(repo_root, "params", "params.yaml"),
   file.path(repo_root, "params", "params_user.yaml")
@@ -69,7 +47,7 @@ required_paths <- c(
 missing_paths <- required_paths[!file.exists(required_paths)]
 if (length(missing_paths)) {
   warnings <- c(warnings, sprintf(
-    "Missing config files: %s. Copy the templates in `params/` before running the toolbox.",
+    "Missing config files: %s. Copy the templates in params/ before running.",
     paste(basename(missing_paths), collapse = ", ")
   ))
 }
@@ -79,12 +57,12 @@ cat(sprintf("Repository: %s\n", repo_root))
 
 if (length(warnings)) {
   cat("\nWarnings:\n")
-  for (item in warnings) cat(sprintf("  - %s\n", item))
+  for (w in warnings) cat(sprintf("  - %s\n", w))
 }
 
 if (length(issues)) {
   cat("\nFailed checks:\n")
-  for (item in issues) cat(sprintf("  - %s\n", item))
+  for (i in issues) cat(sprintf("  - %s\n", i))
   quit(status = 1)
 }
 

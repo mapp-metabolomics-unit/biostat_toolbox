@@ -5,14 +5,14 @@ Script-based metabolomics analysis utilities for the MAPP biostat workflow.
 ## Supported platforms
 
 `biostat_toolbox` is supported on `macOS` and `Linux`.
-Windows is not part of the supported install path in this repository.
+Windows is not supported.
 
 ## Installation
 
 ### System prerequisites
 
 - `R 4.2.x`
-- A working compiler toolchain for R packages (Xcode CLT on macOS, `build-essential` on Linux)
+- A working compiler toolchain (Xcode CLT on macOS, `build-essential` on Linux)
 - `pandoc` on `PATH`
 
 ### Steps
@@ -25,7 +25,7 @@ cp params/params_template.yaml params/params.yaml
 cp params/params_user_template.yaml params/params_user.yaml
 ```
 
-Edit `params/params.yaml` and `params/params_user.yaml` for your dataset, then verify everything is in order:
+Edit the two param files for your dataset, then verify:
 
 ```bash
 Rscript scripts/check_install.R
@@ -37,58 +37,35 @@ Rscript scripts/check_install.R
 Rscript src/biostat_toolbox.r
 ```
 
-## Useful checks
-
-Check the boxplot helper:
-
-```bash
-Rscript src/plot_selected_boxplots.R --help
-```
-
-Check the current renv state:
-
-```bash
-Rscript -e 'renv::status()'
-```
-
 ## Optional Python helpers
-
-The Python scripts are optional and not required for the main R workflow.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install -r requirements-helpers.txt
+pip install -r requirements-helpers.txt
 python3 src/chem_mapper.py --help
 python3 src/enrich_ik.py --help
 ```
 
 ## Maintainer notes
 
-### How dependencies are managed
+Dependencies are managed with [renv](https://rstudio.github.io/renv/). The `renv.lock` file is the single source of truth — never edit it manually.
 
-All explicit R dependencies are declared in **`packages.yaml`** — this is the single file to edit when adding or removing a package:
-
-```yaml
-cran:
-  - ggplot2
-  - ...
-bioc:
-  - pmp
-github:
-  - mapp-metabolomics-unit/MAPPstructToolbox@<sha>
-```
-
-- `install.R` restores the full environment from `renv.lock` (end-user path).
-- `scripts/check_install.R` reads `packages.yaml` to verify top-level packages are present.
-- `scripts/rebuild_lockfile.R` reads `packages.yaml` to install everything and regenerate `renv.lock` (maintainer path).
-
-### Updating the lockfile
-
-After editing `packages.yaml`, regenerate `renv.lock`:
+### Adding or updating a package
 
 ```bash
-RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript --vanilla scripts/rebuild_lockfile.R --clean
+# CRAN package
+Rscript -e "renv::install('packagename'); renv::snapshot()"
+
+# GitHub package (pin to a specific commit for reproducibility)
+Rscript -e "renv::install('user/repo@commitsha'); renv::snapshot()"
+
+git add renv.lock
+git commit -m "add packagename"
 ```
 
-Use `--clean` for a full rebuild from scratch. Omit it for incremental updates.
+### Rebuilding the environment from scratch
+
+```bash
+Rscript -e "renv::restore()"
+```
