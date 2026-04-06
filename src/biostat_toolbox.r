@@ -606,6 +606,8 @@ VM <- list_df %>% reduce(full_join, by = "feature_id")
 
 VM[VM == "N/A"] <- NA
 
+# We sanitize VM column names using the same snake_case convention used elsewhere
+
 # We add a sanitizing function. first we lowercase all colnames
 
 colnames(VM) <- tolower(colnames(VM))
@@ -744,7 +746,7 @@ SM <- SM %>%
 for (column in names(params$to_combine_vertically)) {
   col_info <- params$to_combine_vertically[[column]]
   col_name <- col_info$factor_name
-  col_name <- tolower(col_name)
+  col_name <- make_clean_names(col_name, case = "snake")
 
   # Initialize aggregated groups with original condition variable
   SM[paste(col_name, "simplified", sep = "_")] <- as.factor(SM[[col_name]])
@@ -776,9 +778,9 @@ if (!is.null(params$to_combine_horizontally$factor_name)) {
   # This line allows us to make sure that the columns will be combined in alphabetical order
   cols <- sort(c(params$to_combine_horizontally$factor_name), decreasing = FALSE)
 
-  # Here we make sure to lower case the column names present in cols
+  # Here we normalize the column names present in cols to snake_case
 
-  cols <- tolower(cols)
+  cols <- make_clean_names(cols, case = "snake")
 
 
   for (n in 1:length(cols)) {
@@ -809,6 +811,7 @@ SM$filename <- rownames(SM)
 SM <- SM[order(row.names(SM)), ]
 SM <- SM[, order(colnames(SM))]
 
+
 # Ponderation stage.
 
 # First we check from the params that the apply_ponderation is set to TRUE and that the factor_name is not NULL
@@ -818,8 +821,8 @@ if (params$actions$ponderate_data$run == "TRUE" && !is.null(params$actions$ponde
   # We print a message to the console to inform the user that the ponderation is being applied and the factor_name used
   print(paste("Ponderation is being applied using the factor:", params$actions$ponderate_data$factor_name))
   
-  factor_name <- params$actions$ponderate_data$factor_name
-  
+  factor_name <- make_clean_names(params$actions$ponderate_data$factor_name, case = "snake")
+   
   X <- X %>%
     as.data.frame() %>%
     rownames_to_column("SampleID") %>%  # Temporarily create a SampleID column from rownames
@@ -928,7 +931,7 @@ if (is.numeric(params$filter_blank$fold_change) == TRUE) {
 
   filter_blank_model <- blank_filter(
     fold_change = params$filter_blank$fold_change,
-    factor_name = tolower(params$filter_blank$factor_name),
+    factor_name = make_clean_names(params$filter_blank$factor_name, case = "snake"),
     blank_label = params$filter_blank$blank_label,
     qc_label = params$filter_blank$qc_label,
     fraction_in_blank = params$filter_blank$fraction_in_blank
@@ -946,7 +949,7 @@ if (is.numeric(params$filter_blank$fold_change) == TRUE) {
 if (params$filter_sample_type$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_type$mode,
-    factor_name = tolower(params$filter_sample_type$factor_name),
+    factor_name = make_clean_names(params$filter_sample_type$factor_name, case = "snake"),
     levels = params$filter_sample_type$levels
   )
 
@@ -959,7 +962,7 @@ if (params$filter_sample_type$mode %in% possible_modes){
 if (params$filter_sample_metadata_one$mode %in% possible_modes){
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_metadata_one$mode,
-    factor_name = tolower(params$filter_sample_metadata_one$factor_name),
+    factor_name = make_clean_names(params$filter_sample_metadata_one$factor_name, case = "snake"),
     levels = params$filter_sample_metadata_one$levels
   )
 
@@ -972,7 +975,7 @@ if (params$filter_sample_metadata_one$mode %in% possible_modes){
 if (params$filter_sample_metadata_two$mode %in% possible_modes) {
   filter_smeta_model <- filter_smeta(
     mode = params$filter_sample_metadata_two$mode,
-    factor_name = tolower(params$filter_sample_metadata_two$factor_name),
+    factor_name = make_clean_names(params$filter_sample_metadata_two$factor_name, case = "snake"),
     levels = params$filter_sample_metadata_two$levels
   )
 
@@ -986,7 +989,7 @@ if (params$filter_sample_metadata_two$mode %in% possible_modes) {
 if (params$filter_variable_metadata_one$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_one$mode,
-    factor_name = tolower(params$filter_variable_metadata_one$factor_name),
+    factor_name = make_clean_names(params$filter_variable_metadata_one$factor_name, case = "snake"),
     levels = params$filter_variable_metadata_one$levels
   )
 
@@ -999,7 +1002,7 @@ if (params$filter_variable_metadata_one$mode %in% possible_modes) {
 if (params$filter_variable_metadata_two$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_two$mode,
-    factor_name = tolower(params$filter_variable_metadata_two$factor_name),
+    factor_name = make_clean_names(params$filter_variable_metadata_two$factor_name, case = "snake"),
     levels = params$filter_variable_metadata_two$levels
   )
 
@@ -1019,7 +1022,7 @@ if (params$filter_variable_metadata_annotated$mode %in% possible_modes) {
 
   filter_vmeta_model <- filter_vmeta(
     mode = params$filter_variable_metadata_annotated$mode,
-    factor_name = tolower(params$filter_variable_metadata_annotated$factor_name),
+    factor_name = make_clean_names(params$filter_variable_metadata_annotated$factor_name, case = "snake"),
     levels = as.character(params$filter_variable_metadata_annotated$levels)
   )
 
@@ -1033,7 +1036,7 @@ if (params$filter_variable_metadata_annotated$mode %in% possible_modes) {
 if (params$filter_variable_metadata_num$mode %in% possible_modes) {
   filter_vmeta_model <- filter_vmeta_num(
     mode = params$filter_variable_metadata_num$mode,
-    factor_name = tolower(params$filter_variable_metadata_num$factor_name),
+    factor_name = make_clean_names(params$filter_variable_metadata_num$factor_name, case = "snake"),
     level = params$filter_variable_metadata_num$level
   )
 
@@ -1103,9 +1106,9 @@ stop("Please check the value of the 'scale_method' parameter in the params file.
 }
 
 
-# We make sure that the params$target$sample_metadata_header is lowercase
+# We make sure that params$target$sample_metadata_header matches cleaned snake_case metadata headers
 
-params$target$sample_metadata_header <- tolower(params$target$sample_metadata_header)
+params$target$sample_metadata_header <- make_clean_names(params$target$sample_metadata_header, case = "snake")
 
 # Here we check if the params$paths$out value exist and use it else we use the default output_directory
 
@@ -4589,24 +4592,8 @@ sink()
 
 message("... and the R script file !")
 
-print(getwd())
-
-setwd(script_dir)
-
-# Print the current wd
-print(getwd())
-
-get_filename <- function() {
-  c_args <- commandArgs()
-  r_file <- c_args[grepl("\\.R$", c_args, ignore.case = TRUE)]
-  r_file <- gsub("--file=", "", r_file)
-  r_file <- normalizePath(r_file)
-  return(r_file)
-}
-
-script_name <- get_filename()
-
-file.copy(script_name, file.path(output_directory, filename_R_script), overwrite = TRUE)
+# script_path is the absolute path resolved at startup — safe to use after any setwd()
+file.copy(script_path, file.path(output_directory, filename_R_script), overwrite = TRUE)
 
 
 message("Done !")
