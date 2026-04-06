@@ -30,6 +30,7 @@ suppressPackageStartupMessages({
   library("tibble")
   library("tidyr")
   library("vegan")
+  library("httr")
   library("webchem")
   library("wesanderson")
   library("WikidataQueryServiceR")
@@ -375,30 +376,62 @@ if (file.exists(file.path(working_directory, "results", "sirius", paste("chebied
   )
 
   # Here we add this step to "standardize" the sirius names to more classical names
-  # We first remove duplicates form the Sirius smiles columns
+  # We first remove duplicates from the Sirius smiles columns
 
   for_chembiid_smiles <- unique(data_sirius$smiles)
 
-  # We then use the get_chebiid function from the chembiid package to get the ChEBI IDs
+  print("Getting ChEBI IDs from SMILES via ChEBI REST API ...")
 
-  print("Getting ChEBI IDs from smiles ...")
+  # Query the new ChEBI backend REST API (replaces the defunct SOAP/webchem route)
+  # Endpoint: https://www.ebi.ac.uk/chebi/backend/api/public/structure_search/
+  get_chebi_from_smiles <- function(smiles_vec) {
+    base_url <- "https://www.ebi.ac.uk/chebi/backend/api/public/structure_search/"
+    n        <- length(smiles_vec)
+    pb       <- txtProgressBar(min = 0, max = n, style = 3, width = 60)
 
-  # Here we make sure that the service is up.
-  # For this we use the ping() function from the webchem package
+    results <- lapply(seq_along(smiles_vec), function(i) {
+      smi <- smiles_vec[[i]]
+      setTxtProgressBar(pb, i)
 
-  if (ping_service("chebi") == FALSE) {
-    print("The ChEBI service is down. We will issue an empty DF. Please try again later.")
-
-    # Here, using the for_chembiid_smiles object, we return an ampty dataframe with the following columns query, chebiid and chebiasciiname
-
-    chebi_ids <- data.frame(query = for_chembiid_smiles, chebiid = NA, chebiasciiname = NA)
-
-  } else {
-    print("The ChEBI service is up.")
-
-    chebi_ids <- get_chebiid(for_chembiid_smiles, from = "smiles", to = "chebiid", match = "best")
-
+      if (is.na(smi) || nchar(trimws(smi)) == 0) {
+        return(data.frame(query = smi, chebiid = NA_character_, chebiasciiname = NA_character_,
+                          stringsAsFactors = FALSE))
+      }
+      res <- tryCatch(
+        httr::GET(base_url, query = list(
+          smiles          = smi,
+          search_type     = "connectivity",
+          three_star_only = "false",
+          size            = 1
+        ), httr::timeout(30)),
+        error = function(e) NULL
+      )
+      if (is.null(res) || httr::status_code(res) != 200) {
+        return(data.frame(query = smi, chebiid = NA_character_, chebiasciiname = NA_character_,
+                          stringsAsFactors = FALSE))
+      }
+      parsed <- tryCatch(jsonlite::fromJSON(httr::content(res, as = "text", encoding = "UTF-8"),
+                                            simplifyVector = FALSE),
+                         error = function(e) NULL)
+      hits <- parsed$results
+      if (is.null(hits) || length(hits) == 0) {
+        return(data.frame(query = smi, chebiid = NA_character_, chebiasciiname = NA_character_,
+                          stringsAsFactors = FALSE))
+      }
+      best <- hits[[1]]$`_source`
+      data.frame(
+        query          = smi,
+        chebiid        = best$chebi_accession,
+        chebiasciiname = best$ascii_name,
+        stringsAsFactors = FALSE
+      )
+    })
+    close(pb)
+    do.call(rbind, results)
   }
+
+  chebi_ids <- get_chebi_from_smiles(for_chembiid_smiles)
+  message(sprintf("ChEBI lookup complete: %d/%d SMILES matched.", sum(!is.na(chebi_ids$chebiid)), nrow(chebi_ids)))
 
 
   # And we merge the data_sirius dataframe with the chebi_ids dataframe
