@@ -52,7 +52,94 @@ convert_yaml_to_single_row_df_with_hash <- function(yaml_content) {
   df$hash <- content_hash
   # Append the timestamp to the dataframe
   df$timestamp <- Sys.time()
+  # Add a human-readable description without making it part of the hash.
+  df$description <- describe_params_for_hash_table(yaml_content)
   return(df)
+}
+
+param_has_value <- function(value) {
+  !is.null(value) && length(value) && !all(is.na(value)) && any(nzchar(trimws(as.character(unlist(value)))))
+}
+
+format_param_vector <- function(value) {
+  if (!param_has_value(value)) {
+    return("")
+  }
+  values <- trimws(as.character(unlist(value, use.names = FALSE)))
+  values <- values[!is.na(values) & nzchar(values)]
+  paste(values, collapse = ", ")
+}
+
+describe_filter_param <- function(filter_param, label) {
+  if (is.null(filter_param) || !param_has_value(filter_param$mode)) {
+    return(character(0))
+  }
+  mode <- as.character(filter_param$mode[1])
+  if (!mode %in% c("include", "exclude", "above", "below")) {
+    return(character(0))
+  }
+  factor_name <- as.character(filter_param$factor_name[1])
+  levels <- format_param_vector(filter_param$levels)
+  level <- format_param_vector(filter_param$level)
+
+  if (mode %in% c("include", "exclude")) {
+    if (!nzchar(factor_name) || !nzchar(levels)) {
+      return(character(0))
+    }
+    return(sprintf("%s %s %s in %s", label, mode, factor_name, levels))
+  }
+  if (!nzchar(factor_name) || !nzchar(level)) {
+    return(character(0))
+  }
+  sprintf("%s %s %s %s", label, factor_name, mode, level)
+}
+
+describe_params_for_hash_table <- function(params) {
+  target <- if (param_has_value(params$target$sample_metadata_header)) {
+    as.character(params$target$sample_metadata_header[1])
+  } else {
+    "selected target"
+  }
+  compared_groups <- format_param_vector(params$colors$all$key)
+  comparison <- if (nzchar(compared_groups)) {
+    sprintf("Compare %s across %s", compared_groups, target)
+  } else {
+    sprintf("Compare groups across %s", target)
+  }
+
+  filters <- c(
+    describe_filter_param(params$filter_sample_type, "samples"),
+    describe_filter_param(params$filter_sample_metadata_one, "samples"),
+    describe_filter_param(params$filter_sample_metadata_two, "samples"),
+    describe_filter_param(params$filter_variable_metadata_one, "features"),
+    describe_filter_param(params$filter_variable_metadata_two, "features"),
+    describe_filter_param(params$filter_variable_metadata_annotated, "features"),
+    describe_filter_param(params$filter_variable_metadata_num, "features")
+  )
+  filter_text <- if (length(filters)) {
+    paste("Filters:", paste(filters, collapse = "; "))
+  } else {
+    "No explicit sample/feature filters"
+  }
+
+  scaling <- if (param_has_value(params$actions$scale_method)) {
+    paste("Scaling:", as.character(params$actions$scale_method[1]))
+  } else {
+    "Scaling: unspecified"
+  }
+
+  npc_terms <- c(
+    if (param_has_value(params$npc_summed_intensity$pathway)) paste("NPC pathway", format_param_vector(params$npc_summed_intensity$pathway)),
+    if (param_has_value(params$npc_summed_intensity$superclass)) paste("NPC superclass", format_param_vector(params$npc_summed_intensity$superclass)),
+    if (param_has_value(params$npc_summed_intensity$class)) paste("NPC class", format_param_vector(params$npc_summed_intensity$class))
+  )
+  npc_text <- if (length(npc_terms)) {
+    paste("NPC plots:", paste(npc_terms, collapse = "; "))
+  } else {
+    "NPC plots: none"
+  }
+
+  paste(comparison, filter_text, scaling, npc_text, sep = ". ")
 }
 
 
@@ -87,7 +174,7 @@ convert_yaml_to_single_row_df_with_hash <- function(yaml_content) {
 append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
   if (file.exists(common_tsv_path)) {
     # Read the existing common dataframe from TSV
-    common_df <- read.table(common_tsv_path, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+    common_df <- read.table(common_tsv_path, sep = "\t", header = TRUE, stringsAsFactors = FALSE, comment.char = "")
 
     # Convert the timestamp column to character for consistency
     common_df$timestamp <- as.character(common_df$timestamp)
@@ -115,9 +202,17 @@ append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
     common_df <- new_row_df
   } else {
     if (new_row_df$hash %in% common_df$hash) {
-      # Update the timestamp for the existing row
+      # Update the existing row so descriptions and newly added columns can be refreshed.
       index <- which(common_df$hash == new_row_df$hash)
-      common_df$timestamp[index] <- new_row_df$timestamp
+      missing_cols <- setdiff(names(new_row_df), names(common_df))
+      for (col in missing_cols) {
+        common_df[[col]] <- NA
+      }
+      missing_cols <- setdiff(names(common_df), names(new_row_df))
+      for (col in missing_cols) {
+        new_row_df[[col]] <- NA
+      }
+      common_df[index, names(new_row_df)] <- new_row_df[1, names(new_row_df)]
       message("Content hash already exists. Timestamp updated.")
     } else {
       # Append the new row if the hash is unique
@@ -125,10 +220,10 @@ append_to_common_df_and_save <- function(new_row_df, common_tsv_path) {
     }
   }
 
-  # Sort columns alphabetically
+  # Sort columns alphabetically while keeping the human-facing columns first.
   common_df <- common_df %>%
-    select(hash, timestamp, everything()) %>%
-    select(hash, timestamp, sort(names(.)[-c(1, 2)]))
+    select(hash, timestamp, any_of("description"), everything()) %>%
+    select(hash, timestamp, any_of("description"), sort(names(.)[!names(.) %in% c("hash", "timestamp", "description")]))
 
   # Save the updated common dataframe as a TSV file
   write.table(common_df, common_tsv_path, sep = "\t", row.names = FALSE, quote = FALSE)

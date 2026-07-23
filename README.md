@@ -37,6 +37,96 @@ Rscript scripts/check_install.R
 Rscript src/biostat_toolbox.r
 ```
 
+You can also run the main script with explicit parameter files:
+
+```bash
+Rscript src/biostat_toolbox.r \
+  --params /path/to/params.yaml \
+  --params-user /path/to/params_user.yaml
+```
+
+PCA, PLSDA, and PCoA share the `ordination` plot styling and sample-label settings from `params.yaml`.
+
+`npc_summed_intensity` can export a boxplot comparing the summed raw intensity of all retained features assigned to selected CANOPUS NPC terms. Leave all term lists empty to skip the plot.
+
+```yaml
+npc_summed_intensity:
+  pathway: []
+  superclass:
+    - "Carotenoids (C40)"
+  class:
+    - "Triacylglycerols"
+    - "Diacylglycerols"
+  min_probability: 0
+  transform: "log10"
+  individual_export: TRUE
+  raw_export: TRUE
+  ratios:
+    enabled: TRUE
+    denominator_level: "pathway"
+    pseudocount: 0
+```
+
+When enabled, outputs are organized under `NPC_summed_intensity/filtered` and written from `DE` after filters and scaling, with individual plots under `NPC_summed_intensity/filtered/individual`. If `raw_export` is `TRUE`, matching outputs are written under `NPC_summed_intensity/raw` from `DE_original` intensities and features but using the filtered sample set, so blanks/QCs excluded by the params stay excluded. For selected `class` and `superclass` terms, `ratios.enabled` also writes pathway-normalized ratio exports and individual ratio plots. The denominator pathway is resolved from the NP-Classifier taxonomy dictionary, not inferred from the observed CANOPUS pathway column.
+
+## Reprocess Existing Stats Runs
+
+Use `src/reprocess_stats.R` to rerun all `biostat_toolbox` stats outputs from archived result folders. Each source folder must contain the original `params.yaml`; if `params_user.yaml` is present, it is reused for input paths while the output root is replaced.
+
+```bash
+Rscript src/reprocess_stats.R \
+  --stats-dir /path/to/results/stats \
+  --output-root /path/to/new/results/stats \
+  --dry-run
+```
+
+Remove `--dry-run` to launch the reprocessing. Outputs are written under params-derived new hash folders in `--output-root`, and `reprocess_manifest.tsv` maps each original hash to the new hash. By default, reprocessing imports missing plot-default sections (`ordination`, `npc_summed_intensity`) from `params/params.yaml`; use `--defaults-yaml /path/to/params.yaml` to choose another defaults file.
+
+To apply shared setting updates, copy and edit `params/params_override_template.yaml`, then pass it as an override YAML:
+
+```yaml
+by_target:
+  ATTRIBUTE_part:
+    colors:
+      all:
+        key:
+          - Yellowpatch
+          - Greenpatch
+          - Uppwing
+          - Lowwing
+          - Body
+        value:
+          - "#C99700"
+          - "#2E8B57"
+          - "#E76F51"
+          - "#4D96D7"
+          - "#7B4FA3"
+  ATTRIBUTE_sex:
+    colors:
+      all:
+        key:
+          - female
+          - male
+        value:
+          - "#B55AA0"
+          - "#3E78B2"
+```
+
+Color overrides are treated as a palette: only keys already present in a source `params.yaml` are updated. This keeps mixed batches safe when different archived runs compare different group subsets.
+
+```bash
+Rscript src/reprocess_stats.R \
+  --stats-dir /path/to/results/stats \
+  --output-root /path/to/new/results/stats \
+  --override-yaml params/params_override.yaml
+```
+
+Useful options:
+
+- `--include` / `--exclude`: comma-separated original hashes to select or skip
+- `--overwrite`: rerun even if the predicted output already contains `DE.rds`
+- `--stop-on-error`: stop at the first failed run
+
 ## Selected Boxplots
 
 Use `src/plot_selected_boxplots.R` to export individual plots for a chosen set of features from an existing `biostat_toolbox` result set.

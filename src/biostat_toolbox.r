@@ -34,6 +34,7 @@ suppressPackageStartupMessages({
   library("webchem")
   library("wesanderson")
   library("WikidataQueryServiceR")
+  library("optparse")
   library("yaml")
   library(MAPPstructToolbox)
 })
@@ -59,6 +60,51 @@ repo_root <- normalizePath(file.path(script_dir, ".."), mustWork = FALSE)
 
 source(file.path(script_dir, "helpers.r"))
 
+option_list <- list(
+  make_option(c("-p", "--params"), default = file.path(repo_root, "params", "params.yaml"), help = "Path to params.yaml [default repo params/params.yaml]"),
+  make_option(c("-u", "--params-user"), default = file.path(repo_root, "params", "params_user.yaml"), help = "Path to params_user.yaml [default repo params/params_user.yaml]")
+)
+
+parser <- OptionParser(option_list = option_list)
+opt <- parse_args(parser)
+
+normalize_option_name <- function(opt, underscore_name, hyphen_name) {
+  if (is.null(opt[[underscore_name]]) && !is.null(opt[[hyphen_name]])) {
+    opt[[underscore_name]] <- opt[[hyphen_name]]
+  }
+  opt
+}
+
+opt <- normalize_option_name(opt, "params_user", "params-user")
+
+resolve_relative_path <- function(path_value, fallback_dir) {
+  if (is.null(path_value) || !length(path_value) || !nzchar(path_value[1])) {
+    return(path_value)
+  }
+  path_value <- path_value[1]
+  if (grepl("^/", path_value)) {
+    return(path_value)
+  }
+  if (file.exists(path_value)) {
+    return(normalizePath(path_value))
+  }
+  candidate <- file.path(fallback_dir, path_value)
+  if (file.exists(candidate)) {
+    return(normalizePath(candidate))
+  }
+  normalizePath(candidate, mustWork = FALSE)
+}
+
+path_to_params <- resolve_relative_path(opt$params, repo_root)
+path_to_params_user <- resolve_relative_path(opt$params_user, repo_root)
+
+if (!file.exists(path_to_params)) {
+  stop(sprintf("params.yaml not found: %s", path_to_params))
+}
+if (!file.exists(path_to_params_user)) {
+  stop(sprintf("params_user.yaml not found: %s", path_to_params_user))
+}
+
 
 ############################################################################################
 ############################################################################################
@@ -75,10 +121,6 @@ if (!exists("params") || !exists("my_path_params")) {
 if (exists("params") && exists("my_path_params")) {
   setwd(my_path_params)
 } ### conserve the path after multiple run
-
-# We call the external params
-path_to_params <- file.path(repo_root, "params", "params.yaml")
-path_to_params_user <- file.path(repo_root, "params", "params_user.yaml")
 
 # Load the params.yaml file
 
@@ -173,6 +215,21 @@ filename_heatmap_pval <- paste(file_prefix, "Heatmap_pval.html", sep = "")
 filename_heatmap_rf <- paste(file_prefix, "Heatmap_rf.html", sep = "")
 filename_interactive_table <- paste(file_prefix, "interactive_table.html", sep = "")
 filename_metaboverse_table <- paste(file_prefix, "metaboverse_table.tsv", sep = "")
+dir_npc_summed_intensity <- paste(file_prefix, "NPC_summed_intensity", sep = "")
+dir_npc_summed_intensity_filtered <- file.path(dir_npc_summed_intensity, "filtered")
+dir_npc_summed_intensity_raw <- file.path(dir_npc_summed_intensity, "raw")
+filename_npc_summed_intensity_pdf <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.pdf")
+filename_npc_summed_intensity_png <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.png")
+filename_npc_summed_intensity_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.tsv")
+filename_npc_summed_intensity_ratio_pdf <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.pdf")
+filename_npc_summed_intensity_ratio_png <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.png")
+filename_npc_summed_intensity_ratio_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.tsv")
+filename_npc_summed_intensity_raw_pdf <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.pdf")
+filename_npc_summed_intensity_raw_png <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.png")
+filename_npc_summed_intensity_raw_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.tsv")
+filename_npc_summed_intensity_ratio_raw_pdf <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.pdf")
+filename_npc_summed_intensity_ratio_raw_png <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.png")
+filename_npc_summed_intensity_ratio_raw_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.tsv")
 filename_params <- paste(file_prefix, "params.yaml", sep = "")
 filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
 filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
@@ -1368,6 +1425,579 @@ if (params$colors$continuous) {
 
 message("Launching PCA calculations ...")
 
+get_param_scalar <- function(value, default) {
+  if (is.null(value) || !length(value) || is.na(value[1])) {
+    return(default)
+  }
+  value[1]
+}
+
+normalize_param_vector <- function(value) {
+  if (is.null(value) || !length(value)) {
+    return(character(0))
+  }
+  value <- as.character(unlist(value, use.names = FALSE))
+  value <- trimws(value)
+  value[!is.na(value) & nzchar(value)]
+}
+
+ordination_point_size <- as.numeric(get_param_scalar(params$ordination$point_size, get_param_scalar(params$pca$point_size, 3)))
+ordination_axis_text_size <- as.numeric(get_param_scalar(params$ordination$axis_text_size, get_param_scalar(params$pca$axis_text_size, 13)))
+ordination_axis_title_size <- as.numeric(get_param_scalar(params$ordination$axis_title_size, get_param_scalar(params$pca$axis_title_size, 15)))
+ordination_legend_text_size <- as.numeric(get_param_scalar(params$ordination$legend_text_size, get_param_scalar(params$pca$legend_text_size, 13)))
+ordination_legend_title_size <- as.numeric(get_param_scalar(params$ordination$legend_title_size, get_param_scalar(params$pca$legend_title_size, 14)))
+ordination_title_size <- as.numeric(get_param_scalar(params$ordination$title_size, get_param_scalar(params$pca$title_size, 14)))
+ordination_export_width <- as.numeric(get_param_scalar(params$ordination$export_width, get_param_scalar(params$pca$export_width, 11)))
+ordination_export_height <- as.numeric(get_param_scalar(params$ordination$export_height, get_param_scalar(params$pca$export_height, 9)))
+ordination_point_alpha <- as.numeric(get_param_scalar(params$ordination$point_alpha, 0.9))
+ordination_points_to_label <- as.character(get_param_scalar(params$ordination$points_to_label, get_param_scalar(params$pca$points_to_label, "none")))
+if (!ordination_points_to_label %in% c("none", "all", "outliers")) {
+  stop("params$ordination$points_to_label must be one of: none, all, outliers")
+}
+ordination_label_size <- as.numeric(get_param_scalar(params$ordination$label_size, 3.88))
+
+publication_ordination_theme <- function() {
+  theme_classic() +
+    theme(
+      plot.title = element_text(size = ordination_title_size, face = "bold", hjust = 0.5, lineheight = 1.05),
+      axis.title = element_text(size = ordination_axis_title_size, face = "bold"),
+      axis.text = element_text(size = ordination_axis_text_size, colour = "black"),
+      axis.line = element_line(linewidth = 0.6, colour = "black"),
+      axis.ticks = element_line(linewidth = 0.6, colour = "black"),
+      axis.ticks.length = grid::unit(0.22, "cm"),
+      strip.background = element_blank(),
+      strip.text = element_text(size = ordination_axis_title_size, face = "bold"),
+      legend.position = "right",
+      legend.title = element_text(size = ordination_legend_title_size, face = "bold"),
+      legend.text = element_text(size = ordination_legend_text_size),
+      legend.key.size = grid::unit(0.7, "cm"),
+      panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(12, 16, 12, 12)
+    )
+}
+
+apply_ordination_point_style <- function(plot_obj) {
+  if (length(plot_obj$layers) > 0) {
+    for (layer_index in seq_along(plot_obj$layers)) {
+      if (inherits(plot_obj$layers[[layer_index]]$geom, "GeomPoint")) {
+        plot_obj$layers[[layer_index]]$aes_params$size <- ordination_point_size
+        plot_obj$layers[[layer_index]]$aes_params$alpha <- ordination_point_alpha
+        plot_obj$layers[[layer_index]]$aes_params$shape <- 16
+        plot_obj$layers[[layer_index]]$aes_params$stroke <- 0
+      }
+    }
+  }
+  plot_obj
+}
+
+ordination_colour_scale <- function() {
+  list(
+    scale_colour_manual(name = "Groups", values = custom_colors),
+    guides(colour = guide_legend(override.aes = list(size = ordination_point_size + 1, alpha = 1, shape = 16, stroke = 0)))
+  )
+}
+
+#################################################################################################
+#################################################################################################
+##### NPC summed-intensity plots ################################################################
+
+npc_summed_intensity_params <- params$npc_summed_intensity
+if (is.null(npc_summed_intensity_params)) {
+  npc_summed_intensity_params <- list()
+}
+npc_plot_pathway <- normalize_param_vector(npc_summed_intensity_params$pathway)
+npc_plot_superclass <- normalize_param_vector(npc_summed_intensity_params$superclass)
+npc_plot_class <- normalize_param_vector(npc_summed_intensity_params$class)
+npc_plot_terms <- data.frame(
+  npc_level = c(
+    rep("pathway", length(npc_plot_pathway)),
+    rep("superclass", length(npc_plot_superclass)),
+    rep("class", length(npc_plot_class))
+  ),
+  npc_term = c(npc_plot_pathway, npc_plot_superclass, npc_plot_class),
+  stringsAsFactors = FALSE
+)
+
+if (nrow(npc_plot_terms) > 0) {
+  message("Preparing NPC summed-intensity plots ...")
+
+  npc_min_probability <- as.numeric(get_param_scalar(npc_summed_intensity_params$min_probability, 0))
+  npc_transform <- as.character(get_param_scalar(npc_summed_intensity_params$transform, "log10"))
+  npc_individual_export <- as.logical(get_param_scalar(npc_summed_intensity_params$individual_export, TRUE))
+  npc_ratio_params <- npc_summed_intensity_params$ratios
+  if (is.null(npc_ratio_params)) {
+    npc_ratio_params <- list()
+  }
+  npc_ratio_enabled <- as.logical(get_param_scalar(npc_ratio_params$enabled, TRUE))
+  npc_ratio_denominator_level <- as.character(get_param_scalar(npc_ratio_params$denominator_level, "pathway"))
+  npc_ratio_pseudocount <- as.numeric(get_param_scalar(npc_ratio_params$pseudocount, 0))
+  npc_export_raw <- as.logical(get_param_scalar(npc_summed_intensity_params$raw_export, TRUE))
+  if (!npc_transform %in% c("log10", "none")) {
+    stop("params$npc_summed_intensity$transform must be one of: log10, none")
+  }
+  if (npc_ratio_denominator_level != "pathway") {
+    stop("params$npc_summed_intensity$ratios$denominator_level currently supports only: pathway")
+  }
+
+  npc_level_columns <- c(
+    pathway = "canopus_npc_pathway",
+    superclass = "canopus_npc_superclass",
+    class = "canopus_npc_class"
+  )
+  npc_probability_columns <- c(
+    pathway = "canopus_npc_pathway_probability",
+    superclass = "canopus_npc_superclass_probability",
+    class = "canopus_npc_class_probability"
+  )
+
+  npc_treat_npclassifier_json <- function(taxonomy) {
+    taxonomy_classes <- taxonomy$Class %>%
+      rbind()
+    rownames(taxonomy_classes) <- "id_class"
+    taxonomy_classes <- taxonomy_classes %>%
+      t() %>%
+      data.frame() %>%
+      mutate(
+        class = rownames(.),
+        id_class = as.numeric(id_class)
+      )
+
+    taxonomy_superclasses <- taxonomy$Superclass %>%
+      rbind()
+    rownames(taxonomy_superclasses) <- "id_superclass"
+    taxonomy_superclasses <- taxonomy_superclasses %>%
+      t() %>%
+      data.frame() %>%
+      mutate(
+        superclass = rownames(.),
+        id_superclass = as.numeric(id_superclass)
+      )
+
+    taxonomy_pathways <- taxonomy$Pathway %>%
+      rbind()
+    rownames(taxonomy_pathways) <- "id_pathway"
+    taxonomy_pathways <- taxonomy_pathways %>%
+      t() %>%
+      data.frame() %>%
+      mutate(
+        pathway = rownames(.),
+        id_pathway = as.numeric(id_pathway)
+      )
+
+    taxonomy_hierarchy_class <- taxonomy$Class_hierarchy
+    id_pathway <- list()
+    id_superclass <- list()
+    id_class <- list()
+
+    for (i in seq_len(length(taxonomy_hierarchy_class))) {
+      id_pathway[[i]] <- taxonomy_hierarchy_class[[i]]$Pathway
+      id_superclass[[i]] <- taxonomy_hierarchy_class[[i]]$Superclass
+      id_class[[i]] <- names(taxonomy_hierarchy_class[i])
+    }
+
+    taxonomy_hierarchy_by_class <- cbind(id_pathway, id_superclass, id_class) %>%
+      data.frame() %>%
+      mutate(id_class = as.numeric(id_class)) %>%
+      unnest(id_superclass) %>%
+      unnest(id_pathway)
+
+    taxonomy_hierarchy_superclass <- taxonomy$Super_hierarchy
+    id_pathway_2 <- list()
+    id_superclass <- list()
+
+    for (i in seq_len(length(taxonomy_hierarchy_superclass))) {
+      id_pathway_2[[i]] <- taxonomy_hierarchy_superclass[[i]]$Pathway
+      id_superclass[[i]] <- names(taxonomy_hierarchy_superclass[i])
+    }
+
+    taxonomy_hierarchy_by_superclass <- cbind(id_pathway_2, id_superclass) %>%
+      data.frame() %>%
+      mutate(id_superclass = as.numeric(id_superclass)) %>%
+      unnest(id_pathway_2)
+
+    full_join(taxonomy_hierarchy_by_class, taxonomy_classes) %>%
+      full_join(., taxonomy_superclasses) %>%
+      full_join(., taxonomy_pathways) %>%
+      distinct(class, superclass, pathway)
+  }
+
+  npc_taxonomy <- tryCatch(
+    {
+      npc_taxonomy_url <- "https://raw.githubusercontent.com/mwang87/NP-Classifier/master/Classifier/dict/index_v1.json"
+      npc_treat_npclassifier_json(jsonlite::fromJSON(npc_taxonomy_url))
+    },
+    error = function(e) {
+      warning(sprintf("Could not load NP-Classifier taxonomy; NPC ratio plots will be skipped. Error: %s", e$message))
+      NULL
+    }
+  )
+
+  npc_safe_file_part <- function(value) {
+    value <- tolower(as.character(value))
+    value <- gsub("[^a-z0-9]+", "_", value)
+    gsub("^_|_$", "", value)
+  }
+
+  npc_terms_to_pathway <- function(npc_level, npc_term) {
+    if (is.null(npc_taxonomy)) {
+      return(character(0))
+    }
+    if (npc_level == "class") {
+      canonical_paths <- npc_taxonomy$pathway[npc_taxonomy$class == npc_term]
+    } else if (npc_level == "superclass") {
+      canonical_paths <- npc_taxonomy$pathway[npc_taxonomy$superclass == npc_term]
+    } else {
+      canonical_paths <- npc_term
+    }
+    canonical_paths <- unique(as.character(canonical_paths[!is.na(canonical_paths)]))
+    canonical_paths[nzchar(canonical_paths)]
+  }
+
+  npc_add_taxonomy_pathway <- function(variable_meta) {
+    variable_meta$npc_taxonomy_pathway <- if ("canopus_npc_pathway" %in% colnames(variable_meta)) {
+      as.character(variable_meta$canopus_npc_pathway)
+    } else {
+      rep(NA_character_, nrow(variable_meta))
+    }
+    if (is.null(npc_taxonomy)) {
+      return(variable_meta)
+    }
+    if ("canopus_npc_class" %in% colnames(variable_meta)) {
+      class_lookup <- npc_taxonomy %>%
+        filter(!is.na(class), !is.na(pathway)) %>%
+        distinct(class, pathway) %>%
+        group_by(class) %>%
+        summarise(pathway = paste(unique(pathway), collapse = " x "), .groups = "drop")
+      class_match <- match(variable_meta$canopus_npc_class, class_lookup$class)
+      class_has_match <- !is.na(class_match)
+      variable_meta$npc_taxonomy_pathway[class_has_match] <- class_lookup$pathway[class_match[class_has_match]]
+    }
+    if ("canopus_npc_superclass" %in% colnames(variable_meta)) {
+      superclass_lookup <- npc_taxonomy %>%
+        filter(!is.na(superclass), !is.na(pathway)) %>%
+        distinct(superclass, pathway) %>%
+        group_by(superclass) %>%
+        summarise(pathway = paste(unique(pathway), collapse = " x "), .groups = "drop")
+      missing_taxonomy_path <- is.na(variable_meta$npc_taxonomy_pathway) | !nzchar(variable_meta$npc_taxonomy_pathway)
+      superclass_match <- match(variable_meta$canopus_npc_superclass, superclass_lookup$superclass)
+      superclass_has_match <- missing_taxonomy_path & !is.na(superclass_match)
+      variable_meta$npc_taxonomy_pathway[superclass_has_match] <- superclass_lookup$pathway[superclass_match[superclass_has_match]]
+    }
+    variable_meta
+  }
+
+  npc_pathway_contains <- function(values, pathway) {
+    pathway_pattern <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", pathway)
+    grepl(paste0("(^| x )", pathway_pattern, "($| x )"), values)
+  }
+
+  npc_write_table <- function(table_df, filename) {
+    dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
+    write.table(table_df, file = filename, sep = "\t", row.names = FALSE, quote = FALSE)
+  }
+
+  npc_save_plot <- function(plot_obj, filename) {
+    dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
+    ggsave(plot = plot_obj, filename = filename, width = ordination_export_width, height = ordination_export_height, units = "in", dpi = 300)
+  }
+
+  npc_apply_plot_intensity <- function(plot_df) {
+    plot_df$plot_intensity <- if (npc_transform == "log10") {
+      log10(plot_df$summed_intensity + 1)
+    } else {
+      plot_df$summed_intensity
+    }
+    plot_df
+  }
+
+  npc_intensity_plot <- function(plot_df, plot_title, plot_subtitle, facet = TRUE) {
+    plot_obj <- ggplot(plot_df, aes(x = group, y = plot_intensity, color = group, fill = group)) +
+      geom_boxplot(width = 0.65, alpha = 0.22, outlier.shape = NA, linewidth = 0.55) +
+      geom_jitter(width = 0.12, size = ordination_point_size * 0.8, alpha = ordination_point_alpha, shape = 16, stroke = 0) +
+      scale_colour_manual(name = "Groups", values = custom_colors) +
+      scale_fill_manual(name = "Groups", values = custom_colors) +
+      labs(
+        title = plot_title,
+        subtitle = plot_subtitle,
+        x = params$target$sample_metadata_header,
+        y = if (npc_transform == "log10") "log10 summed intensity + 1" else "Summed intensity"
+      ) +
+      publication_ordination_theme() +
+      theme(
+        axis.text.x = element_text(size = ordination_axis_text_size, colour = "black", angle = 30, hjust = 1),
+        legend.position = "none"
+      )
+    if (facet) {
+      plot_obj <- plot_obj + facet_wrap(~ npc_label, scales = "free_y")
+    }
+    plot_obj
+  }
+
+  npc_ratio_plot <- function(plot_df, plot_title, plot_subtitle, facet = TRUE) {
+    plot_obj <- ggplot(plot_df, aes(x = group, y = ratio, color = group, fill = group)) +
+      geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.35) +
+      geom_boxplot(width = 0.65, alpha = 0.22, outlier.shape = NA, linewidth = 0.55) +
+      geom_jitter(width = 0.12, size = ordination_point_size * 0.8, alpha = ordination_point_alpha, shape = 16, stroke = 0) +
+      scale_colour_manual(name = "Groups", values = custom_colors) +
+      scale_fill_manual(name = "Groups", values = custom_colors) +
+      labs(
+        title = plot_title,
+        subtitle = plot_subtitle,
+        x = params$target$sample_metadata_header,
+        y = "Fraction of corresponding NPC pathway summed intensity"
+      ) +
+      publication_ordination_theme() +
+      theme(
+        axis.text.x = element_text(size = ordination_axis_text_size, colour = "black", angle = 30, hjust = 1),
+        legend.position = "none"
+      )
+    if (facet) {
+      plot_obj <- plot_obj + facet_wrap(~ ratio_label, scales = "free_y")
+    }
+    plot_obj
+  }
+
+  npc_process_source <- function(npc_data_matrix, npc_sample_meta, npc_variable_meta, npc_source_label, filenames, file_suffix) {
+    npc_variable_meta <- npc_add_taxonomy_pathway(npc_variable_meta)
+    npc_summed_intensity_tables <- list()
+    npc_feature_sets <- list()
+
+    for (npc_term_index in seq_len(nrow(npc_plot_terms))) {
+      npc_level <- npc_plot_terms$npc_level[npc_term_index]
+      npc_term <- npc_plot_terms$npc_term[npc_term_index]
+      npc_column <- npc_level_columns[[npc_level]]
+      npc_probability_column <- npc_probability_columns[[npc_level]]
+
+      if (!npc_column %in% colnames(npc_variable_meta)) {
+        warning(sprintf("Skipping %s NPC %s '%s': missing column %s.", npc_source_label, npc_level, npc_term, npc_column))
+        next
+      }
+      npc_probability_values <- if (npc_probability_column %in% colnames(npc_variable_meta)) {
+        suppressWarnings(as.numeric(npc_variable_meta[[npc_probability_column]]))
+      } else {
+        rep(1, nrow(npc_variable_meta))
+      }
+      npc_feature_keep <- !is.na(npc_variable_meta[[npc_column]]) &
+        npc_variable_meta[[npc_column]] == npc_term &
+        !is.na(npc_probability_values) &
+        npc_probability_values >= npc_min_probability
+      npc_feature_ids <- as.character(npc_variable_meta$feature_id[npc_feature_keep])
+      npc_feature_ids <- intersect(npc_feature_ids, colnames(npc_data_matrix))
+
+      if (!length(npc_feature_ids)) {
+        warning(sprintf("No retained features matched %s NPC %s '%s'.", npc_source_label, npc_level, npc_term))
+        next
+      }
+
+      npc_summed_values <- rowSums(npc_data_matrix[, npc_feature_ids, drop = FALSE], na.rm = TRUE)
+      npc_label <- paste0("NPC ", npc_level, ": ", npc_term)
+      npc_term_df <- data.frame(
+        sample_id = npc_sample_meta$sample_id,
+        group = as.character(npc_sample_meta[[params$target$sample_metadata_header]]),
+        data_source = npc_source_label,
+        npc_level = npc_level,
+        npc_term = npc_term,
+        npc_label = npc_label,
+        n_features = length(npc_feature_ids),
+        summed_intensity = npc_summed_values,
+        stringsAsFactors = FALSE
+      )
+      npc_summed_intensity_tables[[length(npc_summed_intensity_tables) + 1]] <- npc_term_df
+      npc_feature_sets[[length(npc_feature_sets) + 1]] <- list(
+        npc_level = npc_level,
+        npc_term = npc_term,
+        npc_label = npc_label,
+        feature_ids = npc_feature_ids
+      )
+    }
+
+    if (!length(npc_summed_intensity_tables)) {
+      warning(sprintf("NPC summed-intensity plotting was requested for %s data, but no selected terms matched retained features.", npc_source_label))
+      return(invisible(NULL))
+    }
+
+    npc_summed_intensity_df <- bind_rows(npc_summed_intensity_tables)
+    npc_group_levels <- names(custom_colors)[names(custom_colors) %in% unique(npc_summed_intensity_df$group)]
+    if (!length(npc_group_levels)) {
+      npc_group_levels <- sort(unique(npc_summed_intensity_df$group))
+    }
+    npc_summed_intensity_df$group <- factor(npc_summed_intensity_df$group, levels = npc_group_levels)
+    npc_summed_intensity_df <- npc_apply_plot_intensity(npc_summed_intensity_df)
+
+    npc_summed_intensity_plot <- npc_intensity_plot(
+      npc_summed_intensity_df,
+      paste("Summed NPC-classified feature intensity for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+      paste("Comparison across:", params$target$sample_metadata_header),
+      facet = TRUE
+    )
+
+    npc_write_table(npc_summed_intensity_df, filenames$intensity_table)
+    npc_save_plot(npc_summed_intensity_plot, filenames$intensity_pdf)
+    npc_save_plot(npc_summed_intensity_plot, filenames$intensity_png)
+
+    if (isTRUE(npc_individual_export)) {
+      for (npc_label in unique(npc_summed_intensity_df$npc_label)) {
+        npc_individual_df <- npc_summed_intensity_df[npc_summed_intensity_df$npc_label == npc_label, , drop = FALSE]
+        npc_file_suffix <- paste(npc_safe_file_part(npc_individual_df$npc_level[1]), npc_safe_file_part(npc_individual_df$npc_term[1]), sep = "_")
+        npc_individual_plot <- npc_intensity_plot(
+          npc_individual_df,
+          npc_label,
+          paste("Comparison across:", params$target$sample_metadata_header),
+          facet = FALSE
+        )
+        npc_write_table(npc_individual_df, file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".tsv")))
+        npc_save_plot(npc_individual_plot, file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".pdf")))
+        npc_save_plot(npc_individual_plot, file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".png")))
+      }
+    }
+
+    if (isTRUE(npc_ratio_enabled)) {
+      npc_ratio_tables <- list()
+      for (npc_feature_set in npc_feature_sets) {
+        if (npc_feature_set$npc_level == "pathway") {
+          next
+        }
+        npc_term_variable_meta <- npc_variable_meta[npc_feature_set$feature_ids, , drop = FALSE]
+        npc_denominator_terms <- npc_terms_to_pathway(npc_feature_set$npc_level, npc_feature_set$npc_term)
+        if (!length(npc_denominator_terms)) {
+          warning(sprintf("Skipping %s NPC ratio for %s: no NP-Classifier pathway found.", npc_source_label, npc_feature_set$npc_label))
+          next
+        }
+        npc_denominator_term <- npc_denominator_terms[1]
+        if (length(npc_denominator_terms) > 1) {
+          warning(sprintf(
+            "NPC taxonomy maps %s to multiple pathways; using '%s' as denominator.",
+            npc_feature_set$npc_label,
+            npc_denominator_term
+          ))
+        }
+        npc_pathway_probability_values <- if ("canopus_npc_pathway_probability" %in% colnames(npc_variable_meta)) {
+          suppressWarnings(as.numeric(npc_variable_meta$canopus_npc_pathway_probability))
+        } else {
+          rep(1, nrow(npc_variable_meta))
+        }
+        npc_denominator_keep <- !is.na(npc_variable_meta$npc_taxonomy_pathway) &
+          npc_pathway_contains(npc_variable_meta$npc_taxonomy_pathway, npc_denominator_term) &
+          !is.na(npc_pathway_probability_values) &
+          npc_pathway_probability_values >= npc_min_probability
+        npc_denominator_feature_ids <- as.character(npc_variable_meta$feature_id[npc_denominator_keep])
+        npc_denominator_feature_ids <- intersect(npc_denominator_feature_ids, colnames(npc_data_matrix))
+        if (!length(npc_denominator_feature_ids)) {
+          warning(sprintf("Skipping %s NPC ratio for %s: denominator pathway '%s' has no retained features.", npc_source_label, npc_feature_set$npc_label, npc_denominator_term))
+          next
+        }
+
+        npc_ratio_numerator_feature_ids <- as.character(npc_term_variable_meta$feature_id)
+        npc_ratio_numerator_feature_ids <- intersect(npc_ratio_numerator_feature_ids, colnames(npc_data_matrix))
+        if (!length(npc_ratio_numerator_feature_ids)) {
+          warning(sprintf("Skipping %s NPC ratio for %s: no numerator features remained inside denominator pathway '%s'.", npc_source_label, npc_feature_set$npc_label, npc_denominator_term))
+          next
+        }
+
+        npc_numerator_values <- rowSums(npc_data_matrix[, npc_ratio_numerator_feature_ids, drop = FALSE], na.rm = TRUE)
+        npc_denominator_values <- rowSums(npc_data_matrix[, npc_denominator_feature_ids, drop = FALSE], na.rm = TRUE)
+        npc_ratio_denominator <- npc_denominator_values + npc_ratio_pseudocount
+        npc_ratio_values <- ifelse(npc_ratio_denominator > 0, (npc_numerator_values + npc_ratio_pseudocount) / npc_ratio_denominator, NA_real_)
+        npc_ratio_tables[[length(npc_ratio_tables) + 1]] <- data.frame(
+          sample_id = npc_sample_meta$sample_id,
+          group = as.character(npc_sample_meta[[params$target$sample_metadata_header]]),
+          data_source = npc_source_label,
+          numerator_level = npc_feature_set$npc_level,
+          numerator_term = npc_feature_set$npc_term,
+          denominator_level = "pathway",
+          denominator_term = npc_denominator_term,
+          ratio_label = paste0(npc_feature_set$npc_label, " / NPC pathway: ", npc_denominator_term),
+          numerator_n_features = length(npc_ratio_numerator_feature_ids),
+          denominator_n_features = length(npc_denominator_feature_ids),
+          numerator_summed_intensity = npc_numerator_values,
+          denominator_summed_intensity = npc_denominator_values,
+          ratio = npc_ratio_values,
+          stringsAsFactors = FALSE
+        )
+      }
+
+      if (length(npc_ratio_tables)) {
+        npc_ratio_df <- bind_rows(npc_ratio_tables)
+        npc_ratio_df$group <- factor(npc_ratio_df$group, levels = npc_group_levels)
+        npc_ratio_combined_plot <- npc_ratio_plot(
+          npc_ratio_df,
+          paste("NPC class/superclass pathway-normalized intensity for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+          paste("Comparison across:", params$target$sample_metadata_header),
+          facet = TRUE
+        )
+        npc_write_table(npc_ratio_df, filenames$ratio_table)
+        npc_save_plot(npc_ratio_combined_plot, filenames$ratio_pdf)
+        npc_save_plot(npc_ratio_combined_plot, filenames$ratio_png)
+
+        if (isTRUE(npc_individual_export)) {
+          for (npc_ratio_label in unique(npc_ratio_df$ratio_label)) {
+            npc_individual_ratio_df <- npc_ratio_df[npc_ratio_df$ratio_label == npc_ratio_label, , drop = FALSE]
+            npc_ratio_file_suffix <- paste(
+              npc_safe_file_part(npc_individual_ratio_df$numerator_level[1]),
+              npc_safe_file_part(npc_individual_ratio_df$numerator_term[1]),
+              "over",
+              npc_safe_file_part(npc_individual_ratio_df$denominator_term[1]),
+              sep = "_"
+            )
+            npc_individual_ratio_plot <- npc_ratio_plot(
+              npc_individual_ratio_df,
+              npc_ratio_label,
+              paste("Comparison across:", params$target$sample_metadata_header),
+              facet = FALSE
+            )
+            npc_write_table(npc_individual_ratio_df, file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".tsv")))
+            npc_save_plot(npc_individual_ratio_plot, file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".pdf")))
+            npc_save_plot(npc_individual_ratio_plot, file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".png")))
+          }
+        }
+      }
+    }
+  }
+
+  npc_filtered_data_matrix <- DE$data
+  npc_filtered_sample_meta <- DE$sample_meta[rownames(npc_filtered_data_matrix), , drop = FALSE]
+  npc_filtered_variable_meta <- DE$variable_meta[as.character(colnames(npc_filtered_data_matrix)), , drop = FALSE]
+  npc_process_source(
+    npc_filtered_data_matrix,
+    npc_filtered_sample_meta,
+    npc_filtered_variable_meta,
+    "filtered",
+    list(
+      intensity_table = filename_npc_summed_intensity_table,
+      intensity_pdf = filename_npc_summed_intensity_pdf,
+      intensity_png = filename_npc_summed_intensity_png,
+      ratio_table = filename_npc_summed_intensity_ratio_table,
+      ratio_pdf = filename_npc_summed_intensity_ratio_pdf,
+      ratio_png = filename_npc_summed_intensity_ratio_png,
+      individual_dir = file.path(dir_npc_summed_intensity_filtered, "individual"),
+      individual_ratio_dir = file.path(dir_npc_summed_intensity_filtered, "individual_ratio")
+    ),
+    ""
+  )
+
+  if (isTRUE(npc_export_raw)) {
+    npc_raw_sample_ids <- intersect(rownames(DE$data), rownames(DE_original$data))
+    npc_raw_data_matrix <- DE_original$data[npc_raw_sample_ids, , drop = FALSE]
+    npc_process_source(
+      npc_raw_data_matrix,
+      DE$sample_meta[npc_raw_sample_ids, , drop = FALSE],
+      DE_original$variable_meta[as.character(colnames(DE_original$data)), , drop = FALSE],
+      "raw",
+      list(
+        intensity_table = filename_npc_summed_intensity_raw_table,
+        intensity_pdf = filename_npc_summed_intensity_raw_pdf,
+        intensity_png = filename_npc_summed_intensity_raw_png,
+        ratio_table = filename_npc_summed_intensity_ratio_raw_table,
+        ratio_pdf = filename_npc_summed_intensity_ratio_raw_pdf,
+        ratio_png = filename_npc_summed_intensity_ratio_raw_png,
+        individual_dir = file.path(dir_npc_summed_intensity_raw, "individual"),
+        individual_ratio_dir = file.path(dir_npc_summed_intensity_raw, "individual_ratio")
+      ),
+      "_raw"
+    )
+  }
+}
 
 pca_seq_model <- filter_na_count(threshold = 1, factor_name = "sample_type") +
   knn_impute(neighbours = 5) +
@@ -1387,9 +2017,10 @@ pca_object <- pca_seq_result[length(pca_seq_result)]
 pca_scores_plot <- pca_scores_plot(
   factor_name = params$target$sample_metadata_header,
   label_factor = "sample_id",
+  label_size = ordination_label_size,
   ellipse_type = "t",
   ellipse_confidence = 0.9,
-  points_to_label = "all"
+  points_to_label = ordination_points_to_label
 )
 
 # We keep the PCA scores
@@ -1406,13 +2037,13 @@ pca_plot <- chart_plot(pca_scores_plot, pca_object)
 
 
 fig_PCA <- pca_plot +
-  theme_classic() +
   facet_wrap(~ pca_plot$labels$title) +
-  ggtitle(title_PCA)
+  ggtitle(title_PCA) +
+  publication_ordination_theme()
 
 
-fig_PCA <- fig_PCA +
-  scale_colour_manual(name = "Groups", values = custom_colors)
+fig_PCA <- fig_PCA + ordination_colour_scale()
+fig_PCA <- apply_ordination_point_style(fig_PCA)
 
 
 
@@ -1441,8 +2072,8 @@ fig_PCA3D <- fig_PCA3D %>% layout(
 
 # The files are exported
 
-ggsave(plot = fig_PCA, filename = filename_PCA, width = 10, height = 10)
-ggsave(plot = fig_PCA, filename = filename_PCA_svg, width = 10, height = 10)
+ggsave(plot = fig_PCA, filename = filename_PCA, width = ordination_export_width, height = ordination_export_height, units = "in")
+ggsave(plot = fig_PCA, filename = filename_PCA_svg, width = ordination_export_width, height = ordination_export_height, units = "in")
 
 
 if (params$operating_system$system == "unix") {
@@ -1534,18 +2165,26 @@ if (params$actions$run_PLSDA == "TRUE") {
   rownames(plsda_object$vip) <- vip_variable_meta$feature_id_full
 
 
-  C <- pls_scores_plot(factor_name = params$target$sample_metadata_header)
+  C <- pls_scores_plot(
+    factor_name = params$target$sample_metadata_header,
+    label_factor = "sample_id",
+    label_size = ordination_label_size,
+    points_to_label = ordination_points_to_label
+  )
 
   plsda_plot <- chart_plot(C, plsda_object)
 
 
 
 
-  fig_PLSDA <- plsda_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA)
+  fig_PLSDA <- plsda_plot +
+    facet_wrap(~ plsda_plot$labels$title) +
+    ggtitle(title_PLSDA) +
+    publication_ordination_theme()
 
 
-  fig_PLSDA <- fig_PLSDA +
-    scale_colour_manual(name = "Groups", values = custom_colors)
+  fig_PLSDA <- fig_PLSDA + ordination_colour_scale()
+  fig_PLSDA <- apply_ordination_point_style(fig_PLSDA)
 
 
   # We output the feature importance
@@ -1592,7 +2231,7 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   # The plots are exported
 
-  ggsave(plot = fig_PLSDA, filename = filename_PLSDA, width = 10, height = 10)
+  ggsave(plot = fig_PLSDA, filename = filename_PLSDA, width = ordination_export_width, height = ordination_export_height, units = "in")
   ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP_plot, width = 20, height = 10)
 
   # We export the loadings
@@ -1730,12 +2369,29 @@ cols <- cols[, 1]
 fig_PCoA <- ggplot(data_PCOA_merge, aes(x = X1, y = X2, color = cols)) +
   geom_point() +
   ggtitle(title_PCoA) +
-  theme_classic()
+  publication_ordination_theme()
+
+if (ordination_points_to_label != "none") {
+  pcoa_label_data <- data_PCOA_merge
+  if (ordination_points_to_label == "outliers") {
+    pcoa_distance_to_center <- sqrt((data_PCOA_merge$X1 - mean(data_PCOA_merge$X1, na.rm = TRUE))^2 + (data_PCOA_merge$X2 - mean(data_PCOA_merge$X2, na.rm = TRUE))^2)
+    pcoa_outlier_threshold <- stats::quantile(pcoa_distance_to_center, probs = 0.9, na.rm = TRUE)
+    pcoa_label_data <- data_PCOA_merge[pcoa_distance_to_center >= pcoa_outlier_threshold, , drop = FALSE]
+  }
+  fig_PCoA <- fig_PCoA +
+    ggrepel::geom_text_repel(
+      data = pcoa_label_data,
+      aes(label = sample_name),
+      size = ordination_label_size,
+      show.legend = FALSE,
+      max.overlaps = Inf
+    )
+}
 
 
 
-fig_PCoA <- fig_PCoA +
-  scale_colour_manual(name = "Groups", values = custom_colors)
+fig_PCoA <- fig_PCoA + ordination_colour_scale()
+fig_PCoA <- apply_ordination_point_style(fig_PCoA)
 
 
 
@@ -1761,7 +2417,7 @@ fig_PCoA3D <- fig_PCoA3D %>% layout(
 
 # The files are exported
 
-ggsave(plot = fig_PCoA, filename = filename_PCoA, width = 10, height = 10)
+ggsave(plot = fig_PCoA, filename = filename_PCoA, width = ordination_export_width, height = ordination_export_height, units = "in")
 
 
 if (params$operating_system$system == "unix") {

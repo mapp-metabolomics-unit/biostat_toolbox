@@ -1,0 +1,36 @@
+# Copy this file to params/params_override.yaml and edit only the settings you
+# want to change during stats reprocessing. Values here are recursively merged
+# into each archived params.yaml before rerunning biostat_toolbox.
+#
+# Put settings at the top level to apply them to every reprocessed run.
+# For settings that depend on the analysis target, such as group colors, use
+# by_target with keys matching target.sample_metadata_header. Color overrides
+# behave as a palette: only keys already present in an archived params.yaml are
+# updated, so mixed batches can safely include analyses with different groups.
+
+by_target:
+  ATTRIBUTE_part:
+    colors:
+      all:
+        key:
+          - Yellowpatch
+          - Greenpatch
+          - Uppwing
+          - Lowwing
+          - Body
+        value:
+          - "#C99700"
+          - "#2E8B57"
+          - "#E76F51"
+          - "#4D96D7"
+          - "#7B4FA3"
+
+  ATTRIBUTE_sex:
+    colors:
+      all:
+        key:
+          - female
+          - male
+        value:
+          - "#B55AA0"
+          - "#3E78B2"

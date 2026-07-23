@@ -101,6 +101,40 @@ colors:
       - "darkblue" # 'WT'
 
 
+ordination:
+  points_to_label: "none" # "none", "all", or "outliers"
+  label_size: 3.88
+  point_size: 3
+  axis_text_size: 13
+  axis_title_size: 15
+  legend_text_size: 13
+  legend_title_size: 14
+  title_size: 14
+  export_width: 11
+  export_height: 9
+
+npc_summed_intensity:
+  # Plot summed raw intensity for features matching selected CANOPUS NPC terms.
+  # Leave pathway, superclass, and class empty to skip this plot.
+  # Example:
+  # superclass:
+  #   - "Carotenoids (C40)"
+  # class:
+  #   - "Triacylglycerols"
+  #   - "Diacylglycerols"
+  pathway: []
+  superclass: []
+  class: []
+  min_probability: 0
+  transform: "log10" # "log10" or "none"
+  individual_export: TRUE
+  raw_export: TRUE
+  ratios:
+    enabled: TRUE
+    denominator_level: "pathway"
+    pseudocount: 0
+
+
 # Only colors without a numeric (for some reason iheatmapr appears to not like these)
 
 # http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
