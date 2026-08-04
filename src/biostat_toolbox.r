@@ -220,16 +220,26 @@ dir_npc_summed_intensity_filtered <- file.path(dir_npc_summed_intensity, "filter
 dir_npc_summed_intensity_raw <- file.path(dir_npc_summed_intensity, "raw")
 filename_npc_summed_intensity_pdf <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.pdf")
 filename_npc_summed_intensity_png <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.png")
+filename_npc_summed_intensity_html <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.html")
 filename_npc_summed_intensity_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity.tsv")
+filename_npc_summed_intensity_stats_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_stats.tsv")
+filename_npc_summed_intensity_driver_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_feature_drivers.tsv")
 filename_npc_summed_intensity_ratio_pdf <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.pdf")
 filename_npc_summed_intensity_ratio_png <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.png")
+filename_npc_summed_intensity_ratio_html <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.html")
 filename_npc_summed_intensity_ratio_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio.tsv")
+filename_npc_summed_intensity_ratio_stats_table <- file.path(dir_npc_summed_intensity_filtered, "NPC_summed_intensity_ratio_stats.tsv")
 filename_npc_summed_intensity_raw_pdf <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.pdf")
 filename_npc_summed_intensity_raw_png <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.png")
+filename_npc_summed_intensity_raw_html <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.html")
 filename_npc_summed_intensity_raw_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw.tsv")
+filename_npc_summed_intensity_raw_stats_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_raw_stats.tsv")
+filename_npc_summed_intensity_raw_driver_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_feature_drivers_raw.tsv")
 filename_npc_summed_intensity_ratio_raw_pdf <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.pdf")
 filename_npc_summed_intensity_ratio_raw_png <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.png")
+filename_npc_summed_intensity_ratio_raw_html <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.html")
 filename_npc_summed_intensity_ratio_raw_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw.tsv")
+filename_npc_summed_intensity_ratio_raw_stats_table <- file.path(dir_npc_summed_intensity_raw, "NPC_summed_intensity_ratio_raw_stats.tsv")
 filename_params <- paste(file_prefix, "params.yaml", sep = "")
 filename_params_user <- paste(file_prefix, "params_user.yaml", sep = "")
 filename_PCA <- paste(file_prefix, "PCA.pdf", sep = "")
@@ -283,9 +293,19 @@ append_to_common_df_and_save(new_row_df, common_tsv_path)
 
 if (params$paths$output != "") {
   output_directory <- file.path(params$paths$output, new_row_df$hash)
+  npc_feature_explorer_root <- params$paths$output
 } else {
   output_directory <- file.path(working_directory, "results", "stats", new_row_df$hash)
+  npc_feature_explorer_root <- file.path(working_directory, "results", "stats")
 }
+
+filename_npc_feature_explorer_app <- file.path(npc_feature_explorer_root, "NPC_feature_explorer.html")
+dir_npc_feature_explorer_data <- file.path(npc_feature_explorer_root, "feature_explorer_data")
+filename_npc_feature_explorer_index <- file.path(dir_npc_feature_explorer_data, "index.js")
+filename_npc_feature_explorer_filtered_data <- file.path(dir_npc_feature_explorer_data, paste0(new_row_df$hash, "_filtered.js"))
+filename_npc_feature_explorer_raw_data <- file.path(dir_npc_feature_explorer_data, paste0(new_row_df$hash, "_raw.js"))
+npc_feature_explorer_filtered_data_link <- file.path("feature_explorer_data", paste0(new_row_df$hash, "_filtered.js"))
+npc_feature_explorer_raw_data_link <- file.path("feature_explorer_data", paste0(new_row_df$hash, "_raw.js"))
 
 
 if (!dir.exists(output_directory)) {
@@ -1498,6 +1518,61 @@ ordination_colour_scale <- function() {
   )
 }
 
+build_manual_plsda_scores_plot <- function(plsda_object) {
+  plsda_scores_df <- data.frame(plsda_object$scores$data, check.names = FALSE)
+  plsda_scores_df$sample_row <- rownames(plsda_scores_df)
+  plsda_meta_df <- data.frame(plsda_object$scores$sample_meta, check.names = FALSE)
+  plsda_meta_df$sample_row <- rownames(plsda_meta_df)
+  plsda_plot_df <- merge(plsda_scores_df, plsda_meta_df, by = "sample_row", all.x = TRUE)
+  plsda_numeric_columns <- colnames(plsda_scores_df)[vapply(plsda_scores_df, is.numeric, logical(1))]
+  plsda_axis_columns <- intersect(c("LV1", "LV2"), plsda_numeric_columns)
+  if (length(plsda_axis_columns) < 2) {
+    plsda_axis_columns <- head(plsda_numeric_columns, 2)
+  }
+  if (length(plsda_axis_columns) < 2) {
+    stop("PLSDA scores plot cannot be built because fewer than two numeric score columns were found.")
+  }
+  plsda_group_column <- params$target$sample_metadata_header
+  if (!plsda_group_column %in% colnames(plsda_plot_df)) {
+    stop(sprintf("PLSDA scores plot cannot be built because '%s' is missing from PLSDA sample metadata.", plsda_group_column))
+  }
+  plsda_label_column <- if ("sample_id" %in% colnames(plsda_plot_df)) "sample_id" else "sample_row"
+  plsda_plot_df[[plsda_group_column]] <- factor(plsda_plot_df[[plsda_group_column]])
+
+  plot_obj <- ggplot(
+    plsda_plot_df,
+    aes(x = .data[[plsda_axis_columns[1]]], y = .data[[plsda_axis_columns[2]]], colour = .data[[plsda_group_column]])
+  ) +
+    geom_point() +
+    labs(
+      x = plsda_axis_columns[1],
+      y = plsda_axis_columns[2],
+      colour = "Groups"
+    )
+
+  if (ordination_points_to_label != "none") {
+    plsda_label_data <- plsda_plot_df
+    if (ordination_points_to_label == "outliers") {
+      plsda_distance_to_center <- sqrt(
+        (plsda_plot_df[[plsda_axis_columns[1]]] - mean(plsda_plot_df[[plsda_axis_columns[1]]], na.rm = TRUE))^2 +
+          (plsda_plot_df[[plsda_axis_columns[2]]] - mean(plsda_plot_df[[plsda_axis_columns[2]]], na.rm = TRUE))^2
+      )
+      plsda_outlier_threshold <- stats::quantile(plsda_distance_to_center, probs = 0.9, na.rm = TRUE)
+      plsda_label_data <- plsda_plot_df[plsda_distance_to_center >= plsda_outlier_threshold, , drop = FALSE]
+    }
+    plot_obj <- plot_obj +
+      ggrepel::geom_text_repel(
+        data = plsda_label_data,
+        aes(label = .data[[plsda_label_column]]),
+        size = ordination_label_size,
+        show.legend = FALSE,
+        max.overlaps = Inf
+      )
+  }
+
+  plot_obj
+}
+
 #################################################################################################
 #################################################################################################
 ##### NPC summed-intensity plots ################################################################
@@ -1509,6 +1584,16 @@ if (is.null(npc_summed_intensity_params)) {
 npc_plot_pathway <- normalize_param_vector(npc_summed_intensity_params$pathway)
 npc_plot_superclass <- normalize_param_vector(npc_summed_intensity_params$superclass)
 npc_plot_class <- normalize_param_vector(npc_summed_intensity_params$class)
+npc_expand_all <- as.logical(get_param_scalar(npc_summed_intensity_params$expand_all, FALSE))
+npc_expand_pathway <- normalize_param_vector(npc_summed_intensity_params$expand_pathway)
+npc_expand_levels <- normalize_param_vector(npc_summed_intensity_params$expand_levels)
+if (!length(npc_expand_levels)) {
+  npc_expand_levels <- "class"
+}
+if ("all" %in% npc_expand_levels) {
+  npc_expand_levels <- c("superclass", "class")
+}
+npc_expand_levels <- intersect(npc_expand_levels, c("superclass", "class"))
 npc_plot_terms <- data.frame(
   npc_level = c(
     rep("pathway", length(npc_plot_pathway)),
@@ -1519,12 +1604,25 @@ npc_plot_terms <- data.frame(
   stringsAsFactors = FALSE
 )
 
-if (nrow(npc_plot_terms) > 0) {
+if (nrow(npc_plot_terms) > 0 || length(npc_expand_pathway) > 0 || isTRUE(npc_expand_all)) {
   message("Preparing NPC summed-intensity plots ...")
 
   npc_min_probability <- as.numeric(get_param_scalar(npc_summed_intensity_params$min_probability, 0))
   npc_transform <- as.character(get_param_scalar(npc_summed_intensity_params$transform, "log10"))
-  npc_individual_export <- as.logical(get_param_scalar(npc_summed_intensity_params$individual_export, TRUE))
+  npc_individual_export_param <- get_param_scalar(npc_summed_intensity_params$individual_export, TRUE)
+  npc_individual_export_mode <- tolower(as.character(npc_individual_export_param))
+  if (npc_individual_export_mode %in% c("true", "all", "yes", "1")) {
+    npc_individual_export_mode <- "all"
+  } else if (npc_individual_export_mode %in% c("false", "none", "no", "0")) {
+    npc_individual_export_mode <- "none"
+  } else if (!npc_individual_export_mode %in% c("significant", "exploratory", "top")) {
+    stop("params$npc_summed_intensity$individual_export must be one of: TRUE, FALSE, all, none, significant, exploratory, top")
+  }
+  npc_individual_export_p_value <- as.numeric(get_param_scalar(npc_summed_intensity_params$individual_export_p_value, 0.05))
+  npc_individual_export_q_value <- as.numeric(get_param_scalar(npc_summed_intensity_params$individual_export_q_value, 0.05))
+  npc_individual_export_top_n <- as.integer(get_param_scalar(npc_summed_intensity_params$individual_export_top_n, 30))
+  npc_feature_driver_top_n <- as.integer(get_param_scalar(npc_summed_intensity_params$feature_driver_top_n, npc_individual_export_top_n))
+  npc_static_export_top_n <- as.integer(get_param_scalar(npc_summed_intensity_params$static_export_top_n, 40))
   npc_ratio_params <- npc_summed_intensity_params$ratios
   if (is.null(npc_ratio_params)) {
     npc_ratio_params <- list()
@@ -1654,6 +1752,13 @@ if (nrow(npc_plot_terms) > 0) {
     canonical_paths[nzchar(canonical_paths)]
   }
 
+  npc_normalize_requested_pathway <- function(pathway) {
+    if (pathway %in% c("Lipids", "Lipid", "Lipids and lipid-like molecules")) {
+      return("Fatty acids")
+    }
+    pathway
+  }
+
   npc_add_taxonomy_pathway <- function(variable_meta) {
     variable_meta$npc_taxonomy_pathway <- if ("canopus_npc_pathway" %in% colnames(variable_meta)) {
       as.character(variable_meta$canopus_npc_pathway)
@@ -1697,9 +1802,1795 @@ if (nrow(npc_plot_terms) > 0) {
     write.table(table_df, file = filename, sep = "\t", row.names = FALSE, quote = FALSE)
   }
 
-  npc_save_plot <- function(plot_obj, filename) {
+  npc_feature_driver_table <- function(npc_data_matrix, npc_sample_meta, npc_variable_meta, feature_ids, npc_level, npc_term, npc_label, npc_source_label) {
+    feature_ids <- intersect(as.character(feature_ids), colnames(npc_data_matrix))
+    if (!length(feature_ids)) {
+      return(data.frame())
+    }
+    group_values <- names(custom_colors)[names(custom_colors) %in% as.character(unique(npc_sample_meta[[params$target$sample_metadata_header]]))]
+    if (!length(group_values)) {
+      group_values <- sort(unique(as.character(npc_sample_meta[[params$target$sample_metadata_header]])))
+    }
+    group_vector <- factor(as.character(npc_sample_meta[[params$target$sample_metadata_header]]), levels = group_values)
+    feature_rows <- lapply(feature_ids, function(feature_id) {
+      values <- suppressWarnings(as.numeric(npc_data_matrix[, feature_id]))
+      means <- tapply(values, group_vector, mean, na.rm = TRUE)
+      medians <- tapply(values, group_vector, stats::median, na.rm = TRUE)
+      means <- means[group_values]
+      medians <- medians[group_values]
+      valid_means <- means[!is.na(means)]
+      if (length(valid_means)) {
+        higher_group <- names(valid_means)[which.max(valid_means)]
+        lower_group <- names(valid_means)[which.min(valid_means)]
+        mean_difference <- unname(max(valid_means) - min(valid_means))
+      } else {
+        higher_group <- NA_character_
+        lower_group <- NA_character_
+        mean_difference <- NA_real_
+      }
+      row <- data.frame(
+        data_source = npc_source_label,
+        npc_level = npc_level,
+        npc_term = npc_term,
+        npc_label = npc_label,
+        feature_id = feature_id,
+        higher_mean_group = higher_group,
+        lower_mean_group = lower_group,
+        mean_difference_max_min = mean_difference,
+        abs_mean_difference_max_min = abs(mean_difference),
+        average_intensity = mean(values, na.rm = TRUE),
+        median_intensity = stats::median(values, na.rm = TRUE),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+      for (group_name in group_values) {
+        safe_group <- npc_safe_file_part(group_name)
+        row[[paste0("mean_", safe_group)]] <- unname(means[group_name])
+        row[[paste0("median_", safe_group)]] <- unname(medians[group_name])
+      }
+      row
+    })
+    driver_df <- bind_rows(feature_rows)
+    driver_df <- driver_df[order(-driver_df$abs_mean_difference_max_min, -driver_df$average_intensity, driver_df$feature_id, na.last = TRUE), , drop = FALSE]
+    total_abs_difference <- sum(driver_df$abs_mean_difference_max_min, na.rm = TRUE)
+    total_average_intensity <- sum(driver_df$average_intensity, na.rm = TRUE)
+    driver_df$contribution_fraction_of_term_difference <- if (total_abs_difference > 0) {
+      driver_df$abs_mean_difference_max_min / total_abs_difference
+    } else {
+      NA_real_
+    }
+    driver_df$cumulative_contribution_fraction <- cumsum(ifelse(is.na(driver_df$contribution_fraction_of_term_difference), 0, driver_df$contribution_fraction_of_term_difference))
+    driver_df$average_intensity_fraction_of_term <- if (total_average_intensity > 0) {
+      driver_df$average_intensity / total_average_intensity
+    } else {
+      NA_real_
+    }
+    annotation_columns <- intersect(
+      c(
+        "feature_id",
+        "feature_id_full_annotated",
+        "sirius_chebiasciiname",
+        "sirius_name",
+        "sirius_adduct",
+        "gnps_component",
+        "gnps_componentindex",
+        "canopus_npc_pathway",
+        "canopus_npc_superclass",
+        "canopus_npc_class",
+        "canopus_npc_pathway_probability",
+        "canopus_npc_superclass_probability",
+        "canopus_npc_class_probability"
+      ),
+      colnames(npc_variable_meta)
+    )
+    if (length(annotation_columns)) {
+      annotation_df <- npc_variable_meta[match(driver_df$feature_id, as.character(npc_variable_meta$feature_id)), annotation_columns, drop = FALSE]
+      annotation_df$feature_id <- as.character(annotation_df$feature_id)
+      driver_df <- left_join(driver_df, annotation_df, by = "feature_id")
+    }
+    driver_df
+  }
+
+  npc_format_p_value <- function(p_value) {
+    if (is.na(p_value)) {
+      return("NA")
+    }
+    if (p_value < 0.001) {
+      return(formatC(p_value, format = "e", digits = 1))
+    }
+    formatC(p_value, format = "f", digits = 3)
+  }
+
+  npc_significance_label <- function(q_value) {
+    if (is.na(q_value)) {
+      return("ns")
+    }
+    if (q_value < 0.001) {
+      return("***")
+    }
+    if (q_value < 0.01) {
+      return("**")
+    }
+    if (q_value < 0.05) {
+      return("*")
+    }
+    "ns"
+  }
+
+  npc_significance_class <- function(q_value) {
+    if (is.na(q_value) || q_value >= 0.05) {
+      return("sig-ns")
+    }
+    if (q_value < 0.001) {
+      return("sig-strong")
+    }
+    if (q_value < 0.01) {
+      return("sig-medium")
+    }
+    "sig-weak"
+  }
+
+  npc_compute_stats <- function(plot_df, label_column, full_label_column, y_column, data_source, value_name) {
+    labels <- unique(as.character(plot_df[[label_column]]))
+    stats_rows <- list()
+    for (label in labels) {
+      label_df <- plot_df[as.character(plot_df[[label_column]]) == label, , drop = FALSE]
+      label_df <- label_df[!is.na(label_df[[y_column]]) & !is.na(label_df$group), , drop = FALSE]
+      groups <- levels(label_df$group)
+      groups <- groups[groups %in% as.character(unique(label_df$group))]
+      if (!length(groups)) {
+        groups <- sort(unique(as.character(label_df$group)))
+      }
+      group_count <- length(groups)
+      if (group_count < 2) {
+        next
+      }
+      full_label <- as.character(label_df[[full_label_column]][1])
+      group_sizes <- table(as.character(label_df$group))
+      group_medians <- tapply(label_df[[y_column]], as.character(label_df$group), stats::median, na.rm = TRUE)
+      group_means <- tapply(label_df[[y_column]], as.character(label_df$group), mean, na.rm = TRUE)
+
+      overall_p <- NA_real_
+      overall_test <- NA_character_
+      if (group_count == 2) {
+        overall_test <- "wilcoxon_rank_sum"
+        overall_p <- tryCatch(
+          stats::wilcox.test(label_df[[y_column]] ~ label_df$group, exact = FALSE)$p.value,
+          error = function(err) NA_real_
+        )
+      } else {
+        overall_test <- "kruskal_wallis"
+        overall_p <- tryCatch(
+          stats::kruskal.test(label_df[[y_column]] ~ label_df$group)$p.value,
+          error = function(err) NA_real_
+        )
+      }
+      stats_rows[[length(stats_rows) + 1]] <- data.frame(
+        data_source = data_source,
+        value = value_name,
+        npc_label = full_label,
+        plot_label = label,
+        test = overall_test,
+        contrast = "overall",
+        group_1 = NA_character_,
+        group_2 = NA_character_,
+        n_group_1 = NA_integer_,
+        n_group_2 = NA_integer_,
+        mean_group_1 = NA_real_,
+        mean_group_2 = NA_real_,
+        mean_difference = NA_real_,
+        abs_mean_difference = if (length(group_means) > 1) max(group_means, na.rm = TRUE) - min(group_means, na.rm = TRUE) else NA_real_,
+        median_group_1 = NA_real_,
+        median_group_2 = NA_real_,
+        median_difference = NA_real_,
+        abs_median_difference = if (length(group_medians) > 1) max(group_medians, na.rm = TRUE) - min(group_medians, na.rm = TRUE) else NA_real_,
+        p_value = overall_p,
+        stringsAsFactors = FALSE
+      )
+
+      for (pair in combn(groups, 2, simplify = FALSE)) {
+        pair_df <- label_df[as.character(label_df$group) %in% pair, , drop = FALSE]
+        pair_df$pair_group <- factor(as.character(pair_df$group), levels = pair)
+        pair_p <- tryCatch(
+          stats::wilcox.test(pair_df[[y_column]] ~ pair_df$pair_group, exact = FALSE)$p.value,
+          error = function(err) NA_real_
+        )
+        median_1 <- unname(group_medians[pair[1]])
+        median_2 <- unname(group_medians[pair[2]])
+        mean_1 <- unname(group_means[pair[1]])
+        mean_2 <- unname(group_means[pair[2]])
+        stats_rows[[length(stats_rows) + 1]] <- data.frame(
+          data_source = data_source,
+          value = value_name,
+          npc_label = full_label,
+          plot_label = label,
+          test = "pairwise_wilcoxon_rank_sum",
+          contrast = paste(pair, collapse = "_vs_"),
+          group_1 = pair[1],
+          group_2 = pair[2],
+          n_group_1 = unname(group_sizes[pair[1]]),
+          n_group_2 = unname(group_sizes[pair[2]]),
+          mean_group_1 = mean_1,
+          mean_group_2 = mean_2,
+          mean_difference = mean_2 - mean_1,
+          abs_mean_difference = abs(mean_2 - mean_1),
+          median_group_1 = median_1,
+          median_group_2 = median_2,
+          median_difference = median_2 - median_1,
+          abs_median_difference = abs(median_2 - median_1),
+          p_value = pair_p,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+    if (!length(stats_rows)) {
+      return(data.frame())
+    }
+    stats_df <- bind_rows(stats_rows)
+    stats_df$q_value <- ave(
+      stats_df$p_value,
+      stats_df$test,
+      stats_df$contrast,
+      FUN = function(values) stats::p.adjust(values, method = "BH")
+    )
+    stats_df$significance <- vapply(stats_df$q_value, npc_significance_label, character(1))
+    stats_df
+  }
+
+  npc_attach_overall_stats <- function(plot_df, stats_df, label_column) {
+    if (!nrow(stats_df)) {
+      plot_df$npc_overall_test <- NA_character_
+      plot_df$npc_overall_p_value <- NA_real_
+      plot_df$npc_overall_q_value <- NA_real_
+      plot_df$npc_overall_significance <- NA_character_
+      plot_df$npc_max_mean_difference <- NA_real_
+      plot_df$npc_max_median_difference <- NA_real_
+      return(plot_df)
+    }
+    overall_stats <- stats_df[stats_df$contrast == "overall", c("plot_label", "test", "p_value", "q_value", "significance", "abs_mean_difference", "abs_median_difference"), drop = FALSE]
+    colnames(overall_stats) <- c(label_column, "npc_overall_test", "npc_overall_p_value", "npc_overall_q_value", "npc_overall_significance", "npc_max_mean_difference", "npc_max_median_difference")
+    left_join(plot_df, overall_stats, by = label_column)
+  }
+
+  npc_selected_individual_labels <- function(stats_df, label_column) {
+    if (npc_individual_export_mode == "none" || !nrow(stats_df)) {
+      return(character())
+    }
+    overall_stats <- stats_df[stats_df$contrast == "overall", , drop = FALSE]
+    if (!nrow(overall_stats)) {
+      return(character())
+    }
+    if (npc_individual_export_mode == "all") {
+      return(overall_stats$plot_label)
+    }
+    if (npc_individual_export_mode == "significant") {
+      return(overall_stats$plot_label[!is.na(overall_stats$q_value) & overall_stats$q_value < npc_individual_export_q_value])
+    }
+    if (npc_individual_export_mode == "exploratory") {
+      return(overall_stats$plot_label[!is.na(overall_stats$p_value) & overall_stats$p_value < npc_individual_export_p_value])
+    }
+    ordered_stats <- overall_stats[order(overall_stats$q_value, overall_stats$p_value, -overall_stats$abs_mean_difference, overall_stats$plot_label, na.last = TRUE), , drop = FALSE]
+    head(ordered_stats$plot_label, npc_individual_export_top_n)
+  }
+
+  npc_selected_static_labels <- function(stats_df) {
+    if (!nrow(stats_df)) {
+      return(character())
+    }
+    overall_stats <- stats_df[stats_df$contrast == "overall", , drop = FALSE]
+    if (!nrow(overall_stats)) {
+      return(character())
+    }
+    ordered_stats <- overall_stats[order(overall_stats$q_value, overall_stats$p_value, -overall_stats$abs_mean_difference, overall_stats$plot_label, na.last = TRUE), , drop = FALSE]
+    head(ordered_stats$plot_label, npc_static_export_top_n)
+  }
+
+  npc_save_plot <- function(plot_obj, filename, width = ordination_export_width, height = ordination_export_height) {
     dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
-    ggsave(plot = plot_obj, filename = filename, width = ordination_export_width, height = ordination_export_height, units = "in", dpi = 300)
+    if (tolower(tools::file_ext(filename)) == "png" && requireNamespace("ragg", quietly = TRUE)) {
+      ggsave(plot = plot_obj, filename = filename, width = width, height = height, units = "in", dpi = 300, device = ragg::agg_png)
+    } else {
+      ggsave(plot = plot_obj, filename = filename, width = width, height = height, units = "in", dpi = 300)
+    }
+  }
+
+  npc_save_html_plot <- function(plot_obj, filename, selfcontained = TRUE) {
+    dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
+    plotly_obj <- plotly::ggplotly(plot_obj, tooltip = "text") %>%
+      plotly::layout(
+        font = list(size = 11, family = "Arial, sans-serif", color = "#111827"),
+        margin = list(l = 70, r = 20, t = 60, b = 70)
+      ) %>%
+      plotly::config(displaylogo = FALSE, responsive = TRUE)
+    tryCatch(
+      {
+        if (params$operating_system$system == "unix" && isTRUE(selfcontained)) {
+          htmlwidgets::saveWidget(plotly_obj, file = filename, selfcontained = TRUE)
+        } else {
+          htmlwidgets::saveWidget(plotly_obj, file = filename, selfcontained = FALSE, libdir = paste0(basename(filename), "_files"))
+        }
+      },
+      error = function(err) {
+        warning(sprintf("Could not save HTML plot %s: %s. Retrying with external libraries.", filename, conditionMessage(err)))
+        tryCatch(
+          htmlwidgets::saveWidget(plotly_obj, file = filename, selfcontained = FALSE, libdir = paste0(basename(filename), "_files")),
+          error = function(err_fallback) {
+            warning(sprintf("Could not save HTML plot %s: %s", filename, conditionMessage(err_fallback)))
+          }
+        )
+      }
+    )
+  }
+
+  npc_json_for_script <- function(value) {
+    json <- jsonlite::toJSON(value, dataframe = "rows", auto_unbox = TRUE, na = "null", digits = 10)
+    gsub("</", "<\\/", as.character(json), fixed = TRUE)
+  }
+
+  npc_write_feature_explorer_index <- function(data_dir) {
+    data_files <- list.files(data_dir, pattern = "\\.js$", full.names = FALSE)
+    data_files <- setdiff(data_files, "index.js")
+    if (!length(data_files)) {
+      index_df <- data.frame(label = character(), data = character(), hash = character(), source = character(), modified = character())
+    } else {
+      data_paths <- file.path(data_dir, data_files)
+      data_info <- file.info(data_paths)
+      data_labels <- sub("\\.js$", "", data_files)
+      data_sources <- ifelse(grepl("_raw$", data_labels), "raw", "filtered")
+      data_hashes <- sub("_(filtered|raw)$", "", data_labels)
+      index_df <- data.frame(
+        label = paste(data_hashes, data_sources, sep = " - "),
+        data = file.path(basename(data_dir), data_files),
+        hash = data_hashes,
+        source = data_sources,
+        modified = format(data_info$mtime, "%Y-%m-%d %H:%M:%S"),
+        stringsAsFactors = FALSE
+      )
+      index_df <- index_df[order(data_info$mtime, decreasing = TRUE, na.last = TRUE), , drop = FALSE]
+    }
+    writeLines(
+      paste0("window.NPC_FEATURE_EXPLORER_INDEX = ", npc_json_for_script(index_df), ";"),
+      con = file.path(data_dir, "index.js"),
+      useBytes = TRUE
+    )
+    invisible(TRUE)
+  }
+
+  npc_save_feature_explorer <- function(npc_data_matrix, npc_sample_meta, npc_variable_meta, filename, explorer_title, driver_df = data.frame(), data_file = NULL, npc_raw_data_matrix = NULL) {
+    dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
+    feature_ids <- intersect(colnames(npc_data_matrix), as.character(npc_variable_meta$feature_id))
+    if (!length(feature_ids)) {
+      return(invisible(FALSE))
+    }
+    npc_data_matrix <- npc_data_matrix[, feature_ids, drop = FALSE]
+    npc_variable_meta <- npc_variable_meta[match(feature_ids, as.character(npc_variable_meta$feature_id)), , drop = FALSE]
+    sample_ids <- rownames(npc_data_matrix)
+    npc_sample_meta <- npc_sample_meta[sample_ids, , drop = FALSE]
+    if (!"sample_id" %in% colnames(npc_sample_meta)) {
+      npc_sample_meta$sample_id <- sample_ids
+    }
+
+    metadata_columns <- colnames(npc_sample_meta)[vapply(npc_sample_meta, function(column) {
+      values <- unique(as.character(column))
+      values <- values[!is.na(values) & nzchar(values)]
+      length(values) > 0 && length(values) <= 100
+    }, logical(1))]
+    if (!length(metadata_columns)) {
+      metadata_columns <- "sample_id"
+    }
+
+    feature_label <- as.character(feature_ids)
+    for (label_column in c("feature_id_full_annotated", "sirius_chebiasciiname", "sirius_name", "canopus_npc_class")) {
+      if (label_column %in% colnames(npc_variable_meta)) {
+        label_values <- as.character(npc_variable_meta[[label_column]])
+        keep <- !is.na(label_values) & nzchar(label_values)
+        feature_label[keep] <- paste(feature_ids[keep], label_values[keep], sep = " | ")
+        break
+      }
+    }
+
+    feature_meta_columns <- intersect(
+      c(
+        "feature_id",
+        "feature_id_full_annotated",
+        "sirius_chebiasciiname",
+        "sirius_name",
+        "sirius_adduct",
+        "gnps_component",
+        "gnps_componentindex",
+        "canopus_npc_pathway",
+        "canopus_npc_superclass",
+        "canopus_npc_class",
+        "canopus_npc_pathway_probability",
+        "canopus_npc_superclass_probability",
+        "canopus_npc_class_probability"
+      ),
+      colnames(npc_variable_meta)
+    )
+    feature_meta <- npc_variable_meta[, feature_meta_columns, drop = FALSE]
+    feature_meta$feature_id <- as.character(feature_meta$feature_id)
+    feature_meta$feature_label <- feature_label
+    feature_meta <- feature_meta[, c("feature_id", "feature_label", setdiff(colnames(feature_meta), c("feature_id", "feature_label"))), drop = FALSE]
+
+    intensity_payload <- lapply(feature_ids, function(feature_id) {
+      as.numeric(npc_data_matrix[, feature_id])
+    })
+    names(intensity_payload) <- feature_ids
+    raw_intensity_payload <- intensity_payload
+    if (!is.null(npc_raw_data_matrix)) {
+      raw_feature_ids <- intersect(feature_ids, colnames(npc_raw_data_matrix))
+      raw_sample_ids <- intersect(sample_ids, rownames(npc_raw_data_matrix))
+      if (length(raw_feature_ids) && length(raw_sample_ids)) {
+        aligned_raw_data_matrix <- matrix(
+          NA_real_,
+          nrow = length(sample_ids),
+          ncol = length(feature_ids),
+          dimnames = list(sample_ids, feature_ids)
+        )
+        aligned_raw_data_matrix[raw_sample_ids, raw_feature_ids] <- as.matrix(npc_raw_data_matrix[raw_sample_ids, raw_feature_ids, drop = FALSE])
+        raw_intensity_payload <- lapply(feature_ids, function(feature_id) {
+          as.numeric(aligned_raw_data_matrix[, feature_id])
+        })
+        names(raw_intensity_payload) <- feature_ids
+      }
+    }
+    explorer_data <- list(
+      title = explorer_title,
+      default_group = params$target$sample_metadata_header,
+      sample_ids = sample_ids,
+      sample_metadata = npc_sample_meta,
+      metadata_columns = metadata_columns,
+      feature_metadata = feature_meta,
+      driver_metadata = driver_df,
+      driver_top_n = npc_feature_driver_top_n,
+      intensities = intensity_payload,
+      raw_intensities = raw_intensity_payload,
+      colors = custom_colors
+    )
+
+    data_script_tag <- tags$script(htmltools::HTML(paste0("window.NPC_FEATURE_EXPLORER_DATA = ", npc_json_for_script(explorer_data), ";")))
+    if (!is.null(data_file) && nzchar(data_file)) {
+      dir.create(dirname(data_file), recursive = TRUE, showWarnings = FALSE)
+      writeLines(
+        paste0("window.NPC_FEATURE_EXPLORER_DATA = ", npc_json_for_script(explorer_data), ";"),
+        con = data_file,
+        useBytes = TRUE
+      )
+      npc_write_feature_explorer_index(dirname(data_file))
+      data_script_tag <- tags$script(htmltools::HTML("
+          (function () {
+            document.write('<script src=\"feature_explorer_data/index.js\"><\\/script>');
+          }());
+        "))
+      explorer_title <- "NPC feature explorer"
+    }
+
+    dummy_plotly <- plotly::plot_ly(x = 1, y = 1, type = "scatter", mode = "markers") %>%
+      plotly::layout(width = 1, height = 1, margin = list(l = 0, r = 0, t = 0, b = 0)) %>%
+      plotly::config(displaylogo = FALSE)
+
+    dashboard <- htmltools::browsable(tags$html(
+      tags$head(
+        tags$title(explorer_title),
+        tags$style(htmltools::HTML("
+          :root { color-scheme: light; }
+          body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #111827;
+            background: #F3F4F6;
+          }
+          .feature-shell { max-width: 1480px; margin: 0 auto; padding: 18px; }
+          .feature-topbar {
+            display: grid;
+            grid-template-columns: minmax(320px, 0.8fr) minmax(640px, 1.2fr);
+            gap: 16px;
+            align-items: start;
+            padding: 14px 0;
+          }
+          h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 700; }
+          .feature-summary { margin-top: 6px; font-size: 12px; color: #4B5563; }
+          .feature-controls {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+          }
+          .feature-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+          .feature-row.feature-main-row { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); }
+          .feature-control { min-width: 0; display: grid; gap: 4px; }
+          .feature-control-label {
+            color: #374151;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.2;
+          }
+          .feature-select,
+          .feature-input {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 12px;
+            background: white;
+            color: #111827;
+          }
+          .feature-select:focus,
+          .feature-input:focus {
+            outline: 2px solid #BFDBFE;
+            border-color: #2563EB;
+          }
+          .feature-values { min-height: 38px; max-height: 92px; }
+          .feature-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 14px; align-items: start; }
+          .feature-panel,
+          .feature-info {
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+            min-width: 0;
+          }
+          .feature-panel {
+            padding: 8px;
+          }
+          #featurePlot {
+            width: 100%;
+            height: min(72vh, 720px);
+            min-height: 560px;
+          }
+          .feature-info {
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.45;
+          }
+          .feature-info h2 {
+            margin: 0 0 8px;
+            font-size: 14px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+          }
+          .feature-info table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+          .feature-info th,
+          .feature-info td {
+            padding: 5px 0;
+            border-bottom: 1px solid #F3F4F6;
+            vertical-align: top;
+            text-align: left;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+          .feature-info th { width: 38%; color: #6B7280; font-weight: 700; padding-right: 8px; }
+          .feature-muted { color: #6B7280; font-size: 12px; }
+          .driver-list { display: grid; gap: 6px; }
+          .driver-button {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            width: 100%;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            padding: 7px 8px;
+            background: #F9FAFB;
+            color: #111827;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+          }
+          .driver-button:hover { border-color: #9CA3AF; background: white; }
+          .driver-button span {
+            min-width: 0;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+          }
+          .driver-button strong { color: #064E3B; font-size: 11px; }
+          .hidden-dependency { display: none; }
+          @media (max-width: 980px) {
+            .feature-topbar,
+            .feature-layout { grid-template-columns: 1fr; }
+            .feature-row.feature-main-row,
+            .feature-row { grid-template-columns: 1fr; }
+            #featurePlot { height: 520px; }
+          }
+        ")),
+        data_script_tag,
+        tags$script(htmltools::HTML("
+          let npcFeatureExplorerPendingDriver = null;
+          document.addEventListener('DOMContentLoaded', function () {
+            function loadDataset(dataUrl, driverValue) {
+              if (!dataUrl) return false;
+              npcFeatureExplorerPendingDriver = driverValue || null;
+              window.NPC_FEATURE_EXPLORER_DATA = null;
+              const script = document.createElement('script');
+              script.src = dataUrl;
+              script.onload = function () {
+                if (!window.NPC_FEATURE_EXPLORER_DATA) {
+                  showLoadError('Dataset loaded, but no explorer payload was found.');
+                  return;
+                }
+                initialiseFeatureExplorer(window.NPC_FEATURE_EXPLORER_DATA);
+              };
+              script.onerror = function () {
+                showLoadError('Could not load dataset: ' + dataUrl);
+              };
+              document.head.appendChild(script);
+              return true;
+            }
+            function showLoadError(message) {
+              document.body.innerHTML = '<main class=\"feature-shell\"><section class=\"feature-panel\"><h1>NPC feature explorer</h1><p class=\"feature-muted\">' + message + '</p></section></main>';
+            }
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestedData = urlParams.get('data');
+            const requestedDriver = urlParams.get('driver') || decodeURIComponent((window.location.hash || '').replace(/^#driver=/, ''));
+            if (requestedData && loadDataset(requestedData, requestedDriver)) {
+              return;
+            }
+            if (!window.NPC_FEATURE_EXPLORER_DATA) {
+              const datasetIndex = window.NPC_FEATURE_EXPLORER_INDEX || [];
+              if (datasetIndex.length && loadDataset(datasetIndex[0].data, requestedDriver)) {
+                return;
+              }
+              showLoadError('No dataset index was found. Re-run the stats processing to create feature_explorer_data/index.js.');
+              return;
+            }
+            npcFeatureExplorerPendingDriver = requestedDriver;
+            initialiseFeatureExplorer(window.NPC_FEATURE_EXPLORER_DATA);
+          });
+
+          function initialiseFeatureExplorer(state) {
+            const featureSelect = document.querySelector('[data-feature-select]');
+            const featureSearch = document.querySelector('[data-feature-search]');
+            const datasetSelect = document.querySelector('[data-dataset-select]');
+            const groupSelect = document.querySelector('[data-group-select]');
+            const colorSelect = document.querySelector('[data-color-select]');
+            const facetSelect = document.querySelector('[data-facet-select]');
+            const filterColumnSelect = document.querySelector('[data-filter-column-select]');
+            const filterValuesSelect = document.querySelector('[data-filter-values-select]');
+            const plotTypeSelect = document.querySelector('[data-plot-type-select]');
+            const transformSelect = document.querySelector('[data-transform-select]');
+            const pointToggle = document.querySelector('[data-point-toggle]');
+            const driverContextSelect = document.querySelector('[data-driver-context-select]');
+            const driverList = document.querySelector('[data-driver-list]');
+            const countLabel = document.querySelector('[data-feature-count]');
+            const titleLabel = document.querySelector('[data-explorer-title]');
+            const totalFeatureLabel = document.querySelector('[data-feature-total]');
+            const info = document.querySelector('[data-feature-info]');
+            if (titleLabel) titleLabel.textContent = state.title || 'NPC feature explorer';
+            if (totalFeatureLabel) totalFeatureLabel.textContent = state.feature_metadata.length + ' features';
+
+            function waitForPlotly(callback) {
+              if (window.Plotly) callback();
+              else setTimeout(function () { waitForPlotly(callback); }, 50);
+            }
+            function valueText(value) {
+              return value === null || value === undefined || value === '' ? 'NA' : String(value);
+            }
+            function uniqueSorted(values) {
+              return Array.from(new Set(values.map(valueText))).sort(function(a, b) { return a.localeCompare(b); });
+            }
+            function addOption(select, value, label) {
+              const option = document.createElement('option');
+              option.value = value;
+              option.textContent = label || value;
+              select.appendChild(option);
+            }
+            function prettyColumn(column) {
+              if (!column) return 'None';
+              return column.replace(/^attribute_/, '').replace(/_/g, ' ');
+            }
+            function metadataValue(sample, column) {
+              return valueText(sample[column]);
+            }
+            function featureValue(feature, column) {
+              return valueText(feature[column]);
+            }
+            function populateMetadataSelect(select, includeNone) {
+              if (includeNone) addOption(select, '', 'None');
+              state.metadata_columns.forEach(function(column) { addOption(select, column, prettyColumn(column)); });
+            }
+            function populateColorSelect() {
+              colorSelect.innerHTML = '';
+              addOption(colorSelect, '__group__', 'Same as x-axis grouping');
+              state.metadata_columns.forEach(function(column) { addOption(colorSelect, column, prettyColumn(column)); });
+            }
+            function populateDatasetSelect() {
+              const datasetIndex = window.NPC_FEATURE_EXPLORER_INDEX || [];
+              datasetSelect.innerHTML = '';
+              if (!datasetIndex.length) {
+                addOption(datasetSelect, '', 'Current dataset');
+                datasetSelect.disabled = true;
+                return;
+              }
+              datasetIndex.forEach(function(dataset) { addOption(datasetSelect, dataset.data, dataset.label); });
+              const currentData = new URLSearchParams(window.location.search).get('data') || datasetIndex[0].data;
+              if (Array.from(datasetSelect.options).some(function(option) { return option.value === currentData; })) {
+                datasetSelect.value = currentData;
+              }
+            }
+            function selectedColorColumn() {
+              return colorSelect.value === '__group__' ? groupSelect.value : colorSelect.value;
+            }
+            function populateFeatures(query) {
+              const current = featureSelect.value;
+              featureSelect.innerHTML = '';
+              const queryText = (query || '').trim().toLowerCase();
+              state.feature_metadata
+                .filter(function(feature) {
+                  return !queryText || Object.values(feature).join(' ').toLowerCase().indexOf(queryText) !== -1;
+                })
+                .slice(0, 500)
+                .forEach(function(feature) {
+                  addOption(featureSelect, feature.feature_id, feature.feature_label);
+                });
+              if (current && Array.from(featureSelect.options).some(function(option) { return option.value === current; })) {
+                featureSelect.value = current;
+              }
+            }
+            function populateFilterValues() {
+              filterValuesSelect.innerHTML = '';
+              const column = filterColumnSelect.value;
+              if (!column) return;
+              uniqueSorted(state.sample_metadata.map(function(sample) { return metadataValue(sample, column); }))
+                .forEach(function(value) { addOption(filterValuesSelect, value, value); });
+            }
+            function populateDriverContexts() {
+              driverContextSelect.innerHTML = '';
+              addOption(driverContextSelect, '', 'Driver context: none');
+              if (!state.driver_metadata || !state.driver_metadata.length) return;
+              uniqueSorted(state.driver_metadata.map(function(row) { return valueText(row.npc_term); }))
+                .forEach(function(value) { addOption(driverContextSelect, value, 'Driver context: ' + value); });
+              const driverParam = npcFeatureExplorerPendingDriver;
+              if (driverParam && Array.from(driverContextSelect.options).some(function(option) { return option.value === driverParam; })) {
+                driverContextSelect.value = driverParam;
+              }
+            }
+            function selectFeature(featureId) {
+              featureSearch.value = featureId;
+              populateFeatures(featureId);
+              if (Array.from(featureSelect.options).some(function(option) { return option.value === featureId; })) {
+                featureSelect.value = featureId;
+              }
+              renderPlot();
+            }
+            function renderDriverList() {
+              const context = driverContextSelect.value;
+              if (!context || !state.driver_metadata || !state.driver_metadata.length) {
+                driverList.innerHTML = '<div class=\"feature-muted\">Select an NPC driver context to inspect the ranked features.</div>';
+                return;
+              }
+              const rows = state.driver_metadata
+                .filter(function(row) { return valueText(row.npc_term) === context; })
+                .sort(function(a, b) {
+                  return Number(b.abs_mean_difference_max_min || 0) - Number(a.abs_mean_difference_max_min || 0);
+                })
+                .slice(0, state.driver_top_n || 30);
+              driverList.innerHTML = rows.map(function(row, index) {
+                const contribution = Number(row.contribution_fraction_of_term_difference || 0);
+                const label = valueText(row.feature_id) + ' | ' + valueText(row.feature_id_full_annotated || row.sirius_chebiasciiname || row.sirius_name || '');
+                return '<button class=\"driver-button\" data-driver-feature=\"' + valueText(row.feature_id) + '\">' +
+                  '<span>' + (index + 1) + '. ' + label + '</span>' +
+                  '<strong>' + (contribution ? (100 * contribution).toFixed(1) + '%' : 'NA') + '</strong>' +
+                '</button>';
+              }).join('');
+              Array.from(driverList.querySelectorAll('[data-driver-feature]')).forEach(function(button) {
+                button.addEventListener('click', function() { selectFeature(button.dataset.driverFeature); });
+              });
+            }
+            function selectedFilterValues() {
+              return Array.from(filterValuesSelect.selectedOptions).map(function(option) { return option.value; });
+            }
+            function selectedSamples() {
+              const filterColumn = filterColumnSelect.value;
+              const filterValues = selectedFilterValues();
+              return state.sample_metadata.map(function(sample, index) {
+                return { sample: sample, index: index };
+              }).filter(function(item) {
+                if (!filterColumn || !filterValues.length) return true;
+                return filterValues.indexOf(metadataValue(item.sample, filterColumn)) !== -1;
+              });
+            }
+            function formatIntensity(value) {
+              const numeric = Number(value);
+              if (!Number.isFinite(numeric)) return 'NA';
+              if (transformSelect.value === 'log10_raw' || transformSelect.value === 'log10_processed') return numeric.toPrecision(4);
+              return numeric.toExponential(3);
+            }
+            function activeIntensityValues(featureId) {
+              if (transformSelect.value === 'processed' || transformSelect.value === 'log10_processed') {
+                return state.intensities[featureId] || [];
+              }
+              return (state.raw_intensities && state.raw_intensities[featureId]) || state.intensities[featureId] || [];
+            }
+            function transformValue(value) {
+              const numeric = Number(value);
+              if (!Number.isFinite(numeric)) return null;
+              if (transformSelect.value === 'log10_raw' || transformSelect.value === 'log10_processed') return Math.log10(numeric + 1);
+              return numeric;
+            }
+            function sharedYAxisRange(featureId, sampleItems) {
+              const selectedIndexes = sampleItems.map(function(item) { return item.index; });
+              const allValues = [];
+              const values = activeIntensityValues(featureId);
+              selectedIndexes.forEach(function(index) {
+                const transformed = transformValue(values[index]);
+                if (transformed !== null) allValues.push(transformed);
+              });
+              if (!allValues.length) return null;
+              const minValue = Math.min.apply(null, allValues);
+              const maxValue = Math.max.apply(null, allValues);
+              if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) return null;
+              if (minValue === maxValue) {
+                const pad = Math.max(Math.abs(maxValue) * 0.05, transformSelect.value.indexOf('log10') === 0 ? 0.1 : 1);
+                return [minValue - pad, maxValue + pad];
+              }
+              const pad = (maxValue - minValue) * 0.06;
+              const lower = transformSelect.value.indexOf('log10') === 0 ? Math.max(0, minValue - pad) : minValue - pad;
+              return [lower, maxValue + pad];
+            }
+            function yAxisConfig(yRange) {
+              const isLog = transformSelect.value === 'log10_raw' || transformSelect.value === 'log10_processed';
+              const isProcessed = transformSelect.value === 'processed' || transformSelect.value === 'log10_processed';
+              return {
+                title: isLog ? (isProcessed ? 'log10 processed value + 1' : 'log10 raw intensity + 1') : (isProcessed ? 'Processed value' : 'Raw intensity'),
+                gridcolor: '#E5E7EB',
+                zeroline: false,
+                range: yRange || undefined,
+                tickformat: isLog ? '.2f' : (isProcessed ? '.3f' : '.2e'),
+                hoverformat: isLog ? '.4f' : (isProcessed ? '.4f' : '.3e')
+              };
+            }
+            function hiddenSharedYAxisConfig(yRange) {
+              const config = yAxisConfig(yRange);
+              config.title = '';
+              config.showticklabels = false;
+              config.ticks = '';
+              return config;
+            }
+            function colorForGroup(group) {
+              return state.colors[group] || '#4B5563';
+            }
+            const fallbackPalette = ['#2563EB', '#DC2626', '#059669', '#7C3AED', '#D97706', '#0891B2', '#BE123C', '#4B5563'];
+            function colorForValue(value, index) {
+              return state.colors[value] || fallbackPalette[index % fallbackPalette.length];
+            }
+            function renderInfo(feature) {
+              const rows = Object.keys(feature).filter(function(key) {
+                return feature[key] !== null && feature[key] !== undefined && feature[key] !== '';
+              }).map(function(key) {
+                return '<tr><th>' + key + '</th><td>' + valueText(feature[key]) + '</td></tr>';
+              }).join('');
+              info.innerHTML = '<h2>' + feature.feature_label + '</h2><table>' + rows + '</table>';
+            }
+            function renderPlot() {
+              const featureId = featureSelect.value || (state.feature_metadata[0] || {}).feature_id;
+              if (!featureId) return;
+              const feature = state.feature_metadata.find(function(item) { return item.feature_id === featureId; });
+              const values = activeIntensityValues(featureId);
+              const selectedSampleItems = selectedSamples();
+              const yRange = sharedYAxisRange(featureId, selectedSampleItems);
+              const samples = selectedSampleItems.map(function(item) {
+                const sample = item.sample;
+                const colorColumn = selectedColorColumn();
+                return {
+                  sample: sample,
+                  value: transformValue(values[item.index]),
+                  group: metadataValue(sample, groupSelect.value),
+                  color: metadataValue(sample, colorColumn),
+                  facet: facetSelect.value ? metadataValue(sample, facetSelect.value) : ''
+                };
+              }).filter(function(item) { return item.value !== null; });
+              countLabel.textContent = samples.length + ' samples';
+              if (feature) renderInfo(feature);
+              const facets = facetSelect.value ? uniqueSorted(samples.map(function(item) { return item.facet; })) : [''];
+              const traces = [];
+              const shapes = [];
+              const annotations = [];
+              const legendShown = new Set();
+              const colorColumn = selectedColorColumn();
+              const globalGroups = uniqueSorted(samples.map(function(item) { return item.group; }));
+              const globalColorValues = colorColumn === groupSelect.value ? globalGroups : uniqueSorted(samples.map(function(item) { return item.color; }));
+              const colorIndexMap = {};
+              globalColorValues.forEach(function(value, index) { colorIndexMap[value] = index; });
+              facets.forEach(function(facetValue, facetIndex) {
+                const facetSamples = samples.filter(function(item) { return item.facet === facetValue; });
+                const groups = globalGroups;
+                globalColorValues.forEach(function(colorValue) {
+                  const groupedSamples = facetSamples.filter(function(item) { return item.color === colorValue; });
+                  if (!groupedSamples.length) return;
+                  const traceGroups = colorColumn === groupSelect.value ? [colorValue] : groups;
+                  traceGroups.forEach(function(group) {
+                  const groupSamples = groupedSamples.filter(function(item) { return item.group === group; });
+                  if (!groupSamples.length) return;
+                  const showLegend = !legendShown.has(colorValue);
+                  legendShown.add(colorValue);
+                  const colorValueIndex = colorIndexMap[colorValue] || 0;
+                  const trace = {
+                    x: groupSamples.map(function(item) { return item.group; }),
+                    y: groupSamples.map(function(item) { return item.value; }),
+                    text: groupSamples.map(function(item) {
+                      const colorColumn = selectedColorColumn();
+                      return 'Sample: ' + valueText(item.sample.sample_id) +
+                        '<br>' + prettyColumn(groupSelect.value) + ': ' + item.group +
+                        '<br>' + prettyColumn(colorColumn) + ': ' + item.color +
+                        '<br>Value: ' + formatIntensity(item.value);
+                    }),
+                    hoverinfo: 'text',
+                    name: colorValue,
+                    marker: { color: colorForValue(colorValue, colorValueIndex), size: 7, opacity: 0.82 },
+                    line: { color: colorForValue(colorValue, colorValueIndex) },
+                    legendgroup: colorValue,
+                    showlegend: showLegend
+                  };
+                  if (plotTypeSelect.value === 'violin') {
+                    trace.type = 'violin';
+                    trace.box = { visible: true };
+                    trace.meanline = { visible: true };
+                    trace.points = pointToggle.checked ? 'all' : false;
+                  } else if (plotTypeSelect.value === 'scatter') {
+                    trace.type = 'scatter';
+                    trace.mode = 'markers';
+                    trace.x = groupSamples.map(function(item) { return item.group + '<br>' + valueText(item.sample.sample_id); });
+                  } else {
+                    trace.type = 'box';
+                    trace.boxpoints = pointToggle.checked ? 'all' : false;
+                  }
+                  if (facetValue) {
+                    const axisSuffix = facetIndex === 0 ? '' : String(facetIndex + 1);
+                    trace.xaxis = 'x' + axisSuffix;
+                    trace.yaxis = 'y' + axisSuffix;
+                  }
+                  traces.push(trace);
+                  });
+                });
+                if (facetValue) {
+                  annotations.push({
+                    text: facetValue,
+                    xref: 'paper',
+                    yref: 'paper',
+                    x: (facetIndex + 0.5) / facets.length,
+                    y: 1.03,
+                    showarrow: false,
+                    font: { size: 12, color: '#111827' }
+                  });
+                }
+              });
+              const layout = {
+                title: { text: feature ? feature.feature_label : featureId, font: { size: 15 }, y: 0.985 },
+                font: { family: 'Arial, sans-serif', size: 11, color: '#111827' },
+                margin: { l: 70, r: 24, t: facets.length > 1 ? 112 : 78, b: 80 },
+                paper_bgcolor: 'white',
+                plot_bgcolor: 'white',
+                yaxis: yAxisConfig(yRange),
+                xaxis: { title: prettyColumn(groupSelect.value), tickangle: -25, zeroline: false },
+                boxmode: 'group',
+                violinmode: 'group',
+                annotations: annotations,
+                legend: {
+                  title: { text: colorColumn === groupSelect.value ? prettyColumn(groupSelect.value) : prettyColumn(colorColumn) },
+                  orientation: 'v',
+                  x: 1.02,
+                  y: 1
+                }
+              };
+              if (facets.length > 1) {
+                layout.grid = { rows: 1, columns: facets.length, pattern: 'independent' };
+                facets.forEach(function(facetValue, facetIndex) {
+                  const suffix = facetIndex === 0 ? '' : String(facetIndex + 1);
+                  layout['xaxis' + suffix] = { title: prettyColumn(groupSelect.value), tickangle: -25, zeroline: false };
+                  layout['yaxis' + suffix] = facetIndex === 0 ? yAxisConfig(yRange) : hiddenSharedYAxisConfig(yRange);
+                });
+              }
+              Plotly.react('featurePlot', traces, layout, { displaylogo: false, responsive: true, scrollZoom: false });
+            }
+
+            populateDatasetSelect();
+            populateMetadataSelect(groupSelect, false);
+            populateColorSelect();
+            populateMetadataSelect(facetSelect, true);
+            populateMetadataSelect(filterColumnSelect, true);
+            populateDriverContexts();
+            groupSelect.value = state.metadata_columns.indexOf(state.default_group) !== -1 ? state.default_group : state.metadata_columns[0];
+            colorSelect.value = '__group__';
+            populateFeatures('');
+            populateFilterValues();
+            renderDriverList();
+            featureSearch.addEventListener('input', function() { populateFeatures(featureSearch.value); renderPlot(); });
+            datasetSelect.addEventListener('change', function() {
+              if (!datasetSelect.value) return;
+              const params = new URLSearchParams();
+              params.set('data', datasetSelect.value);
+              if (driverContextSelect.value) params.set('driver', driverContextSelect.value);
+              window.location.search = params.toString();
+            });
+            featureSelect.addEventListener('change', renderPlot);
+            groupSelect.addEventListener('change', renderPlot);
+            colorSelect.addEventListener('change', renderPlot);
+            facetSelect.addEventListener('change', renderPlot);
+            filterColumnSelect.addEventListener('change', function() { populateFilterValues(); renderPlot(); });
+            filterValuesSelect.addEventListener('change', renderPlot);
+            plotTypeSelect.addEventListener('change', renderPlot);
+            transformSelect.addEventListener('change', renderPlot);
+            pointToggle.addEventListener('change', renderPlot);
+            driverContextSelect.addEventListener('change', renderDriverList);
+            waitForPlotly(renderPlot);
+          }
+        "))
+      ),
+      tags$body(
+        tags$main(
+          class = "feature-shell",
+          tags$section(
+            class = "feature-topbar",
+            tags$div(
+              tags$h1(`data-explorer-title` = "", explorer_title),
+              tags$div(class = "feature-summary", tags$span(`data-feature-count` = "", "0 samples"), " - ", tags$span(`data-feature-total` = "", "0 features"))
+          ),
+          tags$div(
+            class = "feature-controls",
+              tags$div(
+                class = "feature-row feature-main-row",
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Dataset"),
+                  tags$select(class = "feature-select", `data-dataset-select` = "")
+                ),
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Search features"),
+                  tags$input(class = "feature-input", `data-feature-search` = "", type = "search", placeholder = "feature id, annotation, NPC class")
+                )
+              ),
+              tags$div(
+                class = "feature-row feature-main-row",
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "NPC driver context"),
+                  tags$select(class = "feature-select", `data-driver-context-select` = "")
+                )
+              ),
+              tags$label(
+                class = "feature-control",
+                tags$span(class = "feature-control-label", "Feature"),
+                tags$select(class = "feature-select", `data-feature-select` = "")
+              ),
+              tags$div(
+                class = "feature-row",
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Group on x-axis"),
+                  tags$select(class = "feature-select", `data-group-select` = "")
+                ),
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Color by"),
+                  tags$select(class = "feature-select", `data-color-select` = "")
+                ),
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Facet by"),
+                  tags$select(class = "feature-select", `data-facet-select` = "")
+                )
+              ),
+              tags$div(
+                class = "feature-row",
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Filter metadata"),
+                  tags$select(class = "feature-select", `data-filter-column-select` = "")
+                ),
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Filter values"),
+                  tags$select(class = "feature-select feature-values", `data-filter-values-select` = "", multiple = "multiple")
+                ),
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Plot type"),
+                  tags$select(
+                    class = "feature-select",
+                    `data-plot-type-select` = "",
+                    tags$option(value = "box", "Box"),
+                    tags$option(value = "violin", "Violin"),
+                    tags$option(value = "scatter", "Points")
+                  )
+                )
+              ),
+              tags$div(
+                class = "feature-row",
+                tags$label(
+                  class = "feature-control",
+                  tags$span(class = "feature-control-label", "Intensity scale"),
+                  tags$select(
+                    class = "feature-select",
+                    `data-transform-select` = "",
+                    tags$option(value = "log10_raw", "log10 raw intensity + 1"),
+                    tags$option(value = "raw", "Raw intensity, scientific notation"),
+                    tags$option(value = "log10_processed", "log10 processed value + 1"),
+                    tags$option(value = "processed", "Processed value")
+                  )
+                ),
+                tags$label(class = "feature-control", tags$span(class = "feature-control-label", "Points"), tags$span(tags$input(type = "checkbox", `data-point-toggle` = "", checked = "checked"), " show individual samples"))
+              )
+            )
+          ),
+          tags$section(
+            class = "feature-layout",
+            tags$div(class = "feature-panel", tags$div(id = "featurePlot")),
+            tags$aside(
+              class = "feature-info",
+              tags$div(`data-feature-info` = ""),
+              tags$h2("NPC driver features"),
+              tags$div(class = "driver-list", `data-driver-list` = "")
+            )
+          ),
+          tags$div(class = "hidden-dependency", dummy_plotly)
+        )
+      )
+    ))
+    htmltools::save_html(dashboard, file = filename, libdir = paste0(basename(filename), "_files"))
+    invisible(TRUE)
+  }
+
+  npc_link_path <- function(from_file, to_file) {
+    to_file <- as.character(to_file)
+    suffix <- ""
+    suffix_start <- regexpr("[?#]", to_file)
+    if (suffix_start[1] > 0) {
+      suffix <- substring(to_file, suffix_start[1])
+      to_file <- substring(to_file, 1, suffix_start[1] - 1)
+    }
+    from_dir <- normalizePath(dirname(from_file), mustWork = FALSE)
+    to_path <- normalizePath(to_file, mustWork = FALSE)
+    from_parts <- strsplit(from_dir, .Platform$file.sep, fixed = TRUE)[[1]]
+    to_parts <- strsplit(to_path, .Platform$file.sep, fixed = TRUE)[[1]]
+    common_length <- 0
+    max_common <- min(length(from_parts), length(to_parts))
+    for (index in seq_len(max_common)) {
+      if (from_parts[index] != to_parts[index]) {
+        break
+      }
+      common_length <- index
+    }
+    up_parts <- rep("..", length(from_parts) - common_length)
+    down_parts <- if (common_length < length(to_parts)) {
+      to_parts[(common_length + 1):length(to_parts)]
+    } else {
+      character(0)
+    }
+    relative_parts <- c(up_parts, down_parts)
+    relative_path <- if (length(relative_parts)) {
+      do.call(file.path, as.list(relative_parts))
+    } else {
+      basename(to_path)
+    }
+    paste0(utils::URLencode(relative_path), suffix)
+  }
+
+  npc_collapse_terms <- function(values) {
+    values <- unique(as.character(values))
+    values <- values[!is.na(values) & nzchar(values)]
+    if (!length(values)) {
+      return(NA_character_)
+    }
+    paste(sort(values), collapse = " | ")
+  }
+
+  npc_card_value <- function(card_df, columns) {
+    for (column in columns) {
+      if (column %in% colnames(card_df)) {
+        value <- npc_collapse_terms(card_df[[column]])
+        if (!is.na(value)) {
+          return(value)
+        }
+      }
+    }
+    NA_character_
+  }
+
+  npc_plotly_box <- function(plot_df, y_column, y_title) {
+    if (!"plot_tooltip" %in% colnames(plot_df)) {
+      if (all(c("npc_level", "npc_term", "summed_intensity", "n_features") %in% colnames(plot_df))) {
+        plot_df$plot_tooltip <- paste0(
+          "NPC ", plot_df$npc_level, ": ", plot_df$npc_term,
+          "<br>Group: ", plot_df$group,
+          "<br>Sample: ", plot_df$sample_id,
+          "<br>Summed intensity: ", signif(plot_df$summed_intensity, 4),
+          "<br>Features: ", plot_df$n_features,
+          if ("npc_overall_p_value" %in% colnames(plot_df)) paste0("<br>Overall p: ", vapply(plot_df$npc_overall_p_value, npc_format_p_value, character(1))) else "",
+          if ("npc_overall_q_value" %in% colnames(plot_df)) paste0("<br>Overall q: ", vapply(plot_df$npc_overall_q_value, npc_format_p_value, character(1))) else ""
+        )
+      } else if (all(c("numerator_term", "denominator_term", "ratio", "numerator_n_features", "denominator_n_features") %in% colnames(plot_df))) {
+        plot_df$plot_tooltip <- paste0(
+          "Class: ", plot_df$numerator_term,
+          "<br>Pathway: ", plot_df$denominator_term,
+          "<br>Group: ", plot_df$group,
+          "<br>Sample: ", plot_df$sample_id,
+          "<br>Ratio: ", signif(plot_df$ratio, 4),
+          "<br>Numerator features: ", plot_df$numerator_n_features,
+          "<br>Denominator features: ", plot_df$denominator_n_features,
+          if ("npc_overall_p_value" %in% colnames(plot_df)) paste0("<br>Overall p: ", vapply(plot_df$npc_overall_p_value, npc_format_p_value, character(1))) else "",
+          if ("npc_overall_q_value" %in% colnames(plot_df)) paste0("<br>Overall q: ", vapply(plot_df$npc_overall_q_value, npc_format_p_value, character(1))) else ""
+        )
+      } else {
+        plot_df$plot_tooltip <- paste0(
+          "Group: ", plot_df$group,
+          "<br>Sample: ", plot_df$sample_id,
+          "<br>Value: ", signif(plot_df[[y_column]], 4)
+        )
+      }
+    }
+    group_values <- levels(plot_df$group)
+    group_values <- group_values[group_values %in% as.character(unique(plot_df$group))]
+    if (!length(group_values)) {
+      group_values <- sort(unique(as.character(plot_df$group)))
+    }
+    plot_obj <- plotly::plot_ly()
+    for (group_index in seq_along(group_values)) {
+      group_name <- group_values[group_index]
+      group_df <- plot_df[as.character(plot_df$group) == group_name, , drop = FALSE]
+      if (!nrow(group_df)) {
+        next
+      }
+      group_color <- custom_colors[[group_name]]
+      if (is.null(group_color) || is.na(group_color)) {
+        group_color <- "#4B5563"
+      }
+      group_df$plot_x <- group_index
+      if (nrow(group_df) > 1) {
+        group_df$plot_x_jitter <- group_index + seq(-0.08, 0.08, length.out = nrow(group_df))
+      } else {
+        group_df$plot_x_jitter <- group_index
+      }
+      group_mean <- mean(group_df[[y_column]], na.rm = TRUE)
+      mean_df <- data.frame(
+        plot_x = group_index,
+        mean_value = group_mean,
+        plot_tooltip = paste0(
+          "Group mean<br>Group: ", group_name,
+          "<br>Mean: ", signif(group_mean, 4)
+        ),
+        stringsAsFactors = FALSE
+      )
+      plot_obj <- plot_obj %>%
+        plotly::add_trace(
+          data = group_df,
+          x = ~plot_x,
+          y = stats::as.formula(paste0("~", y_column)),
+          type = "box",
+          name = group_name,
+          boxpoints = FALSE,
+          hoverinfo = "skip",
+          line = list(color = group_color, width = 1),
+          fillcolor = group_color,
+          opacity = 0.22,
+          showlegend = FALSE
+        ) %>%
+        plotly::add_trace(
+          data = group_df,
+          x = ~plot_x_jitter,
+          y = stats::as.formula(paste0("~", y_column)),
+          type = "scatter",
+          mode = "markers",
+          name = group_name,
+          text = ~plot_tooltip,
+          hoverinfo = "text",
+          marker = list(color = group_color, size = 6, opacity = ordination_point_alpha),
+          showlegend = FALSE
+        ) %>%
+        plotly::add_markers(
+          data = mean_df,
+          x = ~plot_x,
+          y = ~mean_value,
+          text = ~plot_tooltip,
+          hoverinfo = "text",
+          marker = list(
+            color = group_color,
+            symbol = "diamond",
+            size = 10,
+            line = list(color = "#111827", width = 1.2)
+          ),
+          showlegend = FALSE,
+          inherit = FALSE
+        )
+    }
+    plot_obj %>%
+      plotly::layout(
+        dragmode = "zoom",
+        font = list(size = 10, family = "Arial, sans-serif", color = "#111827"),
+        margin = list(l = 48, r = 10, t = 10, b = 42),
+        paper_bgcolor = "white",
+        plot_bgcolor = "white",
+        xaxis = list(
+          title = "",
+          tickmode = "array",
+          tickvals = seq_along(group_values),
+          ticktext = group_values,
+          tickfont = list(size = 10),
+          showgrid = FALSE,
+          zeroline = FALSE
+        ),
+        yaxis = list(
+          title = list(text = y_title, font = list(size = 10)),
+          tickfont = list(size = 10),
+          gridcolor = "#E5E7EB",
+          zeroline = FALSE
+        )
+      ) %>%
+      plotly::config(displaylogo = FALSE, responsive = TRUE)
+  }
+
+  npc_save_dashboard <- function(plot_df, filename, dashboard_title, y_column, y_title, label_column, full_label_column, link_rows, stats_rows = data.frame(), explorer_html = NULL) {
+    dir.create(dirname(filename), recursive = TRUE, showWarnings = FALSE)
+    explorer_file <- if (!is.null(explorer_html) && !is.na(explorer_html)) sub("[?#].*$", "", as.character(explorer_html)) else NA_character_
+    explorer_link <- if (!is.na(explorer_file) && file.exists(explorer_file)) {
+      npc_link_path(filename, explorer_html)
+    } else {
+      NA_character_
+    }
+    labels <- unique(as.character(plot_df[[label_column]]))
+    if (nrow(stats_rows)) {
+      overall_stats_for_order <- stats_rows[stats_rows$contrast == "overall", c("plot_label", "p_value", "q_value"), drop = FALSE]
+      labels <- overall_stats_for_order$plot_label[order(overall_stats_for_order$q_value, overall_stats_for_order$p_value, overall_stats_for_order$plot_label, na.last = TRUE)]
+      labels <- c(labels, setdiff(unique(as.character(plot_df[[label_column]])), labels))
+    }
+    cards <- lapply(labels, function(label) {
+      card_df <- plot_df[as.character(plot_df[[label_column]]) == label, , drop = FALSE]
+      full_label <- as.character(card_df[[full_label_column]][1])
+      link_row <- link_rows[as.character(link_rows$label) == label, , drop = FALSE]
+      dashboard_link_value <- function(column) {
+        if (!nrow(link_row) || !column %in% colnames(link_row) || is.na(link_row[[column]][1]) || !nzchar(as.character(link_row[[column]][1]))) {
+          return(NA_character_)
+        }
+        npc_link_path(filename, link_row[[column]][1])
+      }
+      html_link <- dashboard_link_value("html")
+      pdf_link <- dashboard_link_value("pdf")
+      png_link <- dashboard_link_value("png")
+      tsv_link <- dashboard_link_value("tsv")
+      driver_link <- dashboard_link_value("drivers")
+      card_links <- htmltools::tagList()
+      if (!is.na(html_link)) {
+        card_links <- htmltools::tagAppendChildren(card_links, tags$a(class = "npc-card-link primary", href = html_link, "Open single plot"))
+      }
+      if (!is.na(driver_link)) {
+        card_links <- htmltools::tagAppendChildren(card_links, tags$a(class = "npc-card-link primary", href = driver_link, "Feature drivers"))
+      }
+      if (!is.na(pdf_link)) {
+        card_links <- htmltools::tagAppendChildren(card_links, tags$a(class = "npc-card-link", href = pdf_link, "PDF"))
+      }
+      if (!is.na(png_link)) {
+        card_links <- htmltools::tagAppendChildren(card_links, tags$a(class = "npc-card-link", href = png_link, "PNG"))
+      }
+      if (!is.na(tsv_link)) {
+        card_links <- htmltools::tagAppendChildren(card_links, tags$a(class = "npc-card-link", href = tsv_link, "TSV"))
+      }
+      card_stats <- if (nrow(stats_rows)) {
+        stats_rows[as.character(stats_rows$plot_label) == label, , drop = FALSE]
+      } else {
+        data.frame()
+      }
+      overall_stats <- card_stats[card_stats$contrast == "overall", , drop = FALSE]
+      pairwise_stats <- card_stats[card_stats$contrast != "overall", , drop = FALSE]
+      overall_p <- if (nrow(overall_stats)) overall_stats$p_value[1] else NA_real_
+      overall_q <- if (nrow(overall_stats)) overall_stats$q_value[1] else NA_real_
+      pairwise_p <- if (nrow(pairwise_stats)) min(pairwise_stats$p_value, na.rm = TRUE) else NA_real_
+      pairwise_q <- if (nrow(pairwise_stats)) min(pairwise_stats$q_value, na.rm = TRUE) else NA_real_
+      effect_size <- if (nrow(overall_stats) && "abs_mean_difference" %in% colnames(overall_stats)) overall_stats$abs_mean_difference[1] else NA_real_
+      feature_count <- if ("n_features" %in% colnames(card_df)) card_df$n_features[1] else if ("numerator_n_features" %in% colnames(card_df)) card_df$numerator_n_features[1] else NA_integer_
+      card_level <- npc_card_value(card_df, c("npc_level", "numerator_level"))
+      card_pathway <- npc_card_value(card_df, c("npc_pathway", "denominator_term"))
+      card_superclass <- npc_card_value(card_df, c("npc_superclass"))
+      card_class <- npc_card_value(card_df, c("npc_class", "numerator_class"))
+      if (!is.finite(pairwise_p)) {
+        pairwise_p <- NA_real_
+      }
+      if (!is.finite(pairwise_q)) {
+        pairwise_q <- NA_real_
+      }
+      if (!is.finite(effect_size)) {
+        effect_size <- NA_real_
+      }
+      card_sig <- npc_significance_label(overall_q)
+      card_links <- htmltools::tagAppendChildren(
+        card_links,
+        tags$span(
+          class = paste("npc-stat-badge", npc_significance_class(overall_q)),
+          paste0("overall p=", npc_format_p_value(overall_p), " / q=", npc_format_p_value(overall_q), " ", card_sig)
+        )
+      )
+      if (!is.na(pairwise_q)) {
+        card_links <- htmltools::tagAppendChildren(
+          card_links,
+          tags$span(
+            class = paste("npc-stat-badge", npc_significance_class(pairwise_q)),
+            paste0("best pair p=", npc_format_p_value(pairwise_p), " / q=", npc_format_p_value(pairwise_q))
+          )
+        )
+      }
+      if (!is.na(effect_size)) {
+        card_links <- htmltools::tagAppendChildren(
+          card_links,
+          tags$span(class = "npc-stat-badge effect", paste0("max mean delta=", signif(effect_size, 3)))
+        )
+      }
+      group_values <- levels(card_df$group)
+      group_values <- group_values[group_values %in% as.character(unique(card_df$group))]
+      if (!length(group_values)) {
+        group_values <- sort(unique(as.character(card_df$group)))
+      }
+      summary_rows <- lapply(group_values, function(group_name) {
+        group_df <- card_df[as.character(card_df$group) == group_name, , drop = FALSE]
+        tags$tr(
+          tags$td(group_name),
+          tags$td(length(unique(group_df$sample_id))),
+          tags$td(signif(mean(group_df[[y_column]], na.rm = TRUE), 4)),
+          tags$td(signif(stats::median(group_df[[y_column]], na.rm = TRUE), 4))
+        )
+      })
+      tags$article(
+        class = "npc-card",
+        `data-label` = tolower(paste(label, full_label, card_sig, card_level, card_pathway, card_superclass, card_class)),
+        `data-level` = ifelse(is.na(card_level), "", card_level),
+        `data-pathway` = ifelse(is.na(card_pathway), "", card_pathway),
+        `data-superclass` = ifelse(is.na(card_superclass), "", card_superclass),
+        `data-class` = ifelse(is.na(card_class), "", card_class),
+        `data-significant` = ifelse(!is.na(overall_q) && overall_q < 0.05, "yes", "no"),
+        `data-exploratory` = ifelse(!is.na(overall_p) && overall_p < 0.05, "yes", "no"),
+        `data-p` = ifelse(is.na(overall_p), Inf, overall_p),
+        `data-q` = ifelse(is.na(overall_q), Inf, overall_q),
+        `data-effect` = ifelse(is.na(effect_size), 0, effect_size),
+        `data-features` = ifelse(is.na(feature_count), 0, feature_count),
+        tags$header(
+          class = "npc-card-header",
+          tags$a(class = "npc-card-title", href = if (!is.na(html_link)) html_link else "#", label),
+          tags$span(class = "npc-card-meta", paste(length(unique(card_df$sample_id)), "samples"))
+        ),
+        tags$div(class = "npc-card-subtitle", full_label),
+        tags$div(class = "npc-plot", npc_plotly_box(card_df, y_column, y_title)),
+        tags$table(
+          class = "npc-summary-table",
+          tags$thead(tags$tr(tags$th("Group"), tags$th("n"), tags$th("Mean"), tags$th("Median"))),
+          tags$tbody(summary_rows)
+        ),
+        tags$footer(class = "npc-card-footer", card_links)
+      )
+    })
+    dashboard <- htmltools::browsable(tags$html(
+      tags$head(
+        tags$title(dashboard_title),
+        tags$style(htmltools::HTML("
+          :root { color-scheme: light; }
+          body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #111827;
+            background: #F3F4F6;
+          }
+          .npc-shell { max-width: 1480px; margin: 0 auto; padding: 20px; }
+          .npc-topbar {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(240px, 360px);
+            gap: 16px;
+            align-items: end;
+            padding: 16px 0;
+          }
+          h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 700; }
+          .npc-summary { margin-top: 6px; font-size: 12px; color: #4B5563; }
+          .npc-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            margin-top: 8px;
+            color: #374151;
+            font-size: 11px;
+            line-height: 1.25;
+          }
+          .npc-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+          .npc-legend-line {
+            display: inline-block;
+            width: 18px;
+            height: 0;
+            border-top: 2px solid #111827;
+          }
+          .npc-legend-diamond {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            transform: rotate(45deg);
+            background: #9CA3AF;
+            border: 1px solid #111827;
+          }
+          .npc-search {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 13px;
+            background: white;
+            color: #111827;
+          }
+          .npc-controls {
+            display: grid;
+            gap: 8px;
+          }
+          .npc-control-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+          .npc-select {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 12px;
+            background: white;
+            color: #111827;
+          }
+          .npc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 14px;
+          }
+          .npc-card {
+            min-width: 0;
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+            overflow: hidden;
+          }
+          .npc-card[hidden] { display: none; }
+          .npc-card-header {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: start;
+            padding: 12px 12px 4px;
+          }
+          .npc-card-title {
+            color: #111827;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+            text-decoration: none;
+          }
+          .npc-card-title:hover { text-decoration: underline; }
+          .npc-card-meta {
+            flex: 0 0 auto;
+            color: #6B7280;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+          .npc-card-subtitle {
+            padding: 0 12px 4px;
+            color: #6B7280;
+            font-size: 11px;
+            line-height: 1.35;
+          }
+          .npc-plot { height: 260px; padding: 0 8px; }
+          .npc-plot .plotly, .npc-plot .js-plotly-plot { width: 100% !important; height: 100% !important; }
+          .npc-summary-table {
+            width: calc(100% - 24px);
+            margin: 0 12px 8px;
+            border-collapse: collapse;
+            font-size: 11px;
+            color: #374151;
+          }
+          .npc-summary-table th,
+          .npc-summary-table td {
+            padding: 3px 5px;
+            border-bottom: 1px solid #F3F4F6;
+            text-align: right;
+            white-space: nowrap;
+          }
+          .npc-summary-table th:first-child,
+          .npc-summary-table td:first-child {
+            text-align: left;
+          }
+          .npc-summary-table th {
+            color: #6B7280;
+            font-weight: 700;
+          }
+          .npc-card-footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px 12px 12px;
+            border-top: 1px solid #F3F4F6;
+          }
+          .npc-card-link {
+            color: #374151;
+            border: 1px solid #D1D5DB;
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 11px;
+            line-height: 1.2;
+            text-decoration: none;
+            background: white;
+          }
+          .npc-card-link.primary { color: white; border-color: #1F2937; background: #1F2937; }
+          .npc-card-link:hover { border-color: #6B7280; }
+          .npc-stat-badge {
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 11px;
+            line-height: 1.2;
+            color: #374151;
+            background: #F3F4F6;
+            border: 1px solid #E5E7EB;
+          }
+          .npc-stat-badge.sig-weak,
+          .npc-stat-badge.sig-medium,
+          .npc-stat-badge.sig-strong {
+            color: #7F1D1D;
+            border-color: #FCA5A5;
+            background: #FEF2F2;
+          }
+          .npc-stat-badge.effect {
+            color: #064E3B;
+            border-color: #A7F3D0;
+            background: #ECFDF5;
+          }
+          @media (max-width: 760px) {
+            .npc-shell { padding: 12px; }
+            .npc-topbar { grid-template-columns: 1fr; }
+            .npc-control-row { grid-template-columns: 1fr; }
+            .npc-grid { grid-template-columns: 1fr; }
+            .npc-plot { height: 240px; }
+          }
+        ")),
+        tags$script(htmltools::HTML("
+          document.addEventListener('DOMContentLoaded', function () {
+            const input = document.querySelector('[data-npc-search]');
+            const sortSelect = document.querySelector('[data-npc-sort]');
+            const filterSelect = document.querySelector('[data-npc-filter]');
+            const levelSelect = document.querySelector('[data-npc-level]');
+            const pathwaySelect = document.querySelector('[data-npc-pathway]');
+            const superclassSelect = document.querySelector('[data-npc-superclass]');
+            const classSelect = document.querySelector('[data-npc-class]');
+            const grid = document.querySelector('.npc-grid');
+            const cards = Array.from(document.querySelectorAll('.npc-card'));
+            const counter = document.querySelector('[data-npc-count]');
+            function splitTerms(value) {
+              return (value || '').split('|').map(function(term) { return term.trim(); }).filter(Boolean);
+            }
+            function populateSelect(select, key, label) {
+              const values = new Set();
+              cards.forEach(function(card) {
+                splitTerms(card.dataset[key]).forEach(function(value) { values.add(value); });
+              });
+              Array.from(values).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(value) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label + ': ' + value;
+                select.appendChild(option);
+              });
+            }
+            function cardHasValue(card, key, selected) {
+              return !selected || splitTerms(card.dataset[key]).indexOf(selected) !== -1;
+            }
+            function applyFilter() {
+              const query = (input.value || '').trim().toLowerCase();
+              const filterMode = filterSelect.value;
+              const selectedLevel = levelSelect.value;
+              const selectedPathway = pathwaySelect.value;
+              const selectedSuperclass = superclassSelect.value;
+              const selectedClass = classSelect.value;
+              let visible = 0;
+              cards.forEach(function(card) {
+                const textMatch = !query || card.dataset.label.indexOf(query) !== -1;
+                const statMatch =
+                  filterMode === 'all' ||
+                  (filterMode === 'fdr' && card.dataset.significant === 'yes') ||
+                  (filterMode === 'exploratory' && card.dataset.exploratory === 'yes');
+                const hierarchyMatch =
+                  cardHasValue(card, 'level', selectedLevel) &&
+                  cardHasValue(card, 'pathway', selectedPathway) &&
+                  cardHasValue(card, 'superclass', selectedSuperclass) &&
+                  cardHasValue(card, 'class', selectedClass);
+                const match = textMatch && statMatch && hierarchyMatch;
+                card.hidden = !match;
+                if (match) visible += 1;
+              });
+              counter.textContent = visible + ' of ' + cards.length + ' panels';
+            }
+            function cardNumber(card, key, fallback) {
+              const value = Number(card.dataset[key]);
+              return Number.isFinite(value) ? value : fallback;
+            }
+            function applySort() {
+              const mode = sortSelect.value;
+              const sorted = cards.slice().sort(function(a, b) {
+                if (mode === 'p') return cardNumber(a, 'p', Infinity) - cardNumber(b, 'p', Infinity);
+                if (mode === 'q') return cardNumber(a, 'q', Infinity) - cardNumber(b, 'q', Infinity);
+                if (mode === 'effect') return cardNumber(b, 'effect', 0) - cardNumber(a, 'effect', 0);
+                if (mode === 'features') return cardNumber(b, 'features', 0) - cardNumber(a, 'features', 0);
+                return a.dataset.label.localeCompare(b.dataset.label);
+              });
+              sorted.forEach(function(card) { grid.appendChild(card); });
+            }
+            input.addEventListener('input', applyFilter);
+            sortSelect.addEventListener('change', function() { applySort(); applyFilter(); });
+            filterSelect.addEventListener('change', applyFilter);
+            levelSelect.addEventListener('change', applyFilter);
+            pathwaySelect.addEventListener('change', applyFilter);
+            superclassSelect.addEventListener('change', applyFilter);
+            classSelect.addEventListener('change', applyFilter);
+            populateSelect(levelSelect, 'level', 'Level');
+            populateSelect(pathwaySelect, 'pathway', 'Pathway');
+            populateSelect(superclassSelect, 'superclass', 'Superclass');
+            populateSelect(classSelect, 'class', 'Class');
+            applySort();
+            applyFilter();
+          });
+        "))
+      ),
+      tags$body(
+        tags$main(
+          class = "npc-shell",
+          tags$section(
+            class = "npc-topbar",
+            tags$div(
+              tags$h1(dashboard_title),
+              tags$div(class = "npc-summary", tags$span(`data-npc-count` = "", paste(length(labels), "panels")), " - zoom and pan are independent per panel"),
+              if (!is.na(explorer_link)) {
+                tags$div(class = "npc-summary", tags$a(class = "npc-card-link primary", href = explorer_link, "Open feature explorer"))
+              },
+              tags$div(
+                class = "npc-legend",
+                tags$span(class = "npc-legend-item", tags$span(class = "npc-legend-line"), "box line = median"),
+                tags$span(class = "npc-legend-item", tags$span(class = "npc-legend-diamond"), "diamond = mean"),
+                tags$span(class = "npc-legend-item", "p = raw test; q = FDR-adjusted")
+              )
+            ),
+            tags$div(
+              class = "npc-controls",
+              tags$input(class = "npc-search", `data-npc-search` = "", type = "search", placeholder = "Filter NPC classes, superclass, pathway..."),
+              tags$div(
+                class = "npc-control-row",
+                tags$select(
+                  class = "npc-select",
+                  `data-npc-sort` = "",
+                  tags$option(value = "q", "Sort: FDR q"),
+                  tags$option(value = "p", "Sort: raw p"),
+                  tags$option(value = "effect", "Sort: effect size"),
+                  tags$option(value = "features", "Sort: feature count"),
+                  tags$option(value = "name", "Sort: name")
+                ),
+                tags$select(
+                  class = "npc-select",
+                  `data-npc-filter` = "",
+                  tags$option(value = "all", "Show: all"),
+                  tags$option(value = "fdr", "Show: q < 0.05"),
+                  tags$option(value = "exploratory", "Show: p < 0.05")
+                )
+              ),
+              tags$div(
+                class = "npc-control-row",
+                tags$select(class = "npc-select", `data-npc-level` = "", tags$option(value = "", "Level: all")),
+                tags$select(class = "npc-select", `data-npc-pathway` = "", tags$option(value = "", "Pathway: all"))
+              ),
+              tags$div(
+                class = "npc-control-row",
+                tags$select(class = "npc-select", `data-npc-superclass` = "", tags$option(value = "", "Superclass: all")),
+                tags$select(class = "npc-select", `data-npc-class` = "", tags$option(value = "", "Class: all"))
+              )
+            )
+          ),
+          tags$section(class = "npc-grid", cards)
+        )
+      )
+    ))
+    htmltools::save_html(dashboard, file = filename, libdir = paste0(basename(filename), "_files"))
   }
 
   npc_apply_plot_intensity <- function(plot_df) {
@@ -1711,49 +3602,131 @@ if (nrow(npc_plot_terms) > 0) {
     plot_df
   }
 
+  npc_facet_ncol <- function(label_count) {
+    if (label_count >= 16) {
+      return(4)
+    }
+    if (label_count >= 8) {
+      return(3)
+    }
+    if (label_count >= 4) {
+      return(2)
+    }
+    label_count
+  }
+
+  npc_combined_plot_height <- function(label_count) {
+    max(ordination_export_height, ceiling(label_count / npc_facet_ncol(label_count)) * 2.65)
+  }
+
+  npc_static_stats_text <- function(plot_df) {
+    if (!all(c("npc_overall_p_value", "npc_overall_q_value") %in% colnames(plot_df))) {
+      return(NULL)
+    }
+    p_value <- plot_df$npc_overall_p_value[1]
+    q_value <- plot_df$npc_overall_q_value[1]
+    effect_text <- if ("npc_max_mean_difference" %in% colnames(plot_df) && !is.na(plot_df$npc_max_mean_difference[1])) {
+      paste0(" | max mean delta=", signif(plot_df$npc_max_mean_difference[1], 3))
+    } else {
+      ""
+    }
+    paste0("Overall p=", npc_format_p_value(p_value), " / FDR q=", npc_format_p_value(q_value), " (", npc_significance_label(q_value), ")", effect_text)
+  }
+
+  npc_add_static_label <- function(plot_df, label_column, static_label_column) {
+    if (all(c("npc_overall_p_value", "npc_overall_q_value") %in% colnames(plot_df))) {
+      plot_df[[static_label_column]] <- paste0(
+        plot_df[[label_column]],
+        "\np=", vapply(plot_df$npc_overall_p_value, npc_format_p_value, character(1)),
+        " / q=", vapply(plot_df$npc_overall_q_value, npc_format_p_value, character(1))
+      )
+    } else {
+      plot_df[[static_label_column]] <- plot_df[[label_column]]
+    }
+    plot_df
+  }
+
   npc_intensity_plot <- function(plot_df, plot_title, plot_subtitle, facet = TRUE) {
+    plot_df$npc_plot_label <- if ("npc_plot_label" %in% colnames(plot_df)) {
+      plot_df$npc_plot_label
+    } else {
+      plot_df$npc_label
+    }
+    plot_df <- npc_add_static_label(plot_df, "npc_plot_label", "npc_static_label")
+    plot_df$plot_tooltip <- paste0(
+      "NPC ", plot_df$npc_level, ": ", plot_df$npc_term,
+      "<br>Group: ", plot_df$group,
+      "<br>Sample: ", plot_df$sample_id,
+      "<br>Summed intensity: ", signif(plot_df$summed_intensity, 4),
+      "<br>Features: ", plot_df$n_features,
+      if ("npc_overall_p_value" %in% colnames(plot_df)) paste0("<br>Overall p: ", vapply(plot_df$npc_overall_p_value, npc_format_p_value, character(1))) else "",
+      if ("npc_overall_q_value" %in% colnames(plot_df)) paste0("<br>Overall q: ", vapply(plot_df$npc_overall_q_value, npc_format_p_value, character(1))) else ""
+    )
     plot_obj <- ggplot(plot_df, aes(x = group, y = plot_intensity, color = group, fill = group)) +
-      geom_boxplot(width = 0.65, alpha = 0.22, outlier.shape = NA, linewidth = 0.55) +
-      geom_jitter(width = 0.12, size = ordination_point_size * 0.8, alpha = ordination_point_alpha, shape = 16, stroke = 0) +
+      geom_boxplot(aes(group = group), width = 0.58, alpha = 0.18, outlier.shape = NA, linewidth = 0.65) +
+      geom_jitter(aes(text = plot_tooltip), width = 0.1, size = ordination_point_size * 0.58, alpha = ordination_point_alpha, shape = 16, stroke = 0) +
+      stat_summary(aes(group = group, fill = group), fun = mean, geom = "point", shape = 23, size = 2.8, colour = "black", stroke = 0.45, show.legend = FALSE) +
       scale_colour_manual(name = "Groups", values = custom_colors) +
       scale_fill_manual(name = "Groups", values = custom_colors) +
       labs(
         title = plot_title,
         subtitle = plot_subtitle,
         x = params$target$sample_metadata_header,
-        y = if (npc_transform == "log10") "log10 summed intensity + 1" else "Summed intensity"
+        y = if (npc_transform == "log10") "log10 summed intensity + 1" else "Summed intensity",
+        caption = if (!facet) npc_static_stats_text(plot_df) else NULL
       ) +
       publication_ordination_theme() +
       theme(
         axis.text.x = element_text(size = ordination_axis_text_size, colour = "black", angle = 30, hjust = 1),
+        plot.caption = element_text(size = ordination_axis_text_size, colour = "black", hjust = 0),
         legend.position = "none"
       )
     if (facet) {
-      plot_obj <- plot_obj + facet_wrap(~ npc_label, scales = "free_y")
+      plot_obj <- plot_obj + facet_wrap(~ npc_static_label, scales = "free_y", ncol = npc_facet_ncol(length(unique(plot_df$npc_plot_label))), labeller = label_wrap_gen(width = 24))
     }
     plot_obj
   }
 
   npc_ratio_plot <- function(plot_df, plot_title, plot_subtitle, facet = TRUE) {
+    plot_df$ratio_plot_label <- if ("ratio_plot_label" %in% colnames(plot_df)) {
+      plot_df$ratio_plot_label
+    } else {
+      plot_df$ratio_label
+    }
+    plot_df <- npc_add_static_label(plot_df, "ratio_plot_label", "ratio_static_label")
+    plot_df$plot_tooltip <- paste0(
+      "Class: ", plot_df$numerator_term,
+      "<br>Pathway: ", plot_df$denominator_term,
+      "<br>Group: ", plot_df$group,
+      "<br>Sample: ", plot_df$sample_id,
+      "<br>Ratio: ", signif(plot_df$ratio, 4),
+      "<br>Numerator features: ", plot_df$numerator_n_features,
+      "<br>Denominator features: ", plot_df$denominator_n_features,
+      if ("npc_overall_p_value" %in% colnames(plot_df)) paste0("<br>Overall p: ", vapply(plot_df$npc_overall_p_value, npc_format_p_value, character(1))) else "",
+      if ("npc_overall_q_value" %in% colnames(plot_df)) paste0("<br>Overall q: ", vapply(plot_df$npc_overall_q_value, npc_format_p_value, character(1))) else ""
+    )
     plot_obj <- ggplot(plot_df, aes(x = group, y = ratio, color = group, fill = group)) +
       geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.35) +
-      geom_boxplot(width = 0.65, alpha = 0.22, outlier.shape = NA, linewidth = 0.55) +
-      geom_jitter(width = 0.12, size = ordination_point_size * 0.8, alpha = ordination_point_alpha, shape = 16, stroke = 0) +
+      geom_boxplot(aes(group = group), width = 0.58, alpha = 0.18, outlier.shape = NA, linewidth = 0.65) +
+      geom_jitter(aes(text = plot_tooltip), width = 0.1, size = ordination_point_size * 0.58, alpha = ordination_point_alpha, shape = 16, stroke = 0) +
+      stat_summary(aes(group = group, fill = group), fun = mean, geom = "point", shape = 23, size = 2.8, colour = "black", stroke = 0.45, show.legend = FALSE) +
       scale_colour_manual(name = "Groups", values = custom_colors) +
       scale_fill_manual(name = "Groups", values = custom_colors) +
       labs(
         title = plot_title,
         subtitle = plot_subtitle,
         x = params$target$sample_metadata_header,
-        y = "Fraction of corresponding NPC pathway summed intensity"
+        y = "Fraction of corresponding NPC pathway summed intensity",
+        caption = if (!facet) npc_static_stats_text(plot_df) else NULL
       ) +
       publication_ordination_theme() +
       theme(
         axis.text.x = element_text(size = ordination_axis_text_size, colour = "black", angle = 30, hjust = 1),
+        plot.caption = element_text(size = ordination_axis_text_size, colour = "black", hjust = 0),
         legend.position = "none"
       )
     if (facet) {
-      plot_obj <- plot_obj + facet_wrap(~ ratio_label, scales = "free_y")
+      plot_obj <- plot_obj + facet_wrap(~ ratio_static_label, scales = "free_y", ncol = npc_facet_ncol(length(unique(plot_df$ratio_plot_label))), labeller = label_wrap_gen(width = 24))
     }
     plot_obj
   }
@@ -1762,10 +3735,73 @@ if (nrow(npc_plot_terms) > 0) {
     npc_variable_meta <- npc_add_taxonomy_pathway(npc_variable_meta)
     npc_summed_intensity_tables <- list()
     npc_feature_sets <- list()
+    npc_source_plot_terms <- npc_plot_terms
 
-    for (npc_term_index in seq_len(nrow(npc_plot_terms))) {
-      npc_level <- npc_plot_terms$npc_level[npc_term_index]
-      npc_term <- npc_plot_terms$npc_term[npc_term_index]
+    if (isTRUE(npc_expand_all)) {
+      for (npc_expand_level in npc_expand_levels) {
+        npc_expand_column <- npc_level_columns[[npc_expand_level]]
+        if (!npc_expand_column %in% colnames(npc_variable_meta)) {
+          next
+        }
+        npc_expand_probability_column <- npc_probability_columns[[npc_expand_level]]
+        npc_expand_probability_values <- if (npc_expand_probability_column %in% colnames(npc_variable_meta)) {
+          suppressWarnings(as.numeric(npc_variable_meta[[npc_expand_probability_column]]))
+        } else {
+          rep(1, nrow(npc_variable_meta))
+        }
+        npc_expand_keep <- !is.na(npc_expand_probability_values) & npc_expand_probability_values >= npc_min_probability
+        npc_expanded_terms <- unique(as.character(npc_variable_meta[[npc_expand_column]][npc_expand_keep]))
+        npc_expanded_terms <- npc_expanded_terms[!is.na(npc_expanded_terms) & nzchar(npc_expanded_terms)]
+        if (length(npc_expanded_terms)) {
+          npc_source_plot_terms <- bind_rows(
+            npc_source_plot_terms,
+            data.frame(npc_level = npc_expand_level, npc_term = sort(npc_expanded_terms), stringsAsFactors = FALSE)
+          ) %>%
+            distinct(npc_level, npc_term, .keep_all = TRUE)
+        }
+      }
+    }
+
+    if (length(npc_expand_pathway)) {
+      for (npc_requested_pathway in npc_expand_pathway) {
+        npc_pathway <- npc_normalize_requested_pathway(npc_requested_pathway)
+        npc_pathway_keep <- !is.na(npc_variable_meta$npc_taxonomy_pathway) &
+          npc_pathway_contains(npc_variable_meta$npc_taxonomy_pathway, npc_pathway)
+        for (npc_expand_level in npc_expand_levels) {
+          npc_expand_column <- npc_level_columns[[npc_expand_level]]
+          if (!npc_expand_column %in% colnames(npc_variable_meta)) {
+            next
+          }
+          npc_expand_probability_column <- npc_probability_columns[[npc_expand_level]]
+          npc_expand_probability_values <- if (npc_expand_probability_column %in% colnames(npc_variable_meta)) {
+            suppressWarnings(as.numeric(npc_variable_meta[[npc_expand_probability_column]]))
+          } else {
+            rep(1, nrow(npc_variable_meta))
+          }
+          npc_expand_keep <- npc_pathway_keep &
+            !is.na(npc_expand_probability_values) &
+            npc_expand_probability_values >= npc_min_probability
+          npc_expanded_terms <- unique(as.character(npc_variable_meta[[npc_expand_column]][npc_expand_keep]))
+          npc_expanded_terms <- npc_expanded_terms[!is.na(npc_expanded_terms) & nzchar(npc_expanded_terms)]
+          if (length(npc_expanded_terms)) {
+            npc_source_plot_terms <- bind_rows(
+              npc_source_plot_terms,
+              data.frame(npc_level = npc_expand_level, npc_term = sort(npc_expanded_terms), stringsAsFactors = FALSE)
+            ) %>%
+              distinct(npc_level, npc_term, .keep_all = TRUE)
+          }
+        }
+      }
+    }
+
+    if (!nrow(npc_source_plot_terms)) {
+      warning(sprintf("NPC summed-intensity plotting was requested for %s data, but no selected or expanded NPC terms were available.", npc_source_label))
+      return(invisible(NULL))
+    }
+
+    for (npc_term_index in seq_len(nrow(npc_source_plot_terms))) {
+      npc_level <- npc_source_plot_terms$npc_level[npc_term_index]
+      npc_term <- npc_source_plot_terms$npc_term[npc_term_index]
       npc_column <- npc_level_columns[[npc_level]]
       npc_probability_column <- npc_probability_columns[[npc_level]]
 
@@ -1790,6 +3826,7 @@ if (nrow(npc_plot_terms) > 0) {
         next
       }
 
+      npc_feature_variable_meta <- npc_variable_meta[as.character(npc_variable_meta$feature_id) %in% npc_feature_ids, , drop = FALSE]
       npc_summed_values <- rowSums(npc_data_matrix[, npc_feature_ids, drop = FALSE], na.rm = TRUE)
       npc_label <- paste0("NPC ", npc_level, ": ", npc_term)
       npc_term_df <- data.frame(
@@ -1799,6 +3836,10 @@ if (nrow(npc_plot_terms) > 0) {
         npc_level = npc_level,
         npc_term = npc_term,
         npc_label = npc_label,
+        npc_plot_label = npc_term,
+        npc_pathway = npc_collapse_terms(npc_feature_variable_meta$npc_taxonomy_pathway),
+        npc_superclass = npc_collapse_terms(npc_feature_variable_meta$canopus_npc_superclass),
+        npc_class = npc_collapse_terms(npc_feature_variable_meta$canopus_npc_class),
         n_features = length(npc_feature_ids),
         summed_intensity = npc_summed_values,
         stringsAsFactors = FALSE
@@ -1824,33 +3865,164 @@ if (nrow(npc_plot_terms) > 0) {
     }
     npc_summed_intensity_df$group <- factor(npc_summed_intensity_df$group, levels = npc_group_levels)
     npc_summed_intensity_df <- npc_apply_plot_intensity(npc_summed_intensity_df)
+    npc_intensity_stats_df <- npc_compute_stats(
+      npc_summed_intensity_df,
+      "npc_plot_label",
+      "npc_label",
+      "plot_intensity",
+      npc_source_label,
+      if (npc_transform == "log10") "log10_summed_intensity_plus_1" else "summed_intensity"
+    )
+    npc_summed_intensity_df <- npc_attach_overall_stats(npc_summed_intensity_df, npc_intensity_stats_df, "npc_plot_label")
+    npc_intensity_static_labels <- npc_selected_static_labels(npc_intensity_stats_df)
+    if (!length(npc_intensity_static_labels)) {
+      npc_intensity_static_labels <- unique(npc_summed_intensity_df$npc_plot_label)
+    }
+    npc_summed_intensity_static_df <- npc_summed_intensity_df[npc_summed_intensity_df$npc_plot_label %in% npc_intensity_static_labels, , drop = FALSE]
+    npc_intensity_label_count <- length(unique(npc_summed_intensity_static_df$npc_plot_label))
+    npc_intensity_plot_height <- npc_combined_plot_height(npc_intensity_label_count)
 
     npc_summed_intensity_plot <- npc_intensity_plot(
-      npc_summed_intensity_df,
-      paste("Summed NPC-classified feature intensity for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+      npc_summed_intensity_static_df,
+      paste("Top", npc_intensity_label_count, "summed NPC-classified feature intensities for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
       paste("Comparison across:", params$target$sample_metadata_header),
       facet = TRUE
     )
 
-    npc_write_table(npc_summed_intensity_df, filenames$intensity_table)
-    npc_save_plot(npc_summed_intensity_plot, filenames$intensity_pdf)
-    npc_save_plot(npc_summed_intensity_plot, filenames$intensity_png)
+    npc_driver_dir <- file.path(dirname(filenames$intensity_table), "feature_drivers")
+    npc_driver_links <- data.frame(
+      label = character(),
+      drivers = character(),
+      stringsAsFactors = FALSE
+    )
+    npc_driver_tables <- list()
+    npc_feature_explorer_link <- paste0(
+      filenames$feature_explorer_app,
+      "?data=",
+      utils::URLencode(filenames$feature_explorer_data_link, reserved = TRUE)
+    )
+    for (npc_feature_set in npc_feature_sets) {
+      npc_driver_df <- npc_feature_driver_table(
+        npc_data_matrix,
+        npc_sample_meta,
+        npc_variable_meta,
+        npc_feature_set$feature_ids,
+        npc_feature_set$npc_level,
+        npc_feature_set$npc_term,
+        npc_feature_set$npc_label,
+        npc_source_label
+      )
+      if (!nrow(npc_driver_df)) {
+        next
+      }
+      npc_driver_suffix <- paste(npc_safe_file_part(npc_feature_set$npc_level), npc_safe_file_part(npc_feature_set$npc_term), sep = "_")
+      npc_driver_file <- file.path(npc_driver_dir, paste0("NPC_summed_intensity_feature_drivers", file_suffix, "_", npc_driver_suffix, ".tsv"))
+      npc_write_table(npc_driver_df, npc_driver_file)
+      npc_driver_tables[[length(npc_driver_tables) + 1]] <- npc_driver_df
+      npc_driver_links <- bind_rows(
+        npc_driver_links,
+        data.frame(
+          label = npc_feature_set$npc_term,
+          drivers = paste0(npc_feature_explorer_link, "&driver=", utils::URLencode(npc_feature_set$npc_term, reserved = TRUE)),
+          stringsAsFactors = FALSE
+        )
+      )
+    }
 
-    if (isTRUE(npc_individual_export)) {
+    npc_write_table(npc_summed_intensity_df, filenames$intensity_table)
+    npc_write_table(npc_intensity_stats_df, filenames$intensity_stats_table)
+    if (length(npc_driver_tables)) {
+      npc_write_table(bind_rows(npc_driver_tables), filenames$intensity_driver_table)
+    }
+    npc_explorer_raw_data_matrix <- NULL
+    if (exists("DE_original") && !is.null(DE_original$data)) {
+      npc_explorer_raw_samples <- intersect(rownames(npc_data_matrix), rownames(DE_original$data))
+      npc_explorer_raw_features <- intersect(colnames(npc_data_matrix), colnames(DE_original$data))
+      if (length(npc_explorer_raw_samples) && length(npc_explorer_raw_features)) {
+        npc_explorer_raw_data_matrix <- DE_original$data[npc_explorer_raw_samples, npc_explorer_raw_features, drop = FALSE]
+      }
+    }
+    npc_save_feature_explorer(
+      npc_data_matrix,
+      npc_sample_meta,
+      npc_variable_meta,
+      filenames$feature_explorer_app,
+      paste("Feature intensity explorer for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+      if (length(npc_driver_tables)) bind_rows(npc_driver_tables) else data.frame(),
+      filenames$feature_explorer_data,
+      npc_explorer_raw_data_matrix
+    )
+    npc_save_plot(npc_summed_intensity_plot, filenames$intensity_pdf, height = npc_intensity_plot_height)
+
+    npc_intensity_dashboard_links <- data.frame(
+      label = character(),
+      html = character(),
+      pdf = character(),
+      png = character(),
+      tsv = character(),
+      drivers = character(),
+      stringsAsFactors = FALSE
+    )
+    npc_intensity_individual_labels <- npc_selected_individual_labels(npc_intensity_stats_df, "npc_plot_label")
+    if (length(npc_intensity_individual_labels)) {
       for (npc_label in unique(npc_summed_intensity_df$npc_label)) {
         npc_individual_df <- npc_summed_intensity_df[npc_summed_intensity_df$npc_label == npc_label, , drop = FALSE]
+        if (!npc_individual_df$npc_plot_label[1] %in% npc_intensity_individual_labels) {
+          next
+        }
         npc_file_suffix <- paste(npc_safe_file_part(npc_individual_df$npc_level[1]), npc_safe_file_part(npc_individual_df$npc_term[1]), sep = "_")
+        npc_individual_tsv <- file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".tsv"))
+        npc_individual_pdf <- file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".pdf"))
+        npc_individual_png <- file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".png"))
+        npc_individual_html <- file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".html"))
         npc_individual_plot <- npc_intensity_plot(
           npc_individual_df,
           npc_label,
           paste("Comparison across:", params$target$sample_metadata_header),
           facet = FALSE
         )
-        npc_write_table(npc_individual_df, file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".tsv")))
-        npc_save_plot(npc_individual_plot, file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".pdf")))
-        npc_save_plot(npc_individual_plot, file.path(filenames$individual_dir, paste0("NPC_summed_intensity", file_suffix, "_", npc_file_suffix, ".png")))
+        npc_write_table(npc_individual_df, npc_individual_tsv)
+        npc_save_plot(npc_individual_plot, npc_individual_pdf)
+        npc_save_html_plot(npc_individual_plot, npc_individual_html, selfcontained = FALSE)
+        npc_save_plot(npc_individual_plot, npc_individual_png)
+        npc_intensity_dashboard_links <- bind_rows(
+          npc_intensity_dashboard_links,
+          data.frame(
+            label = npc_individual_df$npc_plot_label[1],
+            html = npc_individual_html,
+            pdf = npc_individual_pdf,
+            png = npc_individual_png,
+            tsv = npc_individual_tsv,
+            drivers = NA_character_,
+            stringsAsFactors = FALSE
+          )
+        )
       }
     }
+    if (nrow(npc_driver_links)) {
+      npc_intensity_dashboard_links <- full_join(npc_intensity_dashboard_links, npc_driver_links, by = "label", suffix = c("", ".driver"))
+      if ("drivers.driver" %in% colnames(npc_intensity_dashboard_links)) {
+        npc_intensity_dashboard_links$drivers <- ifelse(
+          is.na(npc_intensity_dashboard_links$drivers),
+          npc_intensity_dashboard_links$drivers.driver,
+          npc_intensity_dashboard_links$drivers
+        )
+        npc_intensity_dashboard_links$drivers.driver <- NULL
+      }
+    }
+    npc_save_dashboard(
+      npc_summed_intensity_df,
+      filenames$intensity_html,
+      paste("NPC summed intensity dashboard for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+      "plot_intensity",
+      if (npc_transform == "log10") "log10 summed intensity + 1" else "Summed intensity",
+      "npc_plot_label",
+      "npc_label",
+      npc_intensity_dashboard_links,
+      npc_intensity_stats_df,
+      npc_feature_explorer_link
+    )
+    npc_save_plot(npc_summed_intensity_plot, filenames$intensity_png, height = npc_intensity_plot_height)
 
     if (isTRUE(npc_ratio_enabled)) {
       npc_ratio_tables <- list()
@@ -1905,9 +4077,14 @@ if (nrow(npc_plot_terms) > 0) {
           data_source = npc_source_label,
           numerator_level = npc_feature_set$npc_level,
           numerator_term = npc_feature_set$npc_term,
+          numerator_class = npc_collapse_terms(npc_term_variable_meta$canopus_npc_class),
           denominator_level = "pathway",
           denominator_term = npc_denominator_term,
+          npc_pathway = npc_denominator_term,
+          npc_superclass = npc_collapse_terms(npc_term_variable_meta$canopus_npc_superclass),
+          npc_class = npc_collapse_terms(npc_term_variable_meta$canopus_npc_class),
           ratio_label = paste0(npc_feature_set$npc_label, " / NPC pathway: ", npc_denominator_term),
+          ratio_plot_label = npc_feature_set$npc_term,
           numerator_n_features = length(npc_ratio_numerator_feature_ids),
           denominator_n_features = length(npc_denominator_feature_ids),
           numerator_summed_intensity = npc_numerator_values,
@@ -1920,19 +4097,48 @@ if (nrow(npc_plot_terms) > 0) {
       if (length(npc_ratio_tables)) {
         npc_ratio_df <- bind_rows(npc_ratio_tables)
         npc_ratio_df$group <- factor(npc_ratio_df$group, levels = npc_group_levels)
-        npc_ratio_combined_plot <- npc_ratio_plot(
+        npc_ratio_stats_df <- npc_compute_stats(
           npc_ratio_df,
-          paste("NPC class/superclass pathway-normalized intensity for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+          "ratio_plot_label",
+          "ratio_label",
+          "ratio",
+          npc_source_label,
+          "pathway_normalized_ratio"
+        )
+        npc_ratio_df <- npc_attach_overall_stats(npc_ratio_df, npc_ratio_stats_df, "ratio_plot_label")
+        npc_ratio_static_labels <- npc_selected_static_labels(npc_ratio_stats_df)
+        if (!length(npc_ratio_static_labels)) {
+          npc_ratio_static_labels <- unique(npc_ratio_df$ratio_plot_label)
+        }
+        npc_ratio_static_df <- npc_ratio_df[npc_ratio_df$ratio_plot_label %in% npc_ratio_static_labels, , drop = FALSE]
+        npc_ratio_label_count <- length(unique(npc_ratio_static_df$ratio_plot_label))
+        npc_ratio_plot_height <- npc_combined_plot_height(npc_ratio_label_count)
+        npc_ratio_combined_plot <- npc_ratio_plot(
+          npc_ratio_static_df,
+          paste("Top", npc_ratio_label_count, "NPC class/superclass pathway-normalized intensities for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
           paste("Comparison across:", params$target$sample_metadata_header),
           facet = TRUE
         )
         npc_write_table(npc_ratio_df, filenames$ratio_table)
-        npc_save_plot(npc_ratio_combined_plot, filenames$ratio_pdf)
-        npc_save_plot(npc_ratio_combined_plot, filenames$ratio_png)
+        npc_write_table(npc_ratio_stats_df, filenames$ratio_stats_table)
+        npc_save_plot(npc_ratio_combined_plot, filenames$ratio_pdf, height = npc_ratio_plot_height)
 
-        if (isTRUE(npc_individual_export)) {
+        npc_ratio_dashboard_links <- data.frame(
+          label = character(),
+          html = character(),
+          pdf = character(),
+          png = character(),
+          tsv = character(),
+          drivers = character(),
+          stringsAsFactors = FALSE
+        )
+        npc_ratio_individual_labels <- npc_selected_individual_labels(npc_ratio_stats_df, "ratio_plot_label")
+        if (length(npc_ratio_individual_labels)) {
           for (npc_ratio_label in unique(npc_ratio_df$ratio_label)) {
             npc_individual_ratio_df <- npc_ratio_df[npc_ratio_df$ratio_label == npc_ratio_label, , drop = FALSE]
+            if (!npc_individual_ratio_df$ratio_plot_label[1] %in% npc_ratio_individual_labels) {
+              next
+            }
             npc_ratio_file_suffix <- paste(
               npc_safe_file_part(npc_individual_ratio_df$numerator_level[1]),
               npc_safe_file_part(npc_individual_ratio_df$numerator_term[1]),
@@ -1940,17 +4146,58 @@ if (nrow(npc_plot_terms) > 0) {
               npc_safe_file_part(npc_individual_ratio_df$denominator_term[1]),
               sep = "_"
             )
+            npc_individual_ratio_tsv <- file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".tsv"))
+            npc_individual_ratio_pdf <- file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".pdf"))
+            npc_individual_ratio_png <- file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".png"))
+            npc_individual_ratio_html <- file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".html"))
             npc_individual_ratio_plot <- npc_ratio_plot(
               npc_individual_ratio_df,
               npc_ratio_label,
               paste("Comparison across:", params$target$sample_metadata_header),
               facet = FALSE
             )
-            npc_write_table(npc_individual_ratio_df, file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".tsv")))
-            npc_save_plot(npc_individual_ratio_plot, file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".pdf")))
-            npc_save_plot(npc_individual_ratio_plot, file.path(filenames$individual_ratio_dir, paste0("NPC_summed_intensity_ratio", file_suffix, "_", npc_ratio_file_suffix, ".png")))
+            npc_write_table(npc_individual_ratio_df, npc_individual_ratio_tsv)
+            npc_save_plot(npc_individual_ratio_plot, npc_individual_ratio_pdf)
+            npc_save_html_plot(npc_individual_ratio_plot, npc_individual_ratio_html, selfcontained = FALSE)
+            npc_save_plot(npc_individual_ratio_plot, npc_individual_ratio_png)
+            npc_ratio_dashboard_links <- bind_rows(
+              npc_ratio_dashboard_links,
+              data.frame(
+                label = npc_individual_ratio_df$ratio_plot_label[1],
+                html = npc_individual_ratio_html,
+                pdf = npc_individual_ratio_pdf,
+                png = npc_individual_ratio_png,
+                tsv = npc_individual_ratio_tsv,
+                drivers = NA_character_,
+                stringsAsFactors = FALSE
+              )
+            )
           }
         }
+        if (nrow(npc_driver_links)) {
+          npc_ratio_dashboard_links <- full_join(npc_ratio_dashboard_links, npc_driver_links, by = "label", suffix = c("", ".driver"))
+          if ("drivers.driver" %in% colnames(npc_ratio_dashboard_links)) {
+            npc_ratio_dashboard_links$drivers <- ifelse(
+              is.na(npc_ratio_dashboard_links$drivers),
+              npc_ratio_dashboard_links$drivers.driver,
+              npc_ratio_dashboard_links$drivers
+            )
+            npc_ratio_dashboard_links$drivers.driver <- NULL
+          }
+        }
+        npc_save_dashboard(
+          npc_ratio_df,
+          filenames$ratio_html,
+          paste("NPC pathway-normalized intensity dashboard for", params$mapp_batch, paste0("(", npc_source_label, " data)")),
+          "ratio",
+          "Fraction of corresponding NPC pathway summed intensity",
+          "ratio_plot_label",
+          "ratio_label",
+          npc_ratio_dashboard_links,
+          npc_ratio_stats_df,
+          npc_feature_explorer_link
+        )
+        npc_save_plot(npc_ratio_combined_plot, filenames$ratio_png, height = npc_ratio_plot_height)
       }
     }
   }
@@ -1965,11 +4212,19 @@ if (nrow(npc_plot_terms) > 0) {
     "filtered",
     list(
       intensity_table = filename_npc_summed_intensity_table,
+      intensity_stats_table = filename_npc_summed_intensity_stats_table,
+      intensity_driver_table = filename_npc_summed_intensity_driver_table,
+      feature_explorer_app = filename_npc_feature_explorer_app,
+      feature_explorer_data = filename_npc_feature_explorer_filtered_data,
+      feature_explorer_data_link = npc_feature_explorer_filtered_data_link,
       intensity_pdf = filename_npc_summed_intensity_pdf,
       intensity_png = filename_npc_summed_intensity_png,
+      intensity_html = filename_npc_summed_intensity_html,
       ratio_table = filename_npc_summed_intensity_ratio_table,
+      ratio_stats_table = filename_npc_summed_intensity_ratio_stats_table,
       ratio_pdf = filename_npc_summed_intensity_ratio_pdf,
       ratio_png = filename_npc_summed_intensity_ratio_png,
+      ratio_html = filename_npc_summed_intensity_ratio_html,
       individual_dir = file.path(dir_npc_summed_intensity_filtered, "individual"),
       individual_ratio_dir = file.path(dir_npc_summed_intensity_filtered, "individual_ratio")
     ),
@@ -1986,11 +4241,19 @@ if (nrow(npc_plot_terms) > 0) {
       "raw",
       list(
         intensity_table = filename_npc_summed_intensity_raw_table,
+        intensity_stats_table = filename_npc_summed_intensity_raw_stats_table,
+        intensity_driver_table = filename_npc_summed_intensity_raw_driver_table,
+        feature_explorer_app = filename_npc_feature_explorer_app,
+        feature_explorer_data = filename_npc_feature_explorer_raw_data,
+        feature_explorer_data_link = npc_feature_explorer_raw_data_link,
         intensity_pdf = filename_npc_summed_intensity_raw_pdf,
         intensity_png = filename_npc_summed_intensity_raw_png,
+        intensity_html = filename_npc_summed_intensity_raw_html,
         ratio_table = filename_npc_summed_intensity_ratio_raw_table,
+        ratio_stats_table = filename_npc_summed_intensity_ratio_raw_stats_table,
         ratio_pdf = filename_npc_summed_intensity_ratio_raw_pdf,
         ratio_png = filename_npc_summed_intensity_ratio_raw_png,
+        ratio_html = filename_npc_summed_intensity_ratio_raw_html,
         individual_dir = file.path(dir_npc_summed_intensity_raw, "individual"),
         individual_ratio_dir = file.path(dir_npc_summed_intensity_raw, "individual_ratio")
       ),
@@ -2162,7 +4425,7 @@ if (params$actions$run_PLSDA == "TRUE") {
     left_join(DE$variable_meta, by = "feature_id") %>%
     select(feature_id, feature_id_full_annotated)
 
-  rownames(plsda_object$vip) <- vip_variable_meta$feature_id_full
+  rownames(plsda_object$vip) <- vip_variable_meta$feature_id_full_annotated
 
 
   C <- pls_scores_plot(
@@ -2172,15 +4435,24 @@ if (params$actions$run_PLSDA == "TRUE") {
     points_to_label = ordination_points_to_label
   )
 
-  plsda_plot <- chart_plot(C, plsda_object)
+  plsda_plot <- tryCatch(
+    chart_plot(C, plsda_object),
+    error = function(err) {
+      warning(sprintf("Could not build PLSDA chart with chart_plot(): %s", conditionMessage(err)))
+      NULL
+    }
+  )
 
-
-
-
-  fig_PLSDA <- plsda_plot +
-    facet_wrap(~ plsda_plot$labels$title) +
-    ggtitle(title_PLSDA) +
-    publication_ordination_theme()
+  if (inherits(plsda_plot, "ggplot")) {
+    fig_PLSDA <- plsda_plot +
+      ggtitle(title_PLSDA) +
+      publication_ordination_theme()
+  } else {
+    warning("Could not build PLSDA chart with chart_plot(); using a direct scores plot fallback.")
+    fig_PLSDA <- build_manual_plsda_scores_plot(plsda_object) +
+      ggtitle(title_PLSDA) +
+      publication_ordination_theme()
+  }
 
 
   fig_PLSDA <- fig_PLSDA + ordination_colour_scale()
@@ -2191,11 +4463,22 @@ if (params$actions$run_PLSDA == "TRUE") {
 
   C <- plsda_feature_importance_plot(n_features = 30, metric = "vip")
 
-  vip_plot <- chart_plot(C, plsda_object)
+  vip_plot <- tryCatch(
+    chart_plot(C, plsda_object),
+    error = function(err) {
+      warning(sprintf("Could not build PLSDA VIP chart with chart_plot(): %s", conditionMessage(err)))
+      NULL
+    }
+  )
 
 
 
-  fig_PLSDA_VIP <- vip_plot + theme_classic() + facet_wrap(~ plsda_plot$labels$title) + ggtitle(title_PLSDA_VIP)
+  fig_PLSDA_VIP <- NULL
+  if (inherits(vip_plot, "ggplot")) {
+    fig_PLSDA_VIP <- vip_plot + theme_classic() + ggtitle(title_PLSDA_VIP)
+  } else {
+    warning("Skipping PLSDA VIP PDF because the VIP chart object was not available; the VIP TSV will still be exported.")
+  }
 
   # We keep the loadings
 
@@ -2232,7 +4515,9 @@ if (params$actions$run_PLSDA == "TRUE") {
   # The plots are exported
 
   ggsave(plot = fig_PLSDA, filename = filename_PLSDA, width = ordination_export_width, height = ordination_export_height, units = "in")
-  ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP_plot, width = 20, height = 10)
+  if (inherits(fig_PLSDA_VIP, "ggplot")) {
+    ggsave(plot = fig_PLSDA_VIP, filename = filename_PLSDA_VIP_plot, width = 20, height = 10)
+  }
 
   # We export the loadings
 

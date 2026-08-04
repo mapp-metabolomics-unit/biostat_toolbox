@@ -125,9 +125,18 @@ npc_summed_intensity:
   pathway: []
   superclass: []
   class: []
-  min_probability: 0
+  expand_all: FALSE # TRUE plots every observed NPC class/superclass listed in expand_levels
+  expand_pathway: [] # e.g. "Fatty acids"; use this to plot every present class/superclass under a pathway
+  expand_levels:
+    - "class" # "class", "superclass", or both
+  min_probability: 0 # minimum CANOPUS NPC probability for the selected level; e.g. class uses NPC#class Probability
   transform: "log10" # "log10" or "none"
-  individual_export: TRUE
+  individual_export: TRUE # TRUE/all, FALSE/none, significant, exploratory, or top
+  individual_export_p_value: 0.05 # used when individual_export is exploratory
+  individual_export_q_value: 0.05 # used when individual_export is significant
+  individual_export_top_n: 30 # used when individual_export is top
+  feature_driver_top_n: 30 # top feature drivers shown as boxplots in each drilldown dashboard; TSV exports keep all
+  static_export_top_n: 40 # combined PDF/PNG exports keep the top N terms; HTML/TSV exports keep all terms
   raw_export: TRUE
   ratios:
     enabled: TRUE

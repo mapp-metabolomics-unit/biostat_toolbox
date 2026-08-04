@@ -66,6 +66,15 @@ resolve_path <- function(path_value, fallback_dir = getwd(), must_work = FALSE) 
   normalizePath(file.path(fallback_dir, path_value), mustWork = must_work)
 }
 
+project_library_path <- function(project_root) {
+  r_version <- paste(R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1], sep = ".")
+  candidate <- file.path(project_root, "renv", "library", paste0("R-", r_version), R.version$platform)
+  if (dir.exists(candidate)) {
+    return(normalizePath(candidate, mustWork = TRUE))
+  }
+  NULL
+}
+
 parse_hash_list <- function(value) {
   if (!has_value(value)) {
     return(character())
@@ -151,7 +160,12 @@ merge_color_palette <- function(params, override) {
 
 merge_params_override <- function(params, override) {
   color_merge <- merge_color_palette(params, override)
-  deep_merge(color_merge$params, color_merge$override)
+  params <- color_merge$params
+  override <- color_merge$override
+  if (!is.null(override$npc_summed_intensity)) {
+    params$npc_summed_intensity <- NULL
+  }
+  deep_merge(params, override)
 }
 
 split_override_params <- function(override_params) {
@@ -187,6 +201,28 @@ apply_target_override <- function(params, override_parts) {
 write_manifest <- function(manifest, manifest_path) {
   dir.create(dirname(manifest_path), recursive = TRUE, showWarnings = FALSE)
   write.table(manifest, manifest_path, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+copy_yaml_if_available <- function(source_path, destination_path) {
+  if (is.null(source_path) || !file.exists(source_path)) {
+    return(invisible(FALSE))
+  }
+  dir.create(dirname(destination_path), recursive = TRUE, showWarnings = FALSE)
+  file.copy(source_path, destination_path, overwrite = TRUE)
+}
+
+write_reprocess_inputs <- function(destination_dir, params, params_user, source_params, source_params_user, defaults_path, override_path) {
+  inputs_dir <- file.path(destination_dir, "_reprocess_inputs")
+  dir.create(inputs_dir, recursive = TRUE, showWarnings = FALSE)
+
+  yaml::write_yaml(params, file.path(inputs_dir, "merged_params.yaml"))
+  yaml::write_yaml(params_user, file.path(inputs_dir, "merged_params_user.yaml"))
+  copy_yaml_if_available(source_params, file.path(inputs_dir, "source_params.yaml"))
+  copy_yaml_if_available(source_params_user, file.path(inputs_dir, "source_params_user.yaml"))
+  copy_yaml_if_available(defaults_path, file.path(inputs_dir, "defaults.yaml"))
+  copy_yaml_if_available(override_path, file.path(inputs_dir, "override.yaml"))
+
+  invisible(inputs_dir)
 }
 
 if (!has_value(opt$stats_dir)) {
@@ -239,9 +275,21 @@ work_root <- file.path(output_root, "_reprocess_work")
 log_root <- file.path(output_root, "_reprocess_logs")
 manifest_path <- file.path(output_root, "reprocess_manifest.tsv")
 biostat_script <- file.path(script_dir, "biostat_toolbox.r")
+renv_library <- project_library_path(repo_root)
+child_env <- character()
+if (!is.null(renv_library)) {
+  child_libraries <- c(.libPaths(), renv_library)
+  child_libraries <- child_libraries[nzchar(child_libraries)]
+  child_env <- sprintf("R_LIBS=%s", paste(child_libraries, collapse = .Platform$path.sep))
+  message(sprintf("Adding project R library as child-run fallback: %s", renv_library))
+}
 
 if (!isTRUE(opt$dry_run)) {
   dir.create(output_root, recursive = TRUE, showWarnings = FALSE)
+  batch_inputs_dir <- file.path(output_root, "_reprocess_inputs")
+  dir.create(batch_inputs_dir, recursive = TRUE, showWarnings = FALSE)
+  copy_yaml_if_available(defaults_path, file.path(batch_inputs_dir, "defaults.yaml"))
+  copy_yaml_if_available(override_path, file.path(batch_inputs_dir, "override.yaml"))
 }
 
 manifest <- data.frame(
@@ -311,6 +359,7 @@ for (result_dir in candidate_dirs) {
 
   if (dir.exists(output_dir) && file.exists(file.path(output_dir, "DE.rds")) && !isTRUE(opt$overwrite)) {
     message(sprintf("[skip] %s -> %s already exists", original_hash, new_hash))
+    write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, defaults_path, override_path)
     manifest <- bind_rows(manifest, data.frame(
       original_hash = original_hash,
       new_hash = new_hash,
@@ -335,12 +384,14 @@ for (result_dir in candidate_dirs) {
 
   message(sprintf("[run] %s -> %s", original_hash, new_hash))
   command_args <- c(
+    "--vanilla",
     biostat_script,
     "--params", file.path(work_dir, "params.yaml"),
     "--params-user", file.path(work_dir, "params_user.yaml")
   )
-  status <- system2("Rscript", command_args, stdout = log_path, stderr = log_path)
+  status <- system2("Rscript", command_args, stdout = log_path, stderr = log_path, env = child_env)
   run_status <- if (identical(status, 0L)) "success" else sprintf("failed:%s", status)
+  write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, defaults_path, override_path)
 
   manifest <- bind_rows(manifest, data.frame(
     original_hash = original_hash,
@@ -356,7 +407,8 @@ for (result_dir in candidate_dirs) {
   ))
   write_manifest(manifest, manifest_path)
 
-  if (!identical(status, 0L) && isTRUE(opt$stop_on_error)) {
+  fatal_signal <- !identical(status, 0L) && !is.na(status) && status >= 128
+  if (!identical(status, 0L) && (isTRUE(opt$stop_on_error) || fatal_signal)) {
     stop(sprintf("Reprocessing failed for %s. See log: %s", original_hash, log_path))
   }
 }

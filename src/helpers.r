@@ -131,7 +131,10 @@ describe_params_for_hash_table <- function(params) {
   npc_terms <- c(
     if (param_has_value(params$npc_summed_intensity$pathway)) paste("NPC pathway", format_param_vector(params$npc_summed_intensity$pathway)),
     if (param_has_value(params$npc_summed_intensity$superclass)) paste("NPC superclass", format_param_vector(params$npc_summed_intensity$superclass)),
-    if (param_has_value(params$npc_summed_intensity$class)) paste("NPC class", format_param_vector(params$npc_summed_intensity$class))
+    if (param_has_value(params$npc_summed_intensity$class)) paste("NPC class", format_param_vector(params$npc_summed_intensity$class)),
+    if (isTRUE(params$npc_summed_intensity$expand_all)) paste("all observed NPC", format_param_vector(params$npc_summed_intensity$expand_levels)),
+    if (param_has_value(params$npc_summed_intensity$expand_pathway)) paste("all observed NPC", format_param_vector(params$npc_summed_intensity$expand_levels), "under pathway", format_param_vector(params$npc_summed_intensity$expand_pathway)),
+    if (param_has_value(params$npc_summed_intensity$min_probability)) paste("minimum NPC probability", as.character(params$npc_summed_intensity$min_probability[1]))
   )
   npc_text <- if (length(npc_terms)) {
     paste("NPC plots:", paste(npc_terms, collapse = "; "))
