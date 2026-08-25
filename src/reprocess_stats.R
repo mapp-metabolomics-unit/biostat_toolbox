@@ -22,6 +22,7 @@ source(file.path(script_dir, "helpers.r"), local = TRUE)
 option_list <- list(
   make_option(c("-s", "--stats-dir"), default = NULL, help = "Stats root containing hash subdirectories with params.yaml"),
   make_option(c("-o", "--output-root"), default = NULL, help = "New stats output root"),
+  make_option(c("-u", "--params-user"), default = NULL, help = "params_user.yaml recursively merged over each archived params_user.yaml"),
   make_option(c("--defaults-yaml"), default = file.path(repo_root, "params", "params.yaml"), help = "YAML used for missing plot-default sections such as ordination and npc_summed_intensity"),
   make_option(c("--override-yaml"), default = NULL, help = "YAML file recursively merged into each archived params.yaml"),
   make_option(c("--include"), default = NULL, help = "Comma-separated original hashes to process"),
@@ -43,6 +44,7 @@ normalize_option_name <- function(opt, underscore_name, hyphen_name) {
 
 opt <- normalize_option_name(opt, "stats_dir", "stats-dir")
 opt <- normalize_option_name(opt, "output_root", "output-root")
+opt <- normalize_option_name(opt, "params_user", "params-user")
 opt <- normalize_option_name(opt, "defaults_yaml", "defaults-yaml")
 opt <- normalize_option_name(opt, "override_yaml", "override-yaml")
 opt <- normalize_option_name(opt, "dry_run", "dry-run")
@@ -211,7 +213,7 @@ copy_yaml_if_available <- function(source_path, destination_path) {
   file.copy(source_path, destination_path, overwrite = TRUE)
 }
 
-write_reprocess_inputs <- function(destination_dir, params, params_user, source_params, source_params_user, defaults_path, override_path) {
+write_reprocess_inputs <- function(destination_dir, params, params_user, source_params, source_params_user, params_user_override_path, defaults_path, override_path) {
   inputs_dir <- file.path(destination_dir, "_reprocess_inputs")
   dir.create(inputs_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -219,6 +221,7 @@ write_reprocess_inputs <- function(destination_dir, params, params_user, source_
   yaml::write_yaml(params_user, file.path(inputs_dir, "merged_params_user.yaml"))
   copy_yaml_if_available(source_params, file.path(inputs_dir, "source_params.yaml"))
   copy_yaml_if_available(source_params_user, file.path(inputs_dir, "source_params_user.yaml"))
+  copy_yaml_if_available(params_user_override_path, file.path(inputs_dir, "params_user_override.yaml"))
   copy_yaml_if_available(defaults_path, file.path(inputs_dir, "defaults.yaml"))
   copy_yaml_if_available(override_path, file.path(inputs_dir, "override.yaml"))
 
@@ -234,8 +237,17 @@ if (!has_value(opt$output_root)) {
 
 stats_dir <- resolve_path(opt$stats_dir, must_work = TRUE)
 output_root <- resolve_path(opt$output_root, must_work = FALSE)
+params_user_override_path <- resolve_path(opt$params_user, must_work = TRUE)
 defaults_path <- resolve_path(opt$defaults_yaml, must_work = FALSE)
 override_path <- resolve_path(opt$override_yaml, must_work = TRUE)
+
+params_user_override <- list()
+if (!is.null(params_user_override_path)) {
+  params_user_override <- yaml.load_file(params_user_override_path)
+  if (is.null(params_user_override)) {
+    params_user_override <- list()
+  }
+}
 
 default_params <- list()
 if (!is.null(defaults_path) && file.exists(defaults_path)) {
@@ -288,6 +300,7 @@ if (!isTRUE(opt$dry_run)) {
   dir.create(output_root, recursive = TRUE, showWarnings = FALSE)
   batch_inputs_dir <- file.path(output_root, "_reprocess_inputs")
   dir.create(batch_inputs_dir, recursive = TRUE, showWarnings = FALSE)
+  copy_yaml_if_available(params_user_override_path, file.path(batch_inputs_dir, "params_user_override.yaml"))
   copy_yaml_if_available(defaults_path, file.path(batch_inputs_dir, "defaults.yaml"))
   copy_yaml_if_available(override_path, file.path(batch_inputs_dir, "override.yaml"))
 }
@@ -320,6 +333,7 @@ for (result_dir in candidate_dirs) {
   } else {
     default_params_user(params)
   }
+  params_user <- deep_merge(params_user, params_user_override)
   params <- apply_plot_defaults(params, default_params)
   params <- apply_target_override(params, override_parts)
   params_user$paths$output <- output_root
@@ -359,7 +373,7 @@ for (result_dir in candidate_dirs) {
 
   if (dir.exists(output_dir) && file.exists(file.path(output_dir, "DE.rds")) && !isTRUE(opt$overwrite)) {
     message(sprintf("[skip] %s -> %s already exists", original_hash, new_hash))
-    write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, defaults_path, override_path)
+    write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, params_user_override_path, defaults_path, override_path)
     manifest <- bind_rows(manifest, data.frame(
       original_hash = original_hash,
       new_hash = new_hash,
@@ -391,7 +405,7 @@ for (result_dir in candidate_dirs) {
   )
   status <- system2("Rscript", command_args, stdout = log_path, stderr = log_path, env = child_env)
   run_status <- if (identical(status, 0L)) "success" else sprintf("failed:%s", status)
-  write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, defaults_path, override_path)
+  write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, params_user_override_path, defaults_path, override_path)
 
   manifest <- bind_rows(manifest, data.frame(
     original_hash = original_hash,

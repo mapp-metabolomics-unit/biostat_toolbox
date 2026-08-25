@@ -71,12 +71,13 @@ When enabled, outputs are organized under `NPC_summed_intensity/filtered` and wr
 
 ## Reprocess Existing Stats Runs
 
-Use `src/reprocess_stats.R` to rerun all `biostat_toolbox` stats outputs from archived result folders. Each source folder must contain the original `params.yaml`; if `params_user.yaml` is present, it is reused for input paths while the output root is replaced.
+Use `src/reprocess_stats.R` to rerun all `biostat_toolbox` stats outputs from archived result folders. Each source folder must contain the original `params.yaml`; if `params_user.yaml` is present, it is reused as the base configuration. Pass `--params-user` after moving a project to recursively override archived user settings such as `paths.docs` and `operating_system.pandoc`. The command-line output root always replaces `paths.output`.
 
 ```bash
 Rscript src/reprocess_stats.R \
   --stats-dir /path/to/results/stats \
   --output-root /path/to/new/results/stats \
+  --params-user params/params_user.yaml \
   --dry-run
 ```
 
@@ -124,6 +125,7 @@ Rscript src/reprocess_stats.R \
 Useful options:
 
 - `--include` / `--exclude`: comma-separated original hashes to select or skip
+- `--params-user`: merge current machine paths and operating-system settings over archived user parameters
 - `--overwrite`: rerun even if the predicted output already contains `DE.rds`
 - `--stop-on-error`: stop at the first failed run
 
