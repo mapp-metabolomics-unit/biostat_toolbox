@@ -1,0 +1,5 @@
+filter_sample_metadata_three:
+  mode: include
+  factor_name: ATTRIBUTE_extraction_phase
+  levels:
+    - I2

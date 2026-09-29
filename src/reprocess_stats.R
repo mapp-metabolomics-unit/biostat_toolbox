@@ -371,7 +371,9 @@ for (result_dir in candidate_dirs) {
     next
   }
 
-  if (dir.exists(output_dir) && file.exists(file.path(output_dir, "DE.rds")) && !isTRUE(opt$overwrite)) {
+  # session_info.txt is written at the end of a successful stats run. DE.rds is
+  # written much earlier and can therefore exist in an incomplete output folder.
+  if (dir.exists(output_dir) && file.exists(file.path(output_dir, "session_info.txt")) && !isTRUE(opt$overwrite)) {
     message(sprintf("[skip] %s -> %s already exists", original_hash, new_hash))
     write_reprocess_inputs(output_dir, params, params_user, source_params, source_params_user, params_user_override_path, defaults_path, override_path)
     manifest <- bind_rows(manifest, data.frame(

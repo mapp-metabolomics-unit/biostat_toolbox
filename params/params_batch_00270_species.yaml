@@ -1,0 +1,97 @@
+mapp_project: mapp_project_00085
+mapp_batch: mapp_batch_00270
+met_annot_enhancer_folder: mapp_batch_00270
+gnps_job_id: 637e2c764e974c06b53d04cdf841a295
+
+dataset_experiment:
+  name: "mapp_batch_00270 LCMS metabolomics dataset"
+  description: "Species comparison for Chrysina samples with ATTRIBUTE_part = ND; the input feature matrix was produced after MZmine chromatogram blank subtraction"
+
+actions:
+  scale_method: pareto
+  run_PLSDA: TRUE
+  calculate_multi_series_fc: FALSE
+  run_fc_treemaps: TRUE
+  run_with_gap_filled: FALSE
+  run_cytoscape_connector: FALSE
+
+options:
+  gnps_column_for_boxplots:
+    factor_name: source_taxon
+
+# The two extraction blanks were used by MZmine's Chromatogram blank
+# subtraction module and are consequently absent from the exported matrix.
+# Do not apply a second blank/sample fold-change filter to that matrix.
+filter_blank:
+  fold_change:
+  factor_name: sample_type
+  blank_label: blank
+  qc_label: QC
+  fraction_in_blank:
+
+filter_sample_type:
+  mode: include
+  factor_name: sample_type
+  levels:
+    - sample
+
+filter_sample_metadata_one:
+  mode: include
+  factor_name: ATTRIBUTE_part
+  levels:
+    - ND
+
+filter_sample_metadata_two:
+  mode: ""
+  factor_name: ""
+  levels:
+    - ""
+
+filter_sample_metadata_three:
+  mode: ""
+  factor_name: ""
+  levels:
+    - ""
+
+target:
+  sample_metadata_header: source_taxon
+
+colors:
+  continuous: FALSE
+  all:
+    key:
+      - Chrysina chrysargyrea
+      - Chrysina cupreomarginata
+      - Chrysina resplendens
+    value:
+      - "#D97706"
+      - "#2563EB"
+      - "#059669"
+
+npc_summed_intensity:
+  pathway: []
+  superclass: []
+  class: []
+  expand_all: FALSE
+  expand_pathway: []
+  expand_levels:
+    - class
+  min_probability: 0
+  transform: log10
+  static_export_top_n: 40
+  raw_export: TRUE
+  ratios:
+    enabled: TRUE
+    denominator_level: pathway
+    pseudocount: 0
+
+to_mean:
+  factor_name:
+    - source_taxon
+
+to_combine_horizontally:
+  factor_name:
+
+posthoc:
+  p_value: 0.05
+

@@ -55,6 +55,12 @@ filter_sample_metadata_two :
   levels : 
       - ''
 
+filter_sample_metadata_three :
+  mode : '' # 'include' or 'exclude', if '', the filter is not applied
+  factor_name : ''
+  levels :
+    - ''
+
 filter_variable_metadata_one :
   mode : ''
   factor_name : '' # E.g. 'canopus_npc_pathway'
@@ -131,12 +137,7 @@ npc_summed_intensity:
     - "class" # "class", "superclass", or both
   min_probability: 0 # minimum CANOPUS NPC probability for the selected level; e.g. class uses NPC#class Probability
   transform: "log10" # "log10" or "none"
-  individual_export: TRUE # TRUE/all, FALSE/none, significant, exploratory, or top
-  individual_export_p_value: 0.05 # used when individual_export is exploratory
-  individual_export_q_value: 0.05 # used when individual_export is significant
-  individual_export_top_n: 30 # used when individual_export is top
-  feature_driver_top_n: 30 # top feature drivers shown as boxplots in each drilldown dashboard; TSV exports keep all
-  static_export_top_n: 40 # combined PDF/PNG exports keep the top N terms; HTML/TSV exports keep all terms
+  static_export_top_n: 40 # combined PDF/PNG exports keep the top N terms; TSV exports keep all terms
   raw_export: TRUE
   ratios:
     enabled: TRUE
@@ -183,8 +184,9 @@ to_mean:
 
 # Here we can alter the original sample metadata file if the levels or factors have not been correctly defined in the initial file.
 # First we work vertically (within a given SM column)
-# The new levels will be named as follows: alphabetically ordered and separated by an underscore.
-# E.g. if you choose to combine Ag and Ab the resulting level will be Ab_Ag. These will appear in a new column which will be name by the name of the original colum suffixed by '_simplified'
+# By default, merged levels are named by joining their sorted original values with "_".
+# Set a group's label to name it explicitly (e.g. WT instead of WT_N_WT_O).
+# The derived column uses the original column's snake_case name suffixed with "_simplified".
 
 
 to_combine_vertically: 
@@ -192,7 +194,8 @@ to_combine_vertically:
   #   factor_name:
   #   groups:
   #     group1:
-  #       levels:
+  #       levels: ["WT_N", "WT_O"]
+  #       label: "WT" # optional; without it the label is "WT_N_WT_O"
   #     group2: 
   #       levels:
   # # column2: 

@@ -1,5 +1,7 @@
 # biostat_toolbox
 
+> The historical workflow remains available through `src/biostat_toolbox.r`. A new, side-by-side pipeline is documented in [docs/STATS_PIPELINE_V2.md](docs/STATS_PIPELINE_V2.md). V2 uses immutable content-addressed runs and does not replace the legacy runner or its environment.
+
 Script-based metabolomics analysis utilities for the MAPP biostat workflow.
 
 ## Supported platforms
@@ -59,7 +61,6 @@ npc_summed_intensity:
     - "Diacylglycerols"
   min_probability: 0
   transform: "log10"
-  individual_export: TRUE
   raw_export: TRUE
   ratios:
     enabled: TRUE
@@ -67,7 +68,7 @@ npc_summed_intensity:
     pseudocount: 0
 ```
 
-When enabled, outputs are organized under `NPC_summed_intensity/filtered` and written from `DE` after filters and scaling, with individual plots under `NPC_summed_intensity/filtered/individual`. If `raw_export` is `TRUE`, matching outputs are written under `NPC_summed_intensity/raw` from `DE_original` intensities and features but using the filtered sample set, so blanks/QCs excluded by the params stay excluded. For selected `class` and `superclass` terms, `ratios.enabled` also writes pathway-normalized ratio exports and individual ratio plots. The denominator pathway is resolved from the NP-Classifier taxonomy dictionary, not inferred from the observed CANOPUS pathway column.
+When enabled, compact outputs are organized under `NPC_summed_intensity/filtered` and written from `DE` after filters and scaling. If `raw_export` is `TRUE`, matching outputs are written under `NPC_summed_intensity/raw` from `DE_original` intensities and features but using the filtered sample set, so blanks/QCs excluded by the params stay excluded. Combined PDF/PNG figures and complete intensity, statistics, ratio, and feature-driver TSV files are retained. Per-term dashboards and the legacy `NPC_feature_explorer.html` are no longer generated; interactive exploration is consolidated in `data_explorer.html`. The denominator pathway for ratio exports is resolved from the NP-Classifier taxonomy dictionary, not inferred from the observed CANOPUS pathway column.
 
 ## Reprocess Existing Stats Runs
 
@@ -126,8 +127,21 @@ Useful options:
 
 - `--include` / `--exclude`: comma-separated original hashes to select or skip
 - `--params-user`: merge current machine paths and operating-system settings over archived user parameters
-- `--overwrite`: rerun even if the predicted output already contains `DE.rds`
+- `--overwrite`: rerun even if the predicted output already contains `session_info.txt`
 - `--stop-on-error`: stop at the first failed run
+
+## Data Explorer
+
+Use `src/generate_data_explorer.R` for interactive feature and NPC exploration. It provides feature, molecular-component, NPC class, superclass, and pathway views; sample metadata filtering; grouping, faceting, and coloring; raw, log-transformed, and sample-relative intensities; annotation-score filters; side-by-side composition treemaps; archived-statistics and dynamic Welch-test volcano modes; and nested drill-downs to individual features. Archived Volcano mode imports completed contrasts from `reprocess_by_extraction_phase`, matches them by grouping variable, groups, and sample set, and displays their stored fold-change and p-value coordinates exactly. When no exact archived sample set is available, the panel explicitly identifies its Dynamic Welch fallback.
+
+```bash
+Rscript --vanilla src/generate_data_explorer.R \
+  --params /path/to/params.yaml \
+  --params-user /path/to/params_user.yaml \
+  --output-dir /path/to/output
+```
+
+The explorer writes `data_explorer.html` and its lazy-loaded assets to `data_explorer_assets`. Open it through a local web server because browsers commonly block chunk loading from a direct `file://` URL. Inferential NPC statistics and pathway-normalized ratios remain available in the compact TSV exports from the main workflow.
 
 ## Selected Boxplots
 

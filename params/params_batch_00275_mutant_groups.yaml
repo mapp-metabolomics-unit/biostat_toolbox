@@ -1,0 +1,129 @@
+mapp_project: mapp_project_00007
+mapp_batch: mapp_batch_00275
+met_annot_enhancer_folder: mapp_batch_00275
+gnps_job_id: d0b98f140e01493fafc8e48846f2e85a
+dataset_experiment:
+  name: mapp_batch_00275 LCMS metabolomics dataset
+  description: Ensifer meliloti - Theana - WT vs xdhA vs xdhB
+ms_files_extension: .mzML
+actions:
+  scale_method: pareto
+  ponderate_data:
+    run: no
+    factor_name: ''
+  prune_data:
+    threshold: ~
+  run_PLSDA: yes
+  calculate_multi_series_fc: no
+  run_fc_treemaps: yes
+  run_with_gap_filled: no
+  run_cytoscape_connector: no
+options:
+  gnps_column_for_boxplots:
+    factor_name: ATTRIBUTE_mutant
+filter_blank:
+  fold_change: 5.0
+  factor_name: sample_type
+  blank_label: blank
+  qc_label: QC
+  fraction_in_blank: 0.0
+filter_sample_type:
+  mode: include
+  factor_name: sample_type
+  levels: sample
+filter_sample_metadata_one:
+  mode: ''
+  factor_name: ''
+  levels: ''
+filter_sample_metadata_two:
+  mode: ''
+  factor_name: ''
+  levels: ''
+filter_sample_metadata_three:
+  mode: ''
+  factor_name: ''
+  levels: ''
+filter_variable_metadata_one:
+  mode: ''
+  factor_name: ''
+  levels: ''
+filter_variable_metadata_two:
+  mode: ''
+  factor_name: ''
+  levels: ''
+filter_variable_metadata_annotated:
+  mode: ''
+  factor_name: ''
+  levels: ''
+filter_variable_metadata_num:
+  mode: ''
+  factor_name: ''
+  level: ~
+target:
+  sample_metadata_header: attribute_mutant_simplified
+colors:
+  continuous: no
+  all:
+    key:
+    - WT
+    - xdhA
+    - xdhB
+    value:
+    - '#2563EB'
+    - '#059669'
+    - '#DC2626'
+ordination:
+  points_to_label: none
+  label_size: 3.88
+  point_size: 5
+  axis_text_size: 13
+  axis_title_size: 15
+  legend_text_size: 13
+  legend_title_size: 14
+  title_size: 14
+  export_width: 11
+  export_height: 9
+npc_summed_intensity:
+  pathway: []
+  expand_all: no
+  expand_pathway: []
+  expand_levels: class
+  min_probability: 0
+  transform: log10
+  static_export_top_n: 40
+  raw_export: yes
+  ratios:
+    enabled: yes
+    denominator_level: pathway
+    pseudocount: 0
+to_mean:
+  factor_name: attribute_mutant_simplified
+to_combine_vertically:
+  mutant:
+    factor_name: ATTRIBUTE_mutant
+    groups:
+      WT:
+        levels:
+        - WT_N
+        - WT_O
+        label: WT
+      xdhA:
+        levels:
+        - xdhA1
+        - xdhA2
+        label: xdhA
+      xdhB:
+        levels:
+        - xdhB1
+        - xdhB2
+        label: xdhB
+to_combine_horizontally:
+  factor_name: ~
+multi_series: ~
+boxplot:
+  topN: 16
+posthoc:
+  p_value: 0.05
+heatmap:
+  topN: 100
+feature_to_filter: ~

@@ -1,0 +1,52 @@
+seed: 275
+output_root: results/stats_v2
+
+roles:
+  column: sample_type
+  levels:
+    sample: sample
+    qc: QC
+    blank: blank
+
+preprocessing:
+  blank_filter:
+    enabled: true
+    minimum_sample_to_blank_ratio: 5
+    minimum_blank_prevalence: 0.5
+  qc_rsd_filter:
+    enabled: true
+    threshold_percent: 30
+  missing_values:
+    method: half_minimum
+  normalization:
+    method: pqn
+  transformation:
+    method: log2
+  scaling:
+    method: pareto
+
+design:
+  group: ATTRIBUTE_mutant
+  # Add `block: ATTRIBUTE_replicate` only after confirming that A-E are matched blocks.
+  contrasts:
+    - name: WT_O_vs_WT_N
+      numerator: WT_O
+      denominator: WT_N
+
+analyses:
+  pca:
+    enabled: true
+    components: 5
+  pcoa:
+    enabled: true
+    stage: normalized
+    distance: bray
+    components: 5
+  omnibus:
+    enabled: true
+  differential:
+    enabled: true
+
+presentation:
+  title: "mapp_batch_00275 statistical exploration"
+

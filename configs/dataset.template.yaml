@@ -1,0 +1,9 @@
+id: mapp_project_XXXXX/mapp_batch_XXXXX
+batch_dir: /absolute/path/to/mapp_batch_XXXXX
+metadata: metadata/treated/mapp_batch_XXXXX_metadata.tsv
+quantification: results/mzmine/mapp_batch_XXXXX_quant.csv
+feature_id_column: row ID
+annotations:
+  canopus: results/sirius/canopus_structure_summary.tsv
+  structures: results/sirius/structure_identifications.tsv
+

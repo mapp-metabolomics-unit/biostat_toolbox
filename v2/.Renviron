@@ -1,0 +1,5 @@
+# renv's macOS sandbox lock hangs with the side-by-side rig R installation.
+# The project library remains isolated; only the optional system-library sandbox
+# is disabled.
+RENV_CONFIG_SANDBOX_ENABLED=FALSE
+

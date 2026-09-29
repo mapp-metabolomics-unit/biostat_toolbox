@@ -111,6 +111,7 @@ describe_params_for_hash_table <- function(params) {
     describe_filter_param(params$filter_sample_type, "samples"),
     describe_filter_param(params$filter_sample_metadata_one, "samples"),
     describe_filter_param(params$filter_sample_metadata_two, "samples"),
+    describe_filter_param(params$filter_sample_metadata_three, "samples"),
     describe_filter_param(params$filter_variable_metadata_one, "features"),
     describe_filter_param(params$filter_variable_metadata_two, "features"),
     describe_filter_param(params$filter_variable_metadata_annotated, "features"),

@@ -1,0 +1,7 @@
+paths:
+  docs: "/Users/pma/git_repos/mapp-metabolomics-unit/viola-vogler-group/docs"
+  output: "/Users/pma/git_repos/mapp-metabolomics-unit/viola-vogler-group/docs/mapp_project_00085/mapp_batch_00270/results/stats"
+
+operating_system:
+  system: unix
+  pandoc: ""
