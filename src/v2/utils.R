@@ -1,4 +1,4 @@
-mapp_v2_schema_version <- "0.1.0"
+mapp_v2_schema_version <- "1.0.0"
 
 `%||%` <- function(x, y) {
   if (is.null(x) || !length(x)) y else x
@@ -50,7 +50,7 @@ normalize_existing_path <- function(path, base = getwd()) {
 
 write_tsv <- function(x, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  utils::write.table(x, path, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+  utils::write.table(x, path, sep = "\t", quote = TRUE, qmethod = "double", row.names = FALSE, na = "")
 }
 
 write_json <- function(x, path, pretty = TRUE) {
@@ -66,27 +66,15 @@ package_versions <- function(packages) {
   as.list(versions)
 }
 
-git_fingerprint <- function(repo_root) {
-  commit <- tryCatch(system2("git", c("-C", repo_root, "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE), error = function(e) character())
-  status <- tryCatch(system2("git", c("-C", repo_root, "status", "--porcelain", "--untracked-files=no"), stdout = TRUE, stderr = FALSE), error = function(e) character())
-  diff <- tryCatch(system2("git", c("-C", repo_root, "diff", "--", "src/v2", "src/mapp_stats.R", "app"), stdout = TRUE, stderr = FALSE), error = function(e) character())
-  list(
-    commit = commit[1] %||% NA_character_,
-    dirty = length(status) > 0,
-    v2_diff_sha256 = sha256_object(diff)
-  )
-}
 
 v2_code_checksums <- function(repo_root) {
-  files <- c(
-    list.files(file.path(repo_root, "src", "v2"), pattern = "[.]R$", full.names = TRUE),
-    file.path(repo_root, "src", "mapp_stats.R"),
-    file.path(repo_root, "app", "app.R")
-  )
-  files <- sort(files[file.exists(files)])
-  values <- vapply(files, sha256_file, character(1))
-  names(values) <- sub(paste0("^", normalizePath(repo_root), "/?"), "", normalizePath(files))
-  as.list(values)
+  module_dir <- file.path(repo_root, "src", "v2")
+  modules <- sort(list.files(module_dir, pattern = "[.]R$", full.names = FALSE))
+  files <- c(file.path(module_dir, modules), file.path(repo_root, "src", "mapp_stats.R"))
+  if (any(!file.exists(files))) stop("Cannot fingerprint missing V2 source code.", call. = FALSE)
+  checksums <- vapply(files, sha256_file, character(1))
+  names(checksums) <- c(file.path("src", "v2", modules), file.path("src", "mapp_stats.R"))
+  as.list(checksums)
 }
 
 safe_name <- function(x) {
@@ -95,7 +83,7 @@ safe_name <- function(x) {
 }
 
 atomic_publish <- function(staging_dir, final_dir) {
-  if (dir.exists(final_dir)) stop("Refusing to overwrite existing run: ", final_dir, call. = FALSE)
+  if (file.exists(final_dir)) stop("Refusing to overwrite existing run: ", final_dir, call. = FALSE)
   if (!file.rename(staging_dir, final_dir)) stop("Could not publish run directory: ", final_dir, call. = FALSE)
   invisible(final_dir)
 }

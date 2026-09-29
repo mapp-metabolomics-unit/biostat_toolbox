@@ -3,7 +3,9 @@ batch_dir: /Users/pma/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/do
 metadata: metadata/treated/mapp_batch_00275_metadata.tsv
 quantification: results/mzmine/mapp_batch_00275_quant.csv
 feature_id_column: row ID
+intensity_measure: height
 annotations:
   canopus: results/sirius/canopus_structure_summary.tsv
   structures: results/sirius/structure_identifications.tsv
+  met_annot_enhancer: results/met_annot_enhancer/mapp_batch_00275/mapp_batch_00275_spectral_match_results_repond_flat.tsv
 

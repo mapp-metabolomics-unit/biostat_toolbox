@@ -6,6 +6,8 @@ export_results <- function(dataset, processed, analyses, manifest, directory) {
   saveRDS(processed, file.path(directory, "objects", "processed.rds"))
   saveRDS(analyses, file.path(directory, "objects", "analyses.rds"))
 
+  candidates <- normalize_annotations(dataset)
+  if (nrow(candidates)) write_tsv(candidates, file.path(directory, "tables", "annotation_candidates.tsv"))
   write_tsv(processed$sample_metadata, file.path(directory, "tables", "sample_metadata.tsv"))
   write_tsv(processed$variable_metadata, file.path(directory, "tables", "variable_metadata.tsv"))
   if (nrow(processed$diagnostics$blank)) write_tsv(processed$diagnostics$blank, file.path(directory, "tables", "blank_filter.tsv"))
@@ -25,29 +27,40 @@ export_results <- function(dataset, processed, analyses, manifest, directory) {
   }
   if (!is.null(analyses$omnibus)) write_tsv(analyses$omnibus, file.path(directory, "tables", "omnibus.tsv"))
   if (!is.null(analyses$differential)) write_tsv(analyses$differential, file.path(directory, "tables", "differential.tsv"))
+  if (!is.null(analyses$plsda)) {
+    write_tsv(data.frame(status = analyses$plsda$status, reason = analyses$plsda$reason),
+              file.path(directory, "tables", "plsda_status.tsv"))
+    for (name in c("summary", "fold_predictions", "permutations", "scores")) {
+      value <- analyses$plsda[[name]]
+      if (is.data.frame(value) && nrow(value)) {
+        write_tsv(value, file.path(directory, "tables", paste0("plsda_", name, ".tsv")))
+      }
+    }
+  }
   export_analysis_plots(analyses, manifest$effective_recipe, file.path(directory, "plots"))
+  output_files <- sort(list.files(directory, recursive = TRUE, full.names = TRUE))
+  output_files <- output_files[file.info(output_files)$isdir %in% FALSE]
+  relative_files <- substring(output_files, nchar(directory) + 2L)
+  manifest$outputs <- as.list(stats::setNames(vapply(output_files, sha256_file, character(1)), relative_files))
   write_yaml_file(manifest, file.path(directory, "manifest.yaml"))
   invisible(directory)
 }
 
 export_analysis_plots <- function(analyses, recipe, plot_dir) {
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    warning("ggplot2 is unavailable; tabular results were saved without static plots.")
-    return(invisible(FALSE))
-  }
+  assert_packages("ggplot2")
   group <- recipe$design$group
   save_plot <- function(plot, stem, width = 8, height = 6) {
     ggplot2::ggsave(file.path(plot_dir, paste0(stem, ".png")), plot, width = width, height = height, dpi = 180)
     ggplot2::ggsave(file.path(plot_dir, paste0(stem, ".pdf")), plot, width = width, height = height)
   }
-  if (!is.null(analyses$pca) && nrow(analyses$pca$scores)) {
+  if (!is.null(analyses$pca) && all(c("PC1", "PC2") %in% names(analyses$pca$scores)) && nrow(analyses$pca$scores)) {
     variance <- analyses$pca$variance$variance_percent
     p <- ggplot2::ggplot(analyses$pca$scores, ggplot2::aes(x = PC1, y = PC2, colour = .data[[group]])) +
       ggplot2::geom_point(size = 3) + ggplot2::theme_classic() +
       ggplot2::labs(x = sprintf("PC1 (%.1f%%)", variance[1]), y = sprintf("PC2 (%.1f%%)", variance[2]), colour = group)
     save_plot(p, "pca")
   }
-  if (!is.null(analyses$pcoa) && nrow(analyses$pcoa$scores)) {
+  if (!is.null(analyses$pcoa) && all(c("PCoA1", "PCoA2") %in% names(analyses$pcoa$scores)) && nrow(analyses$pcoa$scores)) {
     variance <- analyses$pcoa$variance$variance_percent
     p <- ggplot2::ggplot(analyses$pcoa$scores, ggplot2::aes(x = PCoA1, y = PCoA2, colour = .data[[group]])) +
       ggplot2::geom_point(size = 3) + ggplot2::theme_classic() +
