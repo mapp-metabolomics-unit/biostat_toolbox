@@ -28,10 +28,7 @@ preprocessing:
 design:
   group: ATTRIBUTE_mutant
   # Add `block: ATTRIBUTE_replicate` only after confirming that A-E are matched blocks.
-  contrasts:
-    - name: WT_O_vs_WT_N
-      numerator: WT_O
-      denominator: WT_N
+  contrasts: all
 
 analyses:
   pca:

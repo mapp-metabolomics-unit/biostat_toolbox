@@ -1,9 +1,15 @@
 id: mapp_project_XXXXX/mapp_batch_XXXXX
 batch_dir: /absolute/path/to/mapp_batch_XXXXX
 metadata: metadata/treated/mapp_batch_XXXXX_metadata.tsv
+# Optional aliases for batches with nonstandard metadata headers:
+# metadata_columns: {sample_id: mapp_sample_id, sample_type: ATTRIBUTE_sample_type}
 quantification: results/mzmine/mapp_batch_XXXXX_quant.csv
 feature_id_column: row ID
+# Required when both Peak height and Peak area occur:
+# intensity_measure: height
 annotations:
   canopus: results/sirius/canopus_structure_summary.tsv
   structures: results/sirius/structure_identifications.tsv
+  # Optional saved consensus counts and all source-specific _SMILES depictions:
+  # horizontal: results/tmp/mapp_batch_XXXXX_met_annot_unified_horizontal.tsv
 

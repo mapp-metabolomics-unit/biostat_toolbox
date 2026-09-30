@@ -13,7 +13,7 @@ if (as.character(getRversion()) != lock_version) {
   stop("This lockfile requires R ", lock_version, "; current R is ", as.character(getRversion()), ".")
 }
 renv::restore(project = project, prompt = FALSE)
-required <- c("yaml", "digest", "jsonlite", "ggplot2", "shiny", "pls")
+required <- c("yaml", "digest", "jsonlite", "ggplot2", "shiny", "pls", "plotly")
 missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing)) stop("The pinned environment is missing: ", paste(missing, collapse = ", "))
 message("Replacement pipeline environment ready: ", project)

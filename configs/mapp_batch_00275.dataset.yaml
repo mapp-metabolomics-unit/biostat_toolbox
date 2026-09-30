@@ -1,5 +1,5 @@
 id: mapp_project_00007/mapp_batch_00275
-batch_dir: /Users/pma/git_repos/mapp-metabolomics-unit/didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00275
+batch_dir: ../../didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00275
 metadata: metadata/treated/mapp_batch_00275_metadata.tsv
 quantification: results/mzmine/mapp_batch_00275_quant.csv
 feature_id_column: row ID
@@ -8,4 +8,5 @@ annotations:
   canopus: results/sirius/canopus_structure_summary.tsv
   structures: results/sirius/structure_identifications.tsv
   met_annot_enhancer: results/met_annot_enhancer/mapp_batch_00275/mapp_batch_00275_spectral_match_results_repond_flat.tsv
+  horizontal: results/tmp/mapp_batch_00275_met_annot_unified_horizontal.tsv
 

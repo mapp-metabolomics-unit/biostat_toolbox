@@ -9,7 +9,7 @@ normalize_annotations <- function(dataset) {
                "npc_pathway", "npc_superclass", "npc_class", "component_id", "feature_in_dataset",
                "rank", "molecular_formula", "adduct", "inchikey", "smiles", "library", "msms_score",
                "final_score", "class_probability", "superclass_probability", "pathway_probability",
-               "organism", "identification_links")
+               "organism", "organism_wikidata", "identification_links")
   empty <- as.data.frame(setNames(rep(list(character()), length(columns)), columns), stringsAsFactors = FALSE)
   empty$confidence <- empty$msms_score <- empty$final_score <- empty$class_probability <-
     empty$superclass_probability <- empty$pathway_probability <- numeric()
@@ -35,8 +35,9 @@ normalize_annotations <- function(dataset) {
                             rank_columns = character(), formula_columns = character(), adduct_columns = character(),
                             inchikey_columns = character(), smiles_columns = character(), library_columns = character(),
                             msms_columns = character(), final_columns = character(), organism_columns = character(),
-                            links_columns = character(), class_probability_columns = character(),
-                            superclass_probability_columns = character(), pathway_probability_columns = character()) {
+                            organism_link_columns = character(), links_columns = character(),
+                            class_probability_columns = character(), superclass_probability_columns = character(),
+                            pathway_probability_columns = character()) {
     if (is.null(table)) return(empty)
     if (!is.data.frame(table)) stop("Annotation source must be a table: ", source, call. = FALSE)
     if (!nrow(table)) return(empty)
@@ -55,7 +56,8 @@ normalize_annotations <- function(dataset) {
       class_probability = pick(table, class_probability_columns, TRUE),
       superclass_probability = pick(table, superclass_probability_columns, TRUE),
       pathway_probability = pick(table, pathway_probability_columns, TRUE),
-      organism = pick(table, organism_columns), identification_links = pick(table, links_columns),
+      organism = pick(table, organism_columns), organism_wikidata = pick(table, organism_link_columns),
+      identification_links = pick(table, links_columns),
       stringsAsFactors = FALSE
     )
     # Retain unjoinable candidates for provenance instead of dropping them silently.
@@ -98,7 +100,8 @@ normalize_annotations <- function(dataset) {
                   inchikey_columns = c("structure_inchikey", "short_inchikey"),
                   smiles_columns = c("structure_smiles"), library_columns = c("libname"),
                   msms_columns = c("msms_score"), final_columns = c("final_score"),
-                  organism_columns = c("organism_name"), links_columns = c("structure_wikidata"))
+                  organism_columns = c("organism_name"), organism_link_columns = c("organism_wikidata"),
+                  links_columns = c("structure_wikidata"))
   )
   candidates <- do.call(rbind, rows)
   if (is.null(candidates)) candidates <- empty
@@ -111,4 +114,25 @@ normalize_annotations <- function(dataset) {
   }
   rownames(candidates) <- NULL
   candidates
+}
+
+# Export every horizontal row: one feature can have several structure candidates.
+# Candidate rows remain separate; combining them here would multiply source counts.
+horizontal_annotation_summary <- function(table) {
+  if (is.null(table)) return(NULL)
+  required <- c("feature_id", "sources_number_IK2D")
+  if (!all(required %in% names(table))) stop("Horizontal annotations lack feature_id or sources_number_IK2D.", call. = FALSE)
+  ids <- trimws(as.character(table$feature_id))
+  if (anyNA(ids) || any(!nzchar(ids)))
+    stop("Horizontal annotation feature IDs must be non-empty.", call. = FALSE)
+  counts <- suppressWarnings(as.numeric(table$sources_number_IK2D))
+  if (any(!is.na(table$sources_number_IK2D) & (is.na(counts) | !is.finite(counts) |
+                                                    counts < 0 | counts != floor(counts))))
+    stop("Horizontal sources_number_IK2D must contain nonnegative whole counts or be missing.", call. = FALSE)
+  fields <- unique(c(required, intersect("sources_IK2D", names(table)),
+                     grep("_smiles$", names(table), value = TRUE, ignore.case = TRUE)))
+  result <- table[, fields, drop = FALSE]
+  result$feature_id <- ids
+  result$sources_number_IK2D <- counts
+  result
 }

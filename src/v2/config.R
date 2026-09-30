@@ -27,6 +27,45 @@ config_number <- function(value, context, minimum = 0, maximum = Inf, integer = 
     stop(context, " must be ", if (integer) "an integer" else "a number", " in [", minimum, ", ", maximum, "].", call. = FALSE)
 }
 
+expand_v2_contrasts <- function(design, group_levels) {
+  contrasts <- design$contrasts
+  if (is.null(contrasts) || identical(contrasts, "all")) {
+    levels <- sort(unique(as.character(group_levels)), method = "radix")
+    if (length(levels) < 2L) return(list())
+    pairs <- utils::combn(levels, 2L)
+    contrasts <- lapply(seq_len(ncol(pairs)), function(index) {
+      numerator <- pairs[2L, index]
+      denominator <- pairs[1L, index]
+      list(name = paste(numerator, "vs", denominator, sep = "_"),
+           numerator = numerator, denominator = denominator)
+    })
+  } else {
+    if (!is.list(contrasts) || !is.null(names(contrasts)))
+      stop("design.contrasts must be 'all' or a sequence.", call. = FALSE)
+    contrasts <- lapply(contrasts, function(contrast) {
+      config_fields(contrast, c("name", "numerator", "denominator"), "contrast")
+      config_text(contrast$numerator, "contrast.numerator")
+      config_text(contrast$denominator, "contrast.denominator")
+      if (identical(contrast$numerator, contrast$denominator))
+        stop("Contrast levels must differ.", call. = FALSE)
+      name <- contrast$name %||% paste(contrast$numerator, "vs", contrast$denominator, sep = "_")
+      config_text(name, "contrast.name")
+      list(name = name, numerator = contrast$numerator, denominator = contrast$denominator)
+    })
+    if (length(group_levels)) {
+      for (contrast in contrasts) {
+        if (!all(c(contrast$numerator, contrast$denominator) %in% group_levels))
+          stop("Contrast levels are absent from biological samples: ",
+               contrast$numerator, " vs ", contrast$denominator, call. = FALSE)
+      }
+    }
+  }
+  names <- vapply(contrasts, `[[`, character(1), "name")
+  if (anyDuplicated(names) || anyDuplicated(vapply(names, safe_name, character(1))))
+    stop("Contrast names (including filesystem-safe names) must be unique.", call. = FALSE)
+  contrasts
+}
+
 validate_recipe_config <- function(recipe) {
   config_fields(recipe, c("seed", "output_root", "presentation", "roles", "preprocessing", "design", "analyses"), "recipe")
   if (!is.null(recipe$seed)) config_number(recipe$seed, "seed", 0, .Machine$integer.max, integer = TRUE)
@@ -71,20 +110,7 @@ validate_recipe_config <- function(recipe) {
   } else if (!is.null(design$block_verified)) {
     stop("design.block_verified requires a design.block column.", call. = FALSE)
   }
-  contrasts <- design$contrasts %||% list()
-  if (!is.list(contrasts) || (length(contrasts) && !is.null(names(contrasts)))) stop("design.contrasts must be a sequence.", call. = FALSE)
-  contrast_names <- character()
-  for (contrast in contrasts) {
-    config_fields(contrast, c("name", "numerator", "denominator"), "contrast")
-    config_text(contrast$numerator, "contrast.numerator")
-    config_text(contrast$denominator, "contrast.denominator")
-    if (identical(contrast$numerator, contrast$denominator)) stop("Contrast levels must differ.", call. = FALSE)
-    name <- contrast$name %||% paste(contrast$numerator, "vs", contrast$denominator, sep = "_")
-    config_text(name, "contrast.name")
-    contrast_names <- c(contrast_names, name)
-  }
-  if (anyDuplicated(contrast_names) || anyDuplicated(vapply(contrast_names, safe_name, character(1))))
-    stop("Contrast names (including filesystem-safe names) must be unique.", call. = FALSE)
+  contrasts <- expand_v2_contrasts(design, character())
 
   analyses <- recipe$analyses %||% list()
   config_fields(analyses, c("pca", "pcoa", "omnibus", "differential", "plsda"), "analyses")
@@ -103,8 +129,9 @@ validate_recipe_config <- function(recipe) {
   if (isTRUE(pcoa$enabled) && identical(pcoa$distance %||% "bray", "bray") &&
       !(pcoa$stage %||% "normalized") %in% c("imputed", "normalized"))
     stop("Bray-Curtis PCoA requires the imputed or normalized nonnegative stage.", call. = FALSE)
-  if (isTRUE(analyses$differential$enabled) && !length(contrasts))
-    stop("Differential analysis requires explicit planned design.contrasts.", call. = FALSE)
+  if (isTRUE(analyses$differential$enabled) && !is.null(design$contrasts) && !length(contrasts) &&
+      !identical(design$contrasts, "all"))
+    stop("Differential analysis requires nonempty design.contrasts or 'all'.", call. = FALSE)
   plsda <- analyses$plsda
   if (!is.null(plsda$folds)) config_number(plsda$folds, "PLS-DA folds", 2, integer = TRUE)
   if (!is.null(plsda$repeats)) config_number(plsda$repeats, "PLS-DA repeats", 2, integer = TRUE)
@@ -119,10 +146,14 @@ resolve_v2_config <- function(dataset_yaml, recipe_yaml, repo_root) {
   recipe_path <- normalize_existing_path(recipe_yaml)
   dataset <- read_yaml_file(dataset_path)
   recipe <- read_yaml_file(recipe_path)
-  config_fields(dataset, c("id", "batch_dir", "metadata", "quantification", "feature_id_column", "intensity_measure", "annotations"), "dataset")
+  config_fields(dataset, c("id", "batch_dir", "metadata", "metadata_columns", "quantification", "feature_id_column", "intensity_measure", "annotations"), "dataset")
   for (field in c("id", "batch_dir", "metadata", "quantification")) config_text(dataset[[field]], paste0("dataset.", field))
   if (!is.null(dataset$feature_id_column)) config_text(dataset$feature_id_column, "dataset.feature_id_column")
   if (!is.null(dataset$intensity_measure)) config_choice(dataset$intensity_measure, c("height", "area"), "dataset.intensity_measure")
+  mapping <- dataset$metadata_columns %||% list()
+  config_fields(mapping, c("filename", "sample_id", "sample_type"), "dataset.metadata_columns")
+  for (field in names(mapping)) config_text(mapping[[field]], paste0("dataset.metadata_columns.", field))
+  if (anyDuplicated(unlist(mapping, use.names = FALSE))) stop("Metadata column mappings must be unique.", call. = FALSE)
   annotations <- dataset$annotations %||% list()
   if (!is.list(annotations) || (length(annotations) && (is.null(names(annotations)) || anyNA(names(annotations)) ||
       any(!nzchar(names(annotations))) || anyDuplicated(names(annotations)))))

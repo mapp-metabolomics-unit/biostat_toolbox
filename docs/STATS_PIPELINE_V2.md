@@ -1,87 +1,65 @@
-# MAPP statistical pipeline V2
+# MAPP statistical pipeline V2 — review build
 
-## Status
+## Status and scope
 
-V2 is a side-by-side replacement under active development. The legacy entry point, `src/biostat_toolbox.r`, and its root `renv.lock` remain authoritative for reproducing historical runs. V2 never imports `MAPPstructToolbox`.
+V2 is a side-by-side analysis CLI and read-only explorer for new, immutable runs. Historical runs remain reproducible through `src/biostat_toolbox.r` and the root `renv.lock`; the older scripts `reprocess_stats.R`, `plot_selected_boxplots.R`, `analyze_spectral_modules.R`, and `generate_data_explorer.R` still consume legacy data and are not V2 readers. No scientific equivalence or replacement of legacy execution has been approved. The example methods and thresholds require MAPP scientific-owner review before production use. The Linux workflow below was exercised with R 4.6.1; macOS and independent Linux installation have not been verified.
 
-The first vertical slice implements validated MZmine import, blank filtering, optional QC-RSD filtering, imputation, normalization, transformation, scaling, PCA, PCoA, omnibus linear-model tests, planned contrasts, static exports, content-addressed runs, and a generic read-only Shiny explorer.
+V2 uses CRAN `pls` for supervised modeling and pinned `plotly` for the read-only interactive explorer; it does not load `MAPPstructToolbox` or `structToolbox`. Its pinned package environment is in `v2/renv.lock`, separate from the historical root environment. Install R 4.6.1 and, from `v2/`, run `rig run -r 4.6.1 -f bootstrap.R` (or `Rscript bootstrap.R` if the selected `Rscript` is 4.6.1). The bootstrap restores the pinned packages; after installation, analysis uses local inputs and does not fetch annotations or packages. `renv::status()` currently reports installed/recorded packages as *not used*: renv scans the isolated `v2/` directory, whereas the analysis modules and explorer live in `../src/v2` and `../app`. This is a dependency-discovery warning, not a missing-package warning; do not snapshot the root environment or drop pinned dependencies to hide it.
 
-## Commands
+## CLI
 
-From the repository root using the existing environment:
-
-```bash
-Rscript src/mapp_stats.R validate --dataset configs/mapp_batch_00275.dataset.yaml --recipe configs/mapp_batch_00275.recipe.yaml
-Rscript src/mapp_stats.R plan --dataset configs/mapp_batch_00275.dataset.yaml --recipe configs/mapp_batch_00275.recipe.yaml
-Rscript src/mapp_stats.R run --dataset configs/mapp_batch_00275.dataset.yaml --recipe configs/mapp_batch_00275.recipe.yaml
-```
-
-`validate` checks matrix/metadata alignment, roles, group replication, and method prerequisites. `plan` prints hashes, the output path, and the number of features each preprocessing filter would remove without changing the batch. Review this preview before `run`, especially when QC-RSD or blank filtering removes a large fraction of features. `run` writes an immutable completed run under `results/stats_v2/<run_hash>`.
-
-To open a completed run in the generic explorer, use the isolated V2 environment:
+From `v2/` with the pinned environment:
 
 ```bash
-cd v2
-MAPP_STATS_RUN=/absolute/path/to/results/stats_v2/<run_hash> Rscript app.R
+rig run -r 4.6.1 -f run.R -- validate --dataset ../configs/mapp_batch_00275.dataset.yaml --recipe ../configs/mapp_batch_00275.recipe.yaml
+rig run -r 4.6.1 -f run.R -- plan     --dataset ../configs/mapp_batch_00275.dataset.yaml --recipe ../configs/mapp_batch_00275.recipe.yaml
+rig run -r 4.6.1 -f run.R -- run      --dataset ../configs/mapp_batch_00275.dataset.yaml --recipe ../configs/mapp_batch_00275.recipe.yaml
 ```
 
-## Run identity
+`--` is required before the command when forwarding dash-prefixed arguments through `rig`. Direct `Rscript run.R validate --dataset ... --recipe ...` works when `Rscript` is R 4.6.1 and the `v2/` project is active. The example dataset paths are relative to the YAML file and expect the relevant group repository to be a sibling of `biostat_toolbox`; adjust `batch_dir` for other layouts. Dataset `metadata_columns` maps nonstandard filename/sample ID/role column names to canonical fields, and `intensity_measure` must choose `height` or `area` when both appear. Extra quantification and metadata columns are retained. Both the mapping and the input file contents contribute to run identity.
 
-V2 records three SHA-256 identities:
+`validate` checks filename alignment, intensity values, roles, group replication, contrasts, and applicable design conditions. Metadata-only or quantification-only filenames currently fail explicitly rather than being silently excluded. A block must be experimentally verified and declared with `design.block_verified: true`; PLS-DA with a block is unsupported. `plan` previews feature attrition and the destination without publishing a run. Examine blank/QC attrition and planned contrasts before `run`. A run stages tables, plots, objects, provenance and SHA-256 output checksums, then publishes a `COMPLETE` marker atomically. The content-derived hash excludes absolute paths and presentation settings. Existing completed hashes cannot be overwritten; corruption and incomplete runs require manual inspection, not a forced rerun.
 
-- `dataset_hash`: dataset ID plus checksums of metadata, quantification, and annotation inputs.
-- `preprocess_hash`: dataset hash, roles, preprocessing recipe, V2 source checksums, R/package versions, root lockfile checksum, and Git state.
-- `run_hash`: preprocessing hash, design, analyses, seed, and environment identity.
+The batch 00275 example validated 40 rows (30 samples, seven QCs, three blanks) and 2,114 features. Its preview removed 587 by blank filtering and 1,100 by QC-RSD, leaving 427 for analysis. `design.contrasts: all` requests all 15 unordered pairs of its six biological groups; omitting `contrasts` has the same default when differential analysis is enabled. An explicit sequence of `{name, numerator, denominator}` entries overrides it. Each contrast has a separate static volcano PNG/PDF and a selectable saved result in the explorer. The A–E replicate labels are **not** treated as verified blocks. The alternate `mapp_batch_00196` example maps `mapp_sample_id`/`ATTRIBUTE_sample_type`, validates 94 rows (67 samples, 12 QCs, 15 blanks), and previews 4,792 retained features. Its example recipe disables inference and runs exploratory ordination without contrasts or PLS-DA. These are implementation checks, not biological approvals.
 
-Output paths and presentation settings are excluded from scientific hashes. Vector order is preserved because it may encode contrast or model order. Runs are assembled in a staging directory, published atomically, protected by a per-hash lock, and marked with `COMPLETE` only after all exports succeed.
+## Saved analyses and interpretation
 
-## Processing order and matrix branches
+Blank filtering precedes role restriction. Imputation, normalization, transformation and scaling operate on biological samples; QC-RSD filtering is optional. PCA uses the scaled matrix, nonnegative Bray-Curtis PCoA uses the normalized matrix, and linear-model omnibus tests/contrasts use transformed intensities. With log2 transformation a contrast effect is a log2 fold change. Reported Benjamini–Hochberg q-values are adjusted **per contrast across features**, not across the 15 contrast-by-feature families; do not interpret all-pair exploration as preplanned confirmatory testing. One-axis ordinations have saved one-dimensional plots. Output `sample_metadata.tsv` contains all input roles; `variable_metadata.tsv` contains the retained features; raw/blank-filtered stages include QC and blanks while later stages contain biological samples only.
 
-1. Import raw peak heights while retaining samples, QCs, and blanks.
-2. Apply blank filtering before removing any sample role.
-3. Restrict the inferential branch to biological samples.
-4. Impute nonpositive/missing values.
-5. Normalize between samples.
-6. Optionally evaluate normalized QC RSD and remove unstable features.
-7. Transform.
-8. Scale.
+For raw peak inspection, `matrix_raw.tsv` retains every quantified feature before filtering, while `variable_metadata_input.tsv` retains its input MZmine metadata. `variable_metadata.tsv` remains limited to features surviving preprocessing and used in the analyses. A completed run records one configured intensity measure (`height` or `area`); batch 00275 supplies **peak height only**, not peak area.
 
-Analyses deliberately use different branches:
+Optional SIRIUS, CANOPUS and met-annot-enhancer inputs export separate candidate records and evidence rather than merging candidates across sources. Met-annot-enhancer's `organism_name` and `structure_wikidata` are saved as candidate columns `organism` and `identification_links`; its `organism_wikidata` is also saved. The reported taxon is annotation-source evidence, **not** the experimental sample's taxon or a confirmed identification. An optional `annotations.horizontal` input (see `configs/dataset.template.yaml`) exports the recorded `sources_number_IK2D`, source labels and **every** `_SMILES` column into checksum-verified `tables/annotation_horizontal.tsv`. Horizontal rows may repeat a feature ID with different structures; they are retained, not collapsed or treated as confirmed identities. No agreement count is reconstructed from candidate rows. Unannotated input features remain visible. A `validated` PLS-DA status means the nested repeated stratified CV and label-permutation protocol ran, **not** that discrimination was significant. Fold preprocessing and component selection use training data; full-fit scores are illustrative. A withheld or disabled model is not replaced by a scores-only plot. The example 00275 recipe disables PLS-DA; a small synthetic fixture exercised the enabled protocol. Real-batch PLS-DA performance and scientific defaults still need review.
 
-- PCA consumes `scaled`.
-- Bray-Curtis PCoA consumes nonnegative `normalized` values.
-- Linear models and volcano plots consume `transformed`, not Pareto-scaled, values.
-- Feature exploration can display any saved stage.
+## Read-only explorer
 
-Every volcano plot is rendered from `tables/differential.tsv`; the interactive and static coordinates therefore cannot diverge.
+From the repository root, run `cd v2`. If the documented 00275 batch is in the sibling `didier-reinhardt-group` checkout, its completed run is already under that batch's `results/stats_v2/<run_hash>/`. Start the explorer from `v2/`:
 
-## Statistical interpretation
+```bash
+MAPP_STATS_ROOT=../../didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00275 \
+  rig run -r 4.6.1 -e 'shiny::runApp("../app", host="127.0.0.1", launch.browser=FALSE)'
+```
 
-The omnibus model tests whether the group factor explains variation in each feature. Planned contrasts report an effect, its standard error, test statistic, raw p-value, and Benjamini-Hochberg q-value. With a `log2` transformation, the effect is a log2 fold change.
+Keep that terminal running. Shiny selects a free port and prints **Listening on http://127.0.0.1:PORT**; open that exact URL in a browser **on the server itself**, or use SSH forwarding below when the browser is on your laptop. If no completed run exists, run the `validate`, `plan`, then `run` CLI commands above first. For another batch, change `MAPP_STATS_ROOT` to its batch directory or an approved parent containing MAPP project/batch directories. **Do not point it at `results/stats_v2` or an individual hash.** The explorer selects the newest completed run on opening; **Refresh catalogue** selects the newest completed run after another CLI run. Check that **Completed batch / run** and the green status line show the hash printed by `run` (batch 00275's example with taxon Wikidata evidence currently starts `d9856a252ed1`). Older completed hashes remain selectable but do not acquire newly saved annotation columns. If the contrast dropdown has only `WT_O_vs_WT_N`, you are viewing an earlier one-contrast run; switching to the current all-pair hash exposes all 15 saved contrasts. An unchanged recipe/input/code produces the same immutable hash instead of a new run.
 
-A block can be declared as `design.block`. It must only be used when its levels represent genuine matching, pairing, plate, batch, or another experimental blocking structure. V2 does not infer this silently.
+### Access from another machine
 
-PLS-DA is intentionally not part of the first slice. It will be added through official `structToolbox` only with repeated stratified cross-validation and permutation testing; an unvalidated scores plot will not be presented as evidence.
+If the Shiny command runs on `commons-server` but your browser runs on a laptop, the printed `127.0.0.1` URL refers to the **server**, not the laptop. On the laptop, in a second terminal, forward the port printed by Shiny (replace `NNNNN` with that server port):
 
-## Batch 00275 decisions
+```bash
+ssh -N -L 43117:127.0.0.1:NNNNN allardpm@commons-server
+```
 
-The quantitative matrix contains all 30 samples, seven QCs, and three blanks. Because no blank-subtraction module is recorded in its MZmine batch, V2 blank filtering is enabled. The initial thresholds are visible recipe choices, not hidden defaults.
+Keep both terminals running and open **http://127.0.0.1:43117/** on the laptop. If laptop port 43117 is already occupied, use `43119:127.0.0.1:NNNNN` instead and open `http://127.0.0.1:43119/`. This tunnel keeps Shiny bound to the server's loopback interface; do not change its `host` to `0.0.0.0` just to reach it from your laptop.
 
-`ATTRIBUTE_mutant` has six balanced levels with five samples each. The omnibus group test is supported. Only `WT_O_vs_WT_N` is initially declared. Mutant-versus-control contrasts should be added after confirming which wild type is the appropriate reference.
+### Navigate the result
 
-The `ATTRIBUTE_replicate` values A-E occur across every group. The recipe does not block on replicate until the experimental owner confirms that these are matched blocks.
+1. **Overview** shows input and selected sample counts, feature counts and annotation coverage. **Descriptive grouping / point colour** and **Sample role filter** change the visible subset, not stored test results. **All groups** is on by default; turn it off to choose a subset under **Groups to show**. In any interactive plot, click a legend entry to hide/show that group or double-click it to isolate that group; double-click again to restore all traces. The example defaults to `ATTRIBUTE_mutant`, for which QC and blank group labels are missing. To see QC or blanks, choose `sample_type` as the grouping and `QC` or `blank` as the role.
+2. **PCA** and **PCoA** plot saved *sample scores* for biological samples. Choose independent **X axis** and **Y axis** values (for example PC2 versus PC5); when at least three components were saved, choose **3D** and a **Z axis**. Runs with one saved component retain a jittered 1D view. Axis and group/role changes only re-display saved values, never refit the analysis; QC/blank rows have no scores here. PCA also has a **separate feature-loadings plot beneath its sample plot** on the selected PCs, in 2D or 3D. Click a *loading point* to open that feature's description on the right. Sample-score points are samples, not features; PCoA has no saved feature loadings, so its points do not link to features. **Saved contrasts** offers all 15 pairwise volcanoes for batch 00275: select a contrast and click a plotted feature or its ID in the ranked table to open the same description. Batch 00196 has no planned contrast.
+3. The collapsible **Feature details** panel at the right opens when you choose a **Feature ID** in the left sidebar, click a PCA loading, click a volcano point or ranked-table ID, or follow a feature ID from **Annotations**. The central view narrows when the panel opens, so both stay visible; close it with **Close** and reopen it with its right-edge tab. It shows the measured feature's saved metadata, source-specific *candidate* annotations (not confirmed identities), the saved per-horizontal-row InChIKey2D agreement count, and a descriptive box plot per group showing the median, quartiles and whiskers of saved intensities, with individual sample dots and metadata hover. Every available horizontal `_SMILES` column and candidate SMILES is included, but **identical saved SMILES appear in one 2D depiction** listing each source; different SMILES (including possible stereoisomers) remain separate. When a met-annot-enhancer candidate supplies an exact SMILES match, its reported organism/taxon appears beside the shared structure. Saved structure and taxon Wikidata URLs become clickable links restricted to Wikidata; unknown or invalid links remain text. **Saved intensity stage**, grouping and sample filters govern the box plot. Use `raw` or `blank_filtered` for QC/blanks; later stages contain biological samples only. Every measured feature is available at the raw stage; if filtering removed it from the selected stage, the drawer explicitly identifies the saved filter decision and plots raw peak height/area instead. An annotation-only ID absent from the quantification has no measured peak to plot. Older runs without `variable_metadata_input.tsv` can still plot saved raw peaks, but cannot show input metadata for filtered features. The plots do not recompute statistical tests.
+   **Feature ID** is the unique measured-variable ID within a dataset (for example, feature `467`). Multiple annotation sources can propose candidates for that same feature. In the saved `annotation_candidates.tsv`, `candidate_id` is only a **source record key**: `sirius:402` and `canopus:402` denote row 402 in their respective source inputs, while `met_annot_enhancer:313` denotes row 313 in its input. Each of those records retains `feature_id = 467`; neither 402 nor 313 is another feature ID. The viewer labels these values as source record keys; the underlying TSV field remains `candidate_id`.
+4. **Annotations** includes a **Saved InChIKey2D consensus (sources agreeing)** selector for 0, 1, 2 or 3, taken directly from `sources_number_IK2D` in the optional saved horizontal table. The per-feature horizontal list shows the selected rows, including zero-source features without candidate records; missing counts remain visible under **All** only. The selected count also restricts the candidate records and **Candidate evidence** selector below; candidate source and NPC class/pathway filters apply only to those candidate records. Search matches horizontal feature IDs and candidate text. Click any feature ID to open its description; selected candidate evidence shows its reported taxon, its SMILES depiction and clickable structure/taxon Wikidata links when present. Older completed runs without a saved horizontal table show an explicit unavailable message instead of inferring consensus from candidates; rerun with `annotations.horizontal` to enable it. **Validated PLS-DA** shows held-out predictions, interactive saved-permutation distribution and interactive full-fit scores *only if the run enabled that protocol*. The score plot has independent 2D axes and optional 3D when three latent variables were saved; it remains illustrative, not held-out validation. Batch 00275 disables it.
+5. In the top-right Plotly toolbar, **Download plot as a PNG** exports the *currently displayed interactive plot*, including selected 2D/3D dimensions, filters and legend visibility (PCA sample scores, PCA feature loadings, PCoA, volcano, PLS-DA and feature box plot). Separate **Download verified saved PNG/PDF** buttons under PCA, PCoA and volcano serve checksum-verified *unfiltered original 2D analysis plots*, not the newly selected dimensions. For tables, **Provenance & downloads** lists recorded inputs, effective recipe, environment and output checksums: choose an **Existing saved table** and **Download verified TSV**. Offline files remain under `<batch>/results/stats_v2/<run_hash>/plots/` and `tables/`.
 
-## Dependency policy
+The explorer is read-only: it checks sealed objects without deserializing them, verifies TSV checksums before parsing or downloading, and rejects symlinked run files outside the approved root. Filters never recompute or relabel inference. For available SMILES, the browser loads SVG depictions from the [Natural Products Cheminformatics API](https://docs.api.naturalproducts.net/) using its [`/latest/depict/2D` endpoint](https://api.naturalproducts.net/latest/depict/2D?smiles=CCO); it sends SMILES and the browser's network address to that external service, which is not a sealed run output. If it is unreachable or rejects a SMILES, the saved SMILES remains available in the structure card. For an internal server configure host, access controls and port externally; do not expose this explorer directly to untrusted networks.
 
-The root environment retains the pinned `MAPPstructToolbox` fork solely for legacy runs. V2 uses a separate environment and the official Bioconductor `structToolbox`, plus focused maintained packages when their implementation is clearer or more robust. Namespace-qualified calls prevent class collisions.
-
-Current official Bioconductor releases require a newer R than the legacy R 4.2.2 environment. Install R 4.6 side by side with `rig add 4.6`; then enter `v2/` and use `rig run -r 4.6 -f bootstrap.R` to create and snapshot the V2 lockfile. Continue using `rig run -r 4.6` for V2 commands so the default legacy R is unchanged. Do not update the root lockfile as part of that operation.
-
-## Next implementation stages
-
-1. Add QC drift correction after `injection_order` validation.
-2. Add official `structToolbox` PLS-DA with nested/repeated validation and permutation tests.
-3. Add preprocessing previews to Shiny without committing a run.
-4. Add background job submission; submitted jobs must execute the same CLI recipe.
-5. Add annotation/NPC joins and composition views to the generic explorer.
-6. Regression-test batches 00196, 00270, and 00275 before retiring any legacy output.
+Linux smoke: batches 00275 and 00196 validated and published sealed CLI runs; the current all-pair 00275 run `88f49fdc4dc2…` sealed 57 outputs, including 15 volcano PNGs, 15 PDFs, `annotation_horizontal.tsv` and the all-feature `variable_metadata_input.tsv`. The browser displayed the real saved PCA as PC2/PC3/PC5 and PCoA as PCoA2/PCoA3/PCoA5 in 3D with selected-axis hover, rotation and a PNG of the current 3D view. A synthetic validated PLS-DA run displayed independently selected LV3/LV1 in 2D and LV2/LV3/LV1 in 3D; duplicate axes were rejected. Another synthetic run saved only one PCA/PCoA/PLS-DA axis and rendered jittered 1D plots without 3D controls. Browser checks also covered the 15-choice volcano selector, legend isolation, sample/feature hover, and valid saved PNG/PDF responses. On batch 00275, the right drawer opened from the left feature selector, a clicked 2D PCA loading, a volcano point and ranked ID, annotation IDs and candidate evidence; retained measured IDs rendered six group box plots with individual metadata-hover sample dots. At 1706- and 1024-pixel browser widths, opening the drawer narrowed the central PCA without overlaying it; closing restored its width. The horizontal consensus selector showed 60 zero-source feature rows with zero candidate records, eight two-source features with 24 candidate records, and no three-source matches. Feature 5 displayed one shared isdb/met-annot-enhancer structure with Xylopia emarginata and separate clickable Wikidata links for structure and taxon, plus a distinct SIRIUS structure; feature 1114 retained two different isdb structures while removing their duplicate enhancer drawings. The selected candidate evidence showed the taxon and both links. Feature 172 was measured but excluded by the saved blank filter: the viewer plotted 30 biological-sample raw peak heights with the raw-stage label and its input m/z metadata; QC-filtered, unannotated feature 6 also plotted raw peak heights from the sidebar; retained feature 467 still plotted transformed intensities. A prior sealed run without exported input metadata plotted feature 172's raw heights and identified the missing source metadata. A prior run without the horizontal table explicitly omitted the consensus selector. Clicking a PCA sample-score point did not open a feature. An out-of-root symlink was rejected in the prior viewer check. These checks do not constitute macOS validation, scientific approval, or a security audit of a hosted deployment.

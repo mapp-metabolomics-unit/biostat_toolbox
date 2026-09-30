@@ -8,7 +8,12 @@ export_results <- function(dataset, processed, analyses, manifest, directory) {
 
   candidates <- normalize_annotations(dataset)
   if (nrow(candidates)) write_tsv(candidates, file.path(directory, "tables", "annotation_candidates.tsv"))
-  write_tsv(processed$sample_metadata, file.path(directory, "tables", "sample_metadata.tsv"))
+  horizontal <- horizontal_annotation_summary(dataset$annotations$horizontal)
+  if (!is.null(horizontal)) write_tsv(horizontal, file.path(directory, "tables", "annotation_horizontal.tsv"))
+  write_tsv(dataset$sample_metadata, file.path(directory, "tables", "sample_metadata.tsv"))
+  # The analysis metadata below contains only retained features; raw peak plots also need
+  # source metadata for features removed by blank or QC filtering.
+  write_tsv(dataset$variable_metadata, file.path(directory, "tables", "variable_metadata_input.tsv"))
   write_tsv(processed$variable_metadata, file.path(directory, "tables", "variable_metadata.tsv"))
   if (nrow(processed$diagnostics$blank)) write_tsv(processed$diagnostics$blank, file.path(directory, "tables", "blank_filter.tsv"))
   if (nrow(processed$diagnostics$qc)) write_tsv(processed$diagnostics$qc, file.path(directory, "tables", "qc_rsd.tsv"))
@@ -53,18 +58,28 @@ export_analysis_plots <- function(analyses, recipe, plot_dir) {
     ggplot2::ggsave(file.path(plot_dir, paste0(stem, ".png")), plot, width = width, height = height, dpi = 180)
     ggplot2::ggsave(file.path(plot_dir, paste0(stem, ".pdf")), plot, width = width, height = height)
   }
-  if (!is.null(analyses$pca) && all(c("PC1", "PC2") %in% names(analyses$pca$scores)) && nrow(analyses$pca$scores)) {
+  if (!is.null(analyses$pca) && "PC1" %in% names(analyses$pca$scores) && nrow(analyses$pca$scores)) {
     variance <- analyses$pca$variance$variance_percent
-    p <- ggplot2::ggplot(analyses$pca$scores, ggplot2::aes(x = PC1, y = PC2, colour = .data[[group]])) +
-      ggplot2::geom_point(size = 3) + ggplot2::theme_classic() +
-      ggplot2::labs(x = sprintf("PC1 (%.1f%%)", variance[1]), y = sprintf("PC2 (%.1f%%)", variance[2]), colour = group)
+    scores <- analyses$pca$scores
+    one_dimension <- !"PC2" %in% names(scores)
+    if (one_dimension) scores$PC2 <- 0
+    p <- ggplot2::ggplot(scores, ggplot2::aes(x = PC1, y = PC2, colour = .data[[group]])) +
+      (if (one_dimension) ggplot2::geom_jitter(height = 0.08, width = 0, size = 3) else ggplot2::geom_point(size = 3)) +
+      ggplot2::theme_classic() +
+      ggplot2::labs(x = sprintf("PC1 (%.1f%%)", variance[1]),
+                    y = if (one_dimension) "One-dimensional ordination" else sprintf("PC2 (%.1f%%)", variance[2]), colour = group)
     save_plot(p, "pca")
   }
-  if (!is.null(analyses$pcoa) && all(c("PCoA1", "PCoA2") %in% names(analyses$pcoa$scores)) && nrow(analyses$pcoa$scores)) {
+  if (!is.null(analyses$pcoa) && "PCoA1" %in% names(analyses$pcoa$scores) && nrow(analyses$pcoa$scores)) {
     variance <- analyses$pcoa$variance$variance_percent
-    p <- ggplot2::ggplot(analyses$pcoa$scores, ggplot2::aes(x = PCoA1, y = PCoA2, colour = .data[[group]])) +
-      ggplot2::geom_point(size = 3) + ggplot2::theme_classic() +
-      ggplot2::labs(x = sprintf("PCoA1 (%.1f%%)", variance[1]), y = sprintf("PCoA2 (%.1f%%)", variance[2]), colour = group)
+    scores <- analyses$pcoa$scores
+    one_dimension <- !"PCoA2" %in% names(scores)
+    if (one_dimension) scores$PCoA2 <- 0
+    p <- ggplot2::ggplot(scores, ggplot2::aes(x = PCoA1, y = PCoA2, colour = .data[[group]])) +
+      (if (one_dimension) ggplot2::geom_jitter(height = 0.08, width = 0, size = 3) else ggplot2::geom_point(size = 3)) +
+      ggplot2::theme_classic() +
+      ggplot2::labs(x = sprintf("PCoA1 (%.1f%%)", variance[1]),
+                    y = if (one_dimension) "One-dimensional ordination" else sprintf("PCoA2 (%.1f%%)", variance[2]), colour = group)
     save_plot(p, "pcoa")
   }
   if (!is.null(analyses$differential) && nrow(analyses$differential)) {

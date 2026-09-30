@@ -4,6 +4,27 @@
 
 Script-based metabolomics analysis utilities for the MAPP biostat workflow.
 
+## View a completed V2 run
+
+The R 4.2 installation instructions below are for **historical runs**, not the V2 viewer. For the example batch 00275, from this repository's root (with its `didier-reinhardt-group` sibling checkout and R 4.6.1 installed):
+
+```bash
+cd v2
+rig run -r 4.6.1 -f bootstrap.R  # first time only
+rig run -r 4.6.1 -f run.R -- run --dataset ../configs/mapp_batch_00275.dataset.yaml --recipe ../configs/mapp_batch_00275.recipe.yaml
+MAPP_STATS_ROOT=../../didier-reinhardt-group/docs/mapp_project_00007/mapp_batch_00275 \
+  rig run -r 4.6.1 -e 'shiny::runApp("../app", host="127.0.0.1", launch.browser=FALSE)'
+```
+
+Keep the last command running and open the **Listening on http://127.0.0.1:PORT** URL printed in its terminal. Shiny chooses a free port; do not assume port 43117. If running on `commons-server` over SSH, [forward that port from your laptop](docs/STATS_PIPELINE_V2.md#access-from-another-machine)—the server's `127.0.0.1` is not your laptop's.
+`MAPP_STATS_ROOT` points to the **batch directory**, not a run hash; substitute your own batch directory when using other inputs. The newest completed run is selected on opening. Explore PCA, PCoA, Saved contrasts and Annotations; clicking a PCA *loading* point (not a sample-score point), a volcano feature, an annotation feature ID, or selecting a feature on the left opens its box plot and description in the collapsible right-side **Feature details** panel. The open panel narrows the central view instead of covering it. The **Saved InChIKey2D consensus** filter selects 0–3 recorded agreeing-source counts when the optional horizontal annotation input was included in the run; its source-specific SMILES are depicted through the public Natural Products API when available. Identical saved SMILES are drawn once with all source labels; met-annot-enhancer candidates show their reported taxon and clickable structure/taxon Wikidata links when saved. SMILES are sent to the external depiction service by the viewer's browser. The example does not enable PLS-DA. Saved PNG/PDF plots and TSV tables are also under `<batch>/results/stats_v2/<run_hash>/`; the viewer only reads them. See the [V2 viewer walkthrough](docs/STATS_PIPELINE_V2.md#read-only-explorer) for filters, downloads and limitations.
+
+Measured features removed by preprocessing still have saved raw peak intensities: the drawer shows raw peak height/area when the selected stage lacks that feature, explains the saved filter decision, and the newest run includes its input measurement metadata. The batch 00275 input contains peak **height** only.
+
+The example recipe now uses `design.contrasts: all` (the default if `contrasts` is omitted), producing 15 separate pairwise volcanoes for its six groups; provide an explicit contrast list to restrict them. Choose the new run hash after rerunning.
+
+The sections below describe the historical workflow.
+
 ## Supported platforms
 
 `biostat_toolbox` is supported on `macOS` and `Linux`.

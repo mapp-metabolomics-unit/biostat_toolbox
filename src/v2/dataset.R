@@ -1,14 +1,19 @@
 read_mzmine_dataset <- function(dataset_config) {
   required_metadata <- c("filename", "sample_id", "sample_type")
+  mapping <- dataset_config$metadata_columns %||% list()
+  source_columns <- vapply(required_metadata, function(field) mapping[[field]] %||% field, character(1))
   metadata_columns <- names(utils::read.delim(dataset_config$metadata, check.names = FALSE, nrows = 0))
   feature_column <- dataset_config$feature_id_column %||% "row ID"
   quant_columns <- names(utils::read.csv(dataset_config$quantification, check.names = FALSE, nrows = 0))
-  missing_metadata <- setdiff(required_metadata, metadata_columns)
+  missing_metadata <- setdiff(source_columns, metadata_columns)
   if (length(missing_metadata)) stop("Metadata lacks required column(s): ", paste(missing_metadata, collapse = ", "), call. = FALSE)
+  if (anyDuplicated(source_columns) || any(required_metadata %in% metadata_columns & source_columns != required_metadata))
+    stop("Metadata column mapping conflicts with canonical columns.", call. = FALSE)
   if (!feature_column %in% quant_columns) stop("Feature ID column not found: ", feature_column, call. = FALSE)
   if (anyDuplicated(metadata_columns) || anyDuplicated(quant_columns)) stop("Input column names must be unique.", call. = FALSE)
   metadata <- utils::read.delim(dataset_config$metadata, check.names = FALSE, stringsAsFactors = FALSE,
-                                na.strings = c("", "NA"), colClasses = setNames(rep("character", 3L), required_metadata))
+                                na.strings = c("", "NA"), colClasses = setNames(rep("character", 3L), source_columns))
+  for (field in required_metadata) if (source_columns[[field]] != field) metadata[[field]] <- metadata[[source_columns[[field]]]]
   quant <- utils::read.csv(dataset_config$quantification, check.names = FALSE, stringsAsFactors = FALSE,
                            na.strings = c("", "NA"), colClasses = setNames("character", feature_column))
   for (field in required_metadata) {
@@ -74,7 +79,9 @@ read_mzmine_dataset <- function(dataset_config) {
   for (annotation_name in names(dataset_config$annotations %||% list())) {
     annotation_path <- dataset_config$annotations[[annotation_name]]
     if (is.null(annotation_path)) next
-    annotation_tables[[annotation_name]] <- utils::read.delim(annotation_path, check.names = FALSE, stringsAsFactors = FALSE)
+    annotation_tables[[annotation_name]] <- utils::read.delim(
+      annotation_path, check.names = FALSE, stringsAsFactors = FALSE,
+      colClasses = if (identical(annotation_name, "horizontal")) c(feature_id = "character") else NA)
   }
 
   list(
@@ -116,10 +123,7 @@ validate_dataset <- function(dataset, recipe = list()) {
         if (any(group_counts < (recipe$analyses$plsda$folds %||% 3L)))
           issues <- c(issues, "PLS-DA folds exceed the sample count in at least one group.")
       }
-      for (contrast in recipe$design$contrasts %||% list()) {
-        if (!all(c(contrast$numerator, contrast$denominator) %in% names(group_counts)))
-          issues <- c(issues, paste("Contrast levels are absent from biological samples:", contrast$numerator, "vs", contrast$denominator))
-      }
+      expand_v2_contrasts(recipe$design, names(group_counts))
       block_column <- recipe$design$block
       if (!is.null(block_column)) {
         if (!block_column %in% names(sm)) {

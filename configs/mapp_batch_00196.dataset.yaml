@@ -1,0 +1,12 @@
+id: mapp_project_00057/mapp_batch_00196
+batch_dir: ../../viola-vogler-group/docs/mapp_project_00057/mapp_batch_00196
+metadata: metadata/treated/mapp_batch_00196_metadata.tsv
+metadata_columns:
+  sample_id: mapp_sample_id
+  sample_type: ATTRIBUTE_sample_type
+quantification: results/mzmine/mapp_batch_00196_quant.csv
+feature_id_column: row ID
+intensity_measure: height
+annotations:
+  canopus: results/sirius/canopus_structure_summary.tsv
+  structures: results/sirius/structure_identifications.tsv

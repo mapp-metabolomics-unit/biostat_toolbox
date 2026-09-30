@@ -58,26 +58,20 @@ design_matrix <- function(metadata, group_column, block_column = NULL) {
   list(matrix = matrix, group = group)
 }
 
-fit_contrast <- function(x, design, numerator, denominator, contrast_name, effect_label) {
+fit_contrast <- function(fit, numerator, denominator, contrast_name, effect_label) {
+  design <- fit$design
   if (!all(c(numerator, denominator) %in% colnames(design))) stop("Contrast levels are absent from the design: ", numerator, ", ", denominator, call. = FALSE)
   if (identical(numerator, denominator)) stop("A contrast must compare distinct groups.", call. = FALSE)
-  if (any(!is.finite(x))) stop("Differential analysis requires finite transformed intensities.", call. = FALSE)
   contrast <- numeric(ncol(design)); names(contrast) <- colnames(design)
   contrast[numerator] <- 1; contrast[denominator] <- -1
-  fit <- stats::lm.fit(design, x)
-  if (fit$rank < ncol(design) || nrow(design) <= fit$rank) stop("Contrast design is rank-deficient or lacks residual degrees of freedom.", call. = FALSE)
-  coefficients <- fit$coefficients
-  effects <- as.numeric(crossprod(contrast, coefficients))
-  residual_df <- nrow(design) - fit$rank
-  sigma2 <- colSums(fit$residuals^2, na.rm = TRUE) / residual_df
-  covariance <- chol2inv(qr.R(qr(design)))
-  standard_error <- sqrt(as.numeric(crossprod(contrast, covariance %*% contrast)) * sigma2)
+  effects <- as.numeric(crossprod(contrast, fit$coefficients))
+  standard_error <- sqrt(as.numeric(crossprod(contrast, fit$covariance %*% contrast)) * fit$sigma2)
   statistic <- effects / standard_error
-  p_value <- 2 * stats::pt(abs(statistic), df = residual_df, lower.tail = FALSE)
+  p_value <- 2 * stats::pt(abs(statistic), df = fit$residual_df, lower.tail = FALSE)
   data.frame(
-    feature_id = colnames(x), contrast = contrast_name, numerator = numerator, denominator = denominator,
+    feature_id = fit$feature_ids, contrast = contrast_name, numerator = numerator, denominator = denominator,
     effect = effects, effect_scale = effect_label, standard_error = standard_error,
-    statistic = statistic, degrees_of_freedom = residual_df, p_value = p_value,
+    statistic = statistic, degrees_of_freedom = fit$residual_df, p_value = p_value,
     q_value = stats::p.adjust(p_value, method = "BH"), stringsAsFactors = FALSE
   )
 }
@@ -86,11 +80,22 @@ run_differential <- function(x, metadata, design_config, transformation_method) 
   group_column <- design_config$group
   block_column <- design_config$block %||% NULL
   design <- design_matrix(metadata, group_column, block_column)
-  contrasts <- design_config$contrasts %||% list()
+  contrasts <- expand_v2_contrasts(design_config, levels(design$group))
   if (!length(contrasts)) return(data.frame())
+  if (any(!is.finite(x))) stop("Differential analysis requires finite transformed intensities.", call. = FALSE)
+  fitted <- stats::lm.fit(design$matrix, x)
+  if (fitted$rank < ncol(design$matrix) || nrow(design$matrix) <= fitted$rank)
+    stop("Contrast design is rank-deficient or lacks residual degrees of freedom.", call. = FALSE)
+  residual_df <- nrow(design$matrix) - fitted$rank
+  pivot_order <- order(fitted$qr$pivot)
+  covariance <- chol2inv(qr.R(fitted$qr))
+  fit <- list(design = design$matrix, coefficients = fitted$coefficients,
+              sigma2 = colSums(fitted$residuals^2, na.rm = TRUE) / residual_df,
+              covariance = covariance[pivot_order, pivot_order, drop = FALSE], residual_df = residual_df,
+              feature_ids = colnames(x))
   effect_label <- if (tolower(transformation_method) == "log2") "log2_fold_change" else "difference_on_transformed_scale"
   rows <- lapply(contrasts, function(contrast) {
-    fit_contrast(x, design$matrix, contrast$numerator, contrast$denominator, contrast$name %||% paste(contrast$numerator, "vs", contrast$denominator, sep = "_"), effect_label)
+    fit_contrast(fit, contrast$numerator, contrast$denominator, contrast$name, effect_label)
   })
   do.call(rbind, rows)
 }

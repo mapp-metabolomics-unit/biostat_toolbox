@@ -1,26 +1,22 @@
-seed: 1
+seed: 196
 output_root: results/stats_v2
 roles:
   column: sample_type
   levels: {sample: sample, qc: QC, blank: blank}
 preprocessing:
   blank_filter: {enabled: true, minimum_sample_to_blank_ratio: 5, minimum_blank_prevalence: 0.5}
-  qc_rsd_filter: {enabled: true, threshold_percent: 30}
+  qc_rsd_filter: {enabled: false}
   missing_values: {method: half_minimum}
   normalization: {method: pqn}
   transformation: {method: log2}
   scaling: {method: pareto}
 design:
-  group: ATTRIBUTE_group
-  # block: ATTRIBUTE_block
-  # Omit contrasts to run all unordered group pairs by default.
-  # contrasts: all
-  # To override with selected directed comparisons instead:
-  # contrasts:
-  #   - {name: treatment_vs_control, numerator: treatment, denominator: control}
+  group: ATTRIBUTE_part
 analyses:
   pca: {enabled: true, components: 5}
   pcoa: {enabled: true, stage: normalized, distance: bray, components: 5}
-  omnibus: {enabled: true}
-  differential: {enabled: true}
-
+  omnibus: {enabled: false}
+  differential: {enabled: false}
+  plsda: {enabled: false}
+presentation:
+  title: "mapp_batch_00196 exploratory ordination; no inferential contrasts"
