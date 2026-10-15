@@ -66,17 +66,105 @@ expand_v2_contrasts <- function(design, group_levels) {
   contrasts
 }
 
+default_v2_roles <- function() {
+  list(column = "sample_type", levels = list(sample = "sample", qc = "QC", blank = "blank"))
+}
+
+dataset_roles <- function(dataset) {
+  roles <- dataset$roles %||% default_v2_roles()
+  config_fields(roles, c("column", "levels"), "dataset.roles")
+  if (!setequal(names(roles), c("column", "levels")))
+    stop("dataset.roles requires column and levels.", call. = FALSE)
+  config_text(roles$column, "dataset.roles.column")
+  config_fields(roles$levels, c("sample", "qc", "blank"), "dataset.roles.levels")
+  if (!setequal(names(roles$levels), c("sample", "qc", "blank")))
+    stop("dataset.roles.levels requires sample, qc, and blank.", call. = FALSE)
+  for (role in c("sample", "qc", "blank"))
+    config_text(roles$levels[[role]], paste0("dataset.roles.levels.", role))
+  if (anyDuplicated(unlist(roles$levels, use.names = FALSE)))
+    stop("dataset.roles.levels must be distinct.", call. = FALSE)
+  if (identical(roles$column, dataset$metadata_columns$sample_type))
+    roles$column <- "sample_type"
+  roles
+}
+
+validate_sample_plan <- function(plan) {
+  config_fields(plan, c("group_column", "groups"), "recipe.sample_plan")
+  if (!setequal(names(plan), c("group_column", "groups")))
+    stop("recipe.sample_plan requires group_column and groups.", call. = FALSE)
+  config_text(plan$group_column, "recipe.sample_plan.group_column")
+  if (identical(plan$group_column, "analysis_group"))
+    stop("recipe.sample_plan cannot replace its source group column.", call. = FALSE)
+  if (!is.list(plan$groups) || !length(plan$groups) || !is.null(names(plan$groups)))
+    stop("recipe.sample_plan.groups must be a nonempty sequence.", call. = FALSE)
+  for (group in plan$groups) {
+    config_fields(group, c("source", "target"), "recipe.sample_plan group")
+    if (!setequal(names(group), c("source", "target")))
+      stop("recipe.sample_plan group requires source and target.", call. = FALSE)
+    config_text(group$source, "recipe.sample_plan group source")
+    config_text(group$target, "recipe.sample_plan group target")
+    if (!grepl("^[A-Za-z][A-Za-z0-9_-]*$", group$target) || identical(group$target, "NA"))
+      stop("recipe.sample_plan group target must be a safe non-NA label.", call. = FALSE)
+  }
+  if (anyDuplicated(vapply(plan$groups, `[[`, character(1), "source")))
+    stop("recipe.sample_plan group sources must be unique.", call. = FALSE)
+  invisible(plan)
+}
+
+validate_input_sha256 <- function(hashes) {
+  config_fields(hashes, c("metadata", "quantification"), "dataset.input_sha256")
+  if (!setequal(names(hashes), c("metadata", "quantification")))
+    stop("dataset.input_sha256 requires metadata and quantification.", call. = FALSE)
+  for (field in c("metadata", "quantification"))
+    if (!is.character(hashes[[field]]) || length(hashes[[field]]) != 1L ||
+        is.na(hashes[[field]]) || !grepl("^[0-9a-f]{64}$", hashes[[field]]))
+      stop("Invalid dataset.input_sha256.", field, call. = FALSE)
+  invisible(hashes)
+}
+
+verify_input_sha256 <- function(dataset, hashes = NULL) {
+  expected <- dataset$input_sha256
+  if (is.null(expected)) return(invisible(NULL))
+  validate_input_sha256(expected)
+  for (field in c("metadata", "quantification")) {
+    actual <- if (is.null(hashes)) sha256_file(dataset[[field]]) else hashes[[field]]
+    if (!identical(actual, expected[[field]]))
+      stop("Canonical ", field, " SHA256 mismatch.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 validate_recipe_config <- function(recipe) {
-  config_fields(recipe, c("seed", "output_root", "presentation", "roles", "preprocessing", "design", "analyses"), "recipe")
+  config_fields(recipe, c("seed", "output_root", "presentation", "roles", "sample_plan", "preprocessing", "design", "analyses"), "recipe")
   if (!is.null(recipe$seed)) config_number(recipe$seed, "seed", 0, .Machine$integer.max, integer = TRUE)
   if (!is.null(recipe$output_root)) config_text(recipe$output_root, "output_root")
+  if (!is.null(recipe$presentation)) {
+    config_fields(recipe$presentation, "description", "presentation")
+    if (!identical(names(recipe$presentation), "description"))
+      stop("presentation requires a description.", call. = FALSE)
+    description <- recipe$presentation$description
+    config_text(description, "presentation.description")
+    if (!identical(description, trimws(description)) ||
+        nchar(description, type = "chars") > 160L || grepl("[[:cntrl:]]", description))
+      stop("presentation.description must be trimmed, one line of at most 160 characters without controls.", call. = FALSE)
+  }
 
-  roles <- recipe$roles %||% list(column = "sample_type", levels = list(sample = "sample", qc = "QC", blank = "blank"))
-  config_fields(roles, c("column", "levels"), "roles")
-  config_text(roles$column, "roles.column")
-  config_fields(roles$levels, c("sample", "qc", "blank"), "roles.levels")
-  for (role in c("sample", "qc", "blank")) config_text(roles$levels[[role]], paste0("roles.levels.", role))
-  if (anyDuplicated(unlist(roles$levels, use.names = FALSE))) stop("Role levels must be distinct.", call. = FALSE)
+  if (!is.null(recipe$sample_plan)) {
+    validate_sample_plan(recipe$sample_plan)
+    if (!identical(recipe$design$group, "analysis_group"))
+      stop("recipe.sample_plan requires design.group: analysis_group.", call. = FALSE)
+  }
+  if (!is.null(recipe$roles)) {
+    config_fields(recipe$roles, c("column", "levels"), "resolved recipe.roles")
+    config_text(recipe$roles$column, "resolved recipe.roles.column")
+    config_fields(recipe$roles$levels, c("sample", "qc", "blank"), "resolved recipe.roles.levels")
+    if (!setequal(names(recipe$roles$levels), c("sample", "qc", "blank")))
+      stop("resolved recipe.roles.levels requires sample, qc, and blank.", call. = FALSE)
+    for (role in c("sample", "qc", "blank"))
+      config_text(recipe$roles$levels[[role]], paste0("resolved recipe.roles.levels.", role))
+    if (anyDuplicated(unlist(recipe$roles$levels, use.names = FALSE)))
+      stop("Resolved role levels must be distinct.", call. = FALSE)
+  }
 
   preprocessing <- recipe$preprocessing %||% list()
   config_fields(preprocessing, c("blank_filter", "qc_rsd_filter", "missing_values", "normalization", "transformation", "scaling"), "preprocessing")
@@ -146,19 +234,26 @@ resolve_v2_config <- function(dataset_yaml, recipe_yaml, repo_root) {
   recipe_path <- normalize_existing_path(recipe_yaml)
   dataset <- read_yaml_file(dataset_path)
   recipe <- read_yaml_file(recipe_path)
-  config_fields(dataset, c("id", "batch_dir", "metadata", "metadata_columns", "quantification", "feature_id_column", "intensity_measure", "annotations"), "dataset")
+  if ("sample_plan" %in% names(dataset))
+    stop("dataset.sample_plan is obsolete; move the plan to recipe.sample_plan.", call. = FALSE)
+  if ("roles" %in% names(recipe))
+    stop("recipe.roles is obsolete; define shared roles in dataset.roles instead.", call. = FALSE)
+  config_fields(dataset, c("id", "batch_dir", "metadata", "metadata_columns", "quantification", "feature_id_column", "intensity_measure", "annotations", "roles", "input_sha256"), "dataset")
   for (field in c("id", "batch_dir", "metadata", "quantification")) config_text(dataset[[field]], paste0("dataset.", field))
   if (!is.null(dataset$feature_id_column)) config_text(dataset$feature_id_column, "dataset.feature_id_column")
   if (!is.null(dataset$intensity_measure)) config_choice(dataset$intensity_measure, c("height", "area"), "dataset.intensity_measure")
+  if (!is.null(dataset$input_sha256)) validate_input_sha256(dataset$input_sha256)
   mapping <- dataset$metadata_columns %||% list()
   config_fields(mapping, c("filename", "sample_id", "sample_type"), "dataset.metadata_columns")
   for (field in names(mapping)) config_text(mapping[[field]], paste0("dataset.metadata_columns.", field))
   if (anyDuplicated(unlist(mapping, use.names = FALSE))) stop("Metadata column mappings must be unique.", call. = FALSE)
+  roles <- dataset_roles(dataset)
   annotations <- dataset$annotations %||% list()
   if (!is.list(annotations) || (length(annotations) && (is.null(names(annotations)) || anyNA(names(annotations)) ||
       any(!nzchar(names(annotations))) || anyDuplicated(names(annotations)))))
     stop("dataset.annotations must map unique source names to paths.", call. = FALSE)
   for (name in names(annotations)) if (!is.null(annotations[[name]])) config_text(annotations[[name]], paste0("dataset.annotations.", name))
+  recipe$roles <- roles
   validate_recipe_config(recipe)
 
   dataset_base <- dirname(dataset_path)
@@ -183,5 +278,7 @@ resolve_v2_config <- function(dataset_yaml, recipe_yaml, repo_root) {
 scientific_recipe <- function(recipe) {
   recipe$output_root <- NULL
   recipe$presentation <- NULL
+  if (isTRUE(recipe$analyses$differential$enabled) && is.null(recipe$design$contrasts))
+    recipe$design$contrasts <- "all"
   recipe
 }

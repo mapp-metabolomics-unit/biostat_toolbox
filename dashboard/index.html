@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MAPP | Saved V2 runs</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="plotly.min.js" defer></script>
+  <script src="dashboard.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">M</span><div><span class="eyebrow">MAPP · BIOSTATISTICS</span><h1>Saved run explorer</h1></div></div>
+    <div class="run-picker"><label for="run-select">Completed batch / run</label><select id="run-select" disabled><option>Loading catalogue…</option></select></div>
+  </header>
+  <div id="status" class="status" role="status" aria-live="polite">Loading runs.json…</div>
+  <div class="workspace">
+    <aside class="sidebar" aria-label="Settings and run provenance">
+      <div class="side-heading"><span class="eyebrow">VIEW SETTINGS</span><h2>Explore the data</h2></div>
+      <p class="muted">Settings affect display only; saved analyses and tests never change.</p>
+      <details id="hover-settings" class="hover-settings">
+        <summary>Settings · feature hover</summary>
+        <p class="hint">Choose saved fields and a SMILES source for feature points. Depictions send the SMILES and your network address to the Natural Products API.</p>
+        <fieldset id="hover-field-choices"><legend>Hover fields</legend><p class="hint">Open Settings or a feature plot to load saved fields.</p></fieldset>
+        <label for="hover-structure-source">Structure source</label><select id="hover-structure-source" disabled><option value="">Any saved source</option></select>
+      </details>
+      <details id="group-settings" class="hover-settings group-settings">
+        <summary>Group colours · all plots</summary>
+        <p class="hint">A group keeps the same colour in PCA, PCoA, PLS-DA and descriptive intensities.</p>
+        <div id="group-color-choices" class="group-color-choices"></div>
+      </details>
+      <div class="side-divider"></div><span class="eyebrow">PROVENANCE</span>
+      <dl id="run-facts" class="facts"></dl>
+      <p class="hint">Only sealed, saved tables are read. No RDS is loaded and no analyses are recomputed.</p>
+    </aside>
+    <main id="dashboard-main" class="main">
+      <nav class="tabs" aria-label="Dashboard sections">
+        <button type="button" class="tab active" data-tab="overview" aria-current="page">Overview</button>
+        <button type="button" class="tab" data-tab="pca">PCA</button>
+        <button type="button" class="tab" data-tab="pcoa">PCoA</button>
+        <button type="button" class="tab" data-tab="volcano">Volcano</button>
+        <button type="button" class="tab" data-tab="plsda">PLS-DA</button>
+        <button type="button" class="tab" data-tab="features">Feature explorer</button>
+        <button type="button" class="tab" data-tab="classes">Chemical classes</button>
+        <button type="button" class="tab" data-tab="downloads">Provenance & downloads</button>
+        <button type="button" class="tab" data-tab="advanced">Advanced · new analysis</button>
+      </nav>
+      <div id="detached-status" class="detached-status notice" hidden>
+        <span>Feature details are open in a separate window and follow selections in this dashboard.</span>
+        <button type="button" id="focus-detached" class="button secondary small">Focus window</button>
+        <button type="button" id="reattach-feature" class="button secondary small">Reattach here</button>
+      </div>
+      <section id="overview" class="panel" aria-labelledby="overview-title"><div class="section-heading"><span class="eyebrow">01 / DATASET</span><h2 id="overview-title">Overview</h2><p>Saved inputs, retained features and sample groups.</p></div><div id="overview-content" class="panel-content"></div></section>
+      <section id="pca" class="panel" aria-labelledby="pca-title" hidden><div class="section-heading"><span class="eyebrow">02 / ORDINATION</span><h2 id="pca-title">Principal component analysis</h2><p>Saved scores and loadings; axes and legend visibility change the display only.</p></div><div id="pca-content" class="panel-content"></div></section>
+      <section id="pcoa" class="panel" aria-labelledby="pcoa-title" hidden><div class="section-heading"><span class="eyebrow">03 / ORDINATION</span><h2 id="pcoa-title">Principal coordinates analysis</h2><p>Saved sample coordinates, not a new distance analysis.</p></div><div id="pcoa-content" class="panel-content"></div></section>
+      <section id="volcano" class="panel" aria-labelledby="volcano-title" hidden><div class="section-heading"><span class="eyebrow">04 / INFERENCE</span><h2 id="volcano-title">Volcano plots</h2><p>Saved effects and p/q-values. Group placement changes the display, not saved tests.</p></div><div id="volcano-content" class="panel-content"></div></section>
+      <section id="plsda" class="panel" aria-labelledby="plsda-title" hidden><div class="section-heading"><span class="eyebrow">05 / SUPERVISED ANALYSIS</span><h2 id="plsda-title">Validated PLS-DA</h2><p>Saved held-out predictions and label permutations assess the model; full-fit scores illustrate it.</p></div><div id="plsda-content" class="panel-content"></div></section>
+      <section id="features" class="panel" aria-labelledby="features-title" hidden><div class="section-heading"><span class="eyebrow">06 / ANNOTATIONS</span><h2 id="features-title">Feature explorer</h2><p>Candidate identifications are hypotheses, not confirmed identities. Intensities are descriptive.</p></div><div id="detached-toolbar" class="detached-toolbar" hidden><label for="detached-feature">Feature ID</label><input type="search" id="detached-feature" placeholder="e.g. 467"><button type="button" id="detached-attach" class="button secondary small">Reattach to dashboard</button></div><div id="features-content" class="panel-content"></div></section>
+      <section id="classes" class="panel" aria-labelledby="classes-title" hidden><div class="section-heading"><span class="eyebrow">07 / CHEMICAL CLASSES</span><h2 id="classes-title">NPC chemical classes</h2><p>Explore saved CANOPUS pathway → superclass → class → feature predictions and compare descriptive intensities between chosen biological groups.</p></div><div id="classes-content" class="panel-content"></div></section>
+      <section id="downloads" class="panel" aria-labelledby="downloads-title" hidden><div class="section-heading"><span class="eyebrow">08 / AUDIT TRAIL</span><h2 id="downloads-title">Provenance & downloads</h2><p>Files listed here belong to the selected sealed run. TSV is checksum-verified before use or download.</p></div><div id="downloads-content" class="panel-content"></div></section>
+      <section id="advanced" class="panel" aria-labelledby="advanced-title" hidden><div class="section-heading"><span class="eyebrow">09 / NEW ANALYSIS PLAN</span><h2 id="advanced-title">Build a new analysis</h2><p>Start from the complete original batch, merge biological groups, then download a plan for local materialization. This page never writes batch files or refits statistics.</p></div><div id="advanced-content" class="panel-content"></div></section>
+      <details id="feature-drawer" class="feature-drawer" hidden>
+        <summary id="feature-drawer-title">Feature details</summary>
+        <button type="button" id="feature-full" class="button secondary small">Open full Feature explorer</button>
+        <button type="button" id="feature-detach" class="button secondary small">Detach to another window</button>
+        <div id="feature-drawer-content" class="panel-content"></div>
+      </details>
+    </main>
+  </div>
+</body>
+</html>

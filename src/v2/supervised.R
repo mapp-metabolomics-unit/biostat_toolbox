@@ -1,5 +1,4 @@
-# PLS-DA fits one-hot class responses with pls::plsr. All feature selection and
-# preprocessing parameters are estimated inside each training fold.
+# PLS-DA uses ropls with preprocessing parameters estimated inside each training fold.
 stratified_folds <- function(labels, folds) {
   assignment <- integer(length(labels))
   for (level in levels(labels)) {
@@ -95,51 +94,26 @@ supervised_components <- function(x, limit) {
   min(limit, ncol(x), nrow(x) - 1L, qr(sweep(x, 2, colMeans(x), "-"))$rank)
 }
 
-supervised_fit <- function(x, labels, components) {
-  response <- matrix(0, nrow(x), nlevels(labels), dimnames = list(NULL, levels(labels)))
-  response[cbind(seq_along(labels), as.integer(labels))] <- 1
-  pls::plsr(response ~ x, data = list(response = response, x = x),
-            ncomp = components, method = "oscorespls", validation = "none", scale = FALSE)
+supervised_fit <- function(x, labels, components, folds) {
+  ropls::opls(x, y = labels, predI = components, orthoI = 0,
+              crossvalI = min(folds, min(table(labels))), permI = 0,
+              scaleC = "center", fig.pdfC = "none", info.txtC = "none")
 }
 
-supervised_predict <- function(fit, x, components, classes) {
-  predicted <- predict(fit, newdata = list(x = x), ncomp = seq_len(components))
-  if (any(!is.finite(predicted))) stop("PLS-DA produced non-finite held-out decision values.", call. = FALSE)
-  result <- matrix(NA_character_, nrow(x), components)
-  for (component in seq_len(components)) {
-    values <- matrix(predicted[, , component], nrow = nrow(x), ncol = length(classes))
-    result[, component] <- classes[max.col(values, ties.method = "first")]
+supervised_predict <- function(fit, x, classes) {
+  predicted <- ropls::predict(fit, newdata = x)
+  if (!is.factor(predicted) || length(predicted) != nrow(x) ||
+      anyNA(predicted) || any(!as.character(predicted) %in% classes)) {
+    stop("PLS-DA produced invalid held-out class predictions.", call. = FALSE)
   }
-  result
+  as.character(predicted)
 }
 
 supervised_balanced_accuracy <- function(truth, predicted, classes) {
   mean(vapply(classes, function(level) mean(predicted[truth == level] == level), numeric(1)))
 }
 
-select_supervised_components <- function(dataset, recipe, sample_rows, training, labels, limit, folds) {
-  assignment <- stratified_folds(labels[training], folds)
-  predictions <- vector("list", folds)
-  possible <- integer(folds)
-  for (fold in seq_len(folds)) {
-    inner_train <- training[assignment != fold]
-    inner_test <- training[assignment == fold]
-    processed <- supervised_preprocess(dataset, recipe, sample_rows, inner_train, inner_test)
-    possible[fold] <- supervised_components(processed$train, limit)
-    if (possible[fold] < 1L) stop("PLS-DA inner training fold cannot fit a latent component.", call. = FALSE)
-    model <- supervised_fit(processed$train, labels[inner_train], possible[fold])
-    predictions[[fold]] <- supervised_predict(model, processed$test, possible[fold], levels(labels))
-  }
-  candidate_count <- min(possible)
-  predicted <- matrix(NA_character_, length(training), candidate_count)
-  for (fold in seq_len(folds)) predicted[assignment == fold, ] <- predictions[[fold]][, seq_len(candidate_count), drop = FALSE]
-  quality <- vapply(seq_len(candidate_count), function(component) {
-    supervised_balanced_accuracy(as.character(labels[training]), predicted[, component], levels(labels))
-  }, numeric(1))
-  which.max(quality) # The smallest component count wins ties.
-}
-
-validate_supervised <- function(dataset, recipe, sample_rows, labels, options) {
+validate_supervised <- function(dataset, recipe, sample_rows, labels, options, on_fold = NULL) {
   fold_predictions <- vector("list", options$repeats * options$folds)
   result_index <- 0L
   for (repeat_index in seq_len(options$repeats)) {
@@ -147,17 +121,16 @@ validate_supervised <- function(dataset, recipe, sample_rows, labels, options) {
     for (fold in seq_len(options$folds)) {
       test <- which(assignment == fold)
       train <- which(assignment != fold)
-      inner_folds <- min(options$folds, min(table(labels[train])))
       processed <- supervised_preprocess(dataset, recipe, sample_rows, train, test)
-      limit <- supervised_components(processed$train, options$components)
-      if (limit < 1L) stop("PLS-DA outer training fold cannot fit a latent component.", call. = FALSE)
-      selected <- select_supervised_components(dataset, recipe, sample_rows, train, labels, limit, inner_folds)
-      model <- supervised_fit(processed$train, labels[train], selected)
-      predicted <- supervised_predict(model, processed$test, selected, levels(labels))[, selected]
+      components <- supervised_components(processed$train, options$components)
+      if (components < 1L) stop("PLS-DA outer training fold cannot fit a latent component.", call. = FALSE)
+      model <- supervised_fit(processed$train, labels[train], components, options$folds)
+      predicted <- supervised_predict(model, processed$test, levels(labels))
       result_index <- result_index + 1L
+      if (!is.null(on_fold)) on_fold(result_index)
       fold_predictions[[result_index]] <- data.frame(
         repeat_index = repeat_index, fold = fold, sample = rownames(dataset$raw)[sample_rows[test]],
-        truth = as.character(labels[test]), predicted = predicted, components = selected,
+        truth = as.character(labels[test]), predicted = predicted, components = components,
         stringsAsFactors = FALSE
       )
     }
@@ -171,10 +144,10 @@ validate_supervised <- function(dataset, recipe, sample_rows, labels, options) {
   list(predictions = predictions, balanced_accuracy = mean(repeat_quality), accuracy = mean(predictions$truth == predictions$predicted))
 }
 
-run_supervised <- function(dataset, recipe) {
+run_supervised <- function(dataset, recipe, progress = NULL) {
   options <- recipe$analyses$plsda %||% list()
   if (!isTRUE(options$enabled)) return(NULL)
-  if (!requireNamespace("pls", quietly = TRUE)) stop("PLS-DA requires the CRAN 'pls' package.", call. = FALSE)
+  if (!requireNamespace("ropls", quietly = TRUE)) stop("PLS-DA requires the Bioconductor 'ropls' package.", call. = FALSE)
   if (!is.null(recipe$design$block)) stop("PLS-DA does not account for design.block; remove the block or disable PLS-DA.", call. = FALSE)
   group_column <- recipe$design$group
   if (is.null(group_column) || !group_column %in% names(dataset$sample_metadata)) stop("PLS-DA requires a valid design.group column.", call. = FALSE)
@@ -194,17 +167,26 @@ run_supervised <- function(dataset, recipe) {
                    repeats = integer_option("repeats", 5L, 2L), permutations = integer_option("permutations", 99L, 19L))
   empty <- data.frame()
   withheld <- function(reason) list(summary = empty, fold_predictions = empty, permutations = empty,
-                                    scores = empty, status = "withheld", reason = reason)
+                                    scores = empty, loadings = empty, vip = empty,
+                                    status = "withheld", reason = reason)
   if (nlevels(labels) < 2L) return(withheld("PLS-DA needs at least two biological groups."))
   counts <- table(labels)
-  if (any(counts < 4L)) return(withheld("PLS-DA needs at least four biological samples per group for nested validation."))
+  if (any(counts < 4L)) return(withheld("PLS-DA needs at least four biological samples per group for repeated validation."))
   if (settings$folds > min(counts)) return(withheld("PLS-DA folds exceed the smallest group size."))
   if (ncol(dataset$raw) < 1L) return(withheld("PLS-DA needs at least one measured feature."))
   set.seed(as.integer(recipe$seed %||% 1L))
-  observed <- validate_supervised(dataset, recipe, sample_rows, labels, settings)
+  folds_per_validation <- settings$repeats * settings$folds
+  total_fits <- as.double(folds_per_validation) * (settings$permutations + 1) + 1
+  if (!is.null(progress)) progress("Observed cross-validation", 0L, total_fits)
+  observed <- validate_supervised(dataset, recipe, sample_rows, labels, settings,
+    on_fold = if (is.null(progress)) NULL else function(completed)
+      progress("Observed cross-validation", completed, total_fits))
   null <- lapply(seq_len(settings$permutations), function(index) {
     shuffled <- factor(sample(as.character(labels)), levels = levels(labels))
-    validation <- validate_supervised(dataset, recipe, sample_rows, shuffled, settings)
+    label <- if (is.null(progress)) NULL else paste0("Permutation ", index, "/", settings$permutations)
+    validation <- validate_supervised(dataset, recipe, sample_rows, shuffled, settings,
+      on_fold = if (is.null(progress)) NULL else function(completed)
+        progress(label, folds_per_validation * index + completed, total_fits))
     data.frame(permutation = index, balanced_accuracy = validation$balanced_accuracy, accuracy = validation$accuracy)
   })
   null <- do.call(rbind, null)
@@ -213,16 +195,43 @@ run_supervised <- function(dataset, recipe) {
   full_data <- supervised_preprocess(dataset, recipe, sample_rows, all_samples)
   full_limit <- supervised_components(full_data$train, settings$components)
   if (full_limit < 1L) stop("PLS-DA full training data cannot fit a latent component.", call. = FALSE)
-  full_components <- select_supervised_components(dataset, recipe, sample_rows, all_samples, labels,
-                                                  full_limit, settings$folds)
-  full_fit <- supervised_fit(full_data$train, labels, full_components)
-  if (any(!is.finite(full_fit$scores[, seq_len(full_components), drop = FALSE]))) stop("PLS-DA produced non-finite full-fit scores.", call. = FALSE)
+  if (!is.null(progress)) progress("Full-data fit", total_fits - 1, total_fits)
+  full_components <- full_limit
+  full_fit <- supervised_fit(full_data$train, labels, full_components, settings$folds)
+  fitted_scores <- ropls::getScoreMN(full_fit)
+  if (!is.matrix(fitted_scores) || nrow(fitted_scores) != length(labels) ||
+      ncol(fitted_scores) != full_components || any(!is.finite(fitted_scores))) {
+    stop("PLS-DA produced invalid full-fit scores.", call. = FALSE)
+  }
+  feature_ids <- colnames(full_data$train)
+  fitted_loadings <- ropls::getLoadingMN(full_fit)
+  loading_ids <- rownames(fitted_loadings)
+  if (!is.matrix(fitted_loadings) || !is.numeric(fitted_loadings) ||
+      nrow(fitted_loadings) != length(feature_ids) || ncol(fitted_loadings) != full_components ||
+      is.null(loading_ids) || anyDuplicated(loading_ids) || !setequal(loading_ids, feature_ids) ||
+      any(!is.finite(fitted_loadings))) {
+    stop("PLS-DA produced invalid full-fit loadings.", call. = FALSE)
+  }
+  loadings <- data.frame(feature_id = feature_ids,
+                         fitted_loadings[match(feature_ids, loading_ids), , drop = FALSE],
+                         check.names = FALSE, row.names = NULL)
+  names(loadings)[-1L] <- paste0("LV", seq_len(full_components))
+  fitted_vip <- ropls::getVipVn(full_fit)
+  vip_ids <- names(fitted_vip)
+  if (!is.numeric(fitted_vip) || !is.null(dim(fitted_vip)) ||
+      length(fitted_vip) != length(feature_ids) ||
+      is.null(vip_ids) || anyDuplicated(vip_ids) || !setequal(vip_ids, feature_ids) ||
+      any(!is.finite(fitted_vip) | fitted_vip < 0)) {
+    stop("PLS-DA produced invalid full-fit VIP values.", call. = FALSE)
+  }
+  vip <- data.frame(feature_id = feature_ids, vip = unname(fitted_vip[match(feature_ids, vip_ids)]),
+                    row.names = NULL)
   scores <- data.frame(sample = rownames(dataset$raw)[sample_rows],
-                       full_fit$scores[, seq_len(full_components), drop = FALSE], check.names = FALSE)
+                       fitted_scores, check.names = FALSE)
   names(scores)[-1L] <- paste0("LV", seq_len(full_components))
   scores[[group_column]] <- as.character(labels)
-  summary <- data.frame(model = "one_hot_pls_da", validation = "nested_repeated_stratified_cv",
-                        selection = "inner_stratified_cv_balanced_accuracy",
+  summary <- data.frame(model = "ropls_pls_da", validation = "repeated_stratified_cv",
+                        selection = "configured_components_bounded_by_training_rank",
                         preprocessing = "fold_local_blank_qc_imputation_normalization_transformation_scaling",
                         samples = length(labels), groups = nlevels(labels), folds = settings$folds,
                         repeats = settings$repeats, permutations = settings$permutations,
@@ -231,6 +240,7 @@ run_supervised <- function(dataset, recipe) {
                         null_sd_balanced_accuracy = stats::sd(null$balanced_accuracy),
                         permutation_p_value = p_value, full_fit_components = full_components,
                         stringsAsFactors = FALSE)
+  if (!is.null(progress)) progress("PLS-DA complete", total_fits, total_fits)
   list(summary = summary, fold_predictions = observed$predictions, permutations = null,
-       scores = scores, status = "validated", reason = NA_character_)
+       scores = scores, loadings = loadings, vip = vip, status = "validated", reason = NA_character_)
 }

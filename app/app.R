@@ -233,13 +233,16 @@ candidate_field <- function(rows, field) {
   if (field %in% names(rows)) as.character(rows[[field]]) else rep(NA_character_, nrow(rows))
 }
 
-feature_table <- function(rows) {
+feature_table <- function(rows, compact = FALSE, row_keys = NULL, selected_row = NULL) {
   if (is.null(rows) || !nrow(rows)) return(NULL)
   tags$div(class = "table-responsive",
     tags$table(class = "table table-striped table-hover",
       tags$thead(tags$tr(lapply(names(rows), tags$th))),
       tags$tbody(lapply(seq_len(nrow(rows)), function(i) {
-        tags$tr(lapply(seq_along(rows), function(j) {
+        tags$tr(`data-candidate-id` = if (is.null(row_keys)) NULL else as.character(row_keys[i]),
+                class = if (!is.null(row_keys) && !is.null(selected_row) &&
+                            identical(as.character(row_keys[i]), selected_row)) "is-selected" else NULL,
+                lapply(seq_along(rows), function(j) {
           value <- as.character(rows[[j]][i])
           if (is.na(value)) value <- ""
           linked <- identical(names(rows)[j], "feature_id") ||
@@ -249,45 +252,157 @@ feature_table <- function(rows) {
             (identical(names(rows)[j], "value") && "field" %in% names(rows) &&
              as.character(rows$field[i]) %in% c("identification_links", "organism_wikidata"))
           wikidata <- if (wikidata_field) wikidata_anchor(value) else NULL
-          tags$td(if (linked && nzchar(value))
-            tags$a(href = "#feature_drawer", class = "feature-link", `data-feature-id` = value, value)
-            else if (!is.null(wikidata)) wikidata else value)
+          tags$td(title = if (compact) value else NULL,
+                  if (linked && nzchar(value))
+                    tags$a(href = "#feature_explorer", class = "feature-link", `data-feature-id` = value, value)
+                  else if (!is.null(wikidata)) wikidata else value)
         }))
       }))
     )
   )
 }
 
+structure_ik2d <- function(value) {
+  key <- toupper(trimws(as.character(value)))
+  key[is.na(key) | !grepl("^[A-Z]{14}($|-)", key)] <- NA_character_
+  substr(key, 1L, 14L)
+}
+
+feature_structure_rows <- function(horizontal, candidates) {
+  rows <- list()
+  add <- function(source, label, smiles, inchikey = NA_character_, score = NA_real_,
+                  organism = NA_character_, organism_wikidata = NA_character_,
+                  identification_links = NA_character_, source_note = "") {
+    rows[[length(rows) + 1L]] <<- data.frame(source, label, smiles, inchikey, score,
+                                            organism, organism_wikidata, identification_links,
+                                            source_note, stringsAsFactors = FALSE)
+  }
+  if (!is.null(horizontal) && nrow(horizontal)) {
+    for (i in seq_len(nrow(horizontal))) {
+      for (column in grep("_smiles$", names(horizontal), value = TRUE, ignore.case = TRUE)) {
+        slot <- tolower(sub("_smiles$", "", column, ignore.case = TRUE))
+        source <- switch(slot, gnps = "GNPS", sirius = "SIRIUS", isdb = "ISDB", column)
+        note <- ""
+        if (slot == "isdb" && "isdb_libname" %in% names(horizontal)) {
+          library <- trimws(as.character(horizontal$isdb_libname[i]))
+          if (!is.na(library) && nzchar(library) && toupper(library) != "ISDB") {
+            source <- paste0("met-annot-enhancer (", library, ")")
+          } else if (is.na(library) || !nzchar(library)) {
+            source <- "met-annot-enhancer (library not recorded)"
+          }
+        } else if (slot == "isdb") {
+          note <- "Saved isdb_SMILES column; library not recorded in this older run."
+        }
+        key_field <- paste0(slot, "_IK2D")
+        add(source, if (nrow(horizontal) == 1L) column else paste(column, "row", i),
+            as.character(horizontal[[column]][i]), candidate_field(horizontal, key_field)[i],
+            if (slot == "isdb" && identical(source, "ISDB"))
+              candidate_field(horizontal, "isdb_score_taxo")[i] else NA_real_,
+            if (slot == "isdb") candidate_field(horizontal, "isdb_organism_name")[i] else NA_character_,
+            if (slot == "isdb") candidate_field(horizontal, "isdb_organism_wikidata")[i] else NA_character_,
+            source_note = note)
+      }
+    }
+  }
+  if (!is.null(candidates) && nrow(candidates) && "smiles" %in% names(candidates)) {
+    for (i in seq_len(nrow(candidates))) {
+      origin <- candidate_field(candidates, "source")[i]
+      library <- candidate_field(candidates, "library")[i]
+      source <- if (!is.na(origin) && tolower(origin) %in% c("gnps", "sirius"))
+        toupper(origin) else if (!is.na(origin) && tolower(origin) == "isdb" &&
+                               (is.na(library) || toupper(trimws(library)) == "ISDB"))
+        "ISDB" else if ((!is.na(origin) && tolower(origin) == "isdb") ||
+                       identical(origin, "met_annot_enhancer")) {
+        if (!is.na(library) && toupper(trimws(library)) == "ISDB") "ISDB"
+        else if (!is.na(library) && nzchar(trimws(library)))
+          paste0("met-annot-enhancer (", library, ")")
+        else "met-annot-enhancer (library not recorded)"
+      } else if (!is.na(origin) && nzchar(trimws(origin))) origin else "unattributed source record"
+      add(source, paste("source record", candidate_field(candidates, "candidate_id")[i]),
+          candidate_field(candidates, "smiles")[i], candidate_field(candidates, "inchikey")[i],
+          if (identical(source, "ISDB")) candidate_field(candidates, "taxonomic_score")[i] else NA_real_,
+          candidate_field(candidates, "organism")[i],
+          candidate_field(candidates, "organism_wikidata")[i],
+          candidate_field(candidates, "identification_links")[i])
+    }
+  }
+  if (!length(rows)) return(data.frame(source = character(), label = character(),
+                                       smiles = character(), inchikey = character(),
+                                       score = numeric(), organism = character(),
+                                       organism_wikidata = character(),
+                                       identification_links = character(), source_note = character()))
+  do.call(rbind, rows)
+}
+
+isdb_star_colors <- grDevices::colorRampPalette(c("#fff2b0", "#39db32"))(9L)
+
 structure_cards <- function(rows) {
   rows <- rows[!is.na(rows$smiles) & nzchar(trimws(rows$smiles)) &
                  !tolower(trimws(rows$smiles)) %in% c("na", "none", "null"), , drop = FALSE]
   if (!nrow(rows)) return(tags$p("No saved SMILES for this feature."))
   rows$smiles <- trimws(rows$smiles)
-  # Collapse identical saved strings, not chemically equivalent encodings or stereoisomers.
-  tags$div(class = "structure-grid", lapply(unique(rows$smiles), function(smiles) {
-    group <- rows[rows$smiles == smiles, , drop = FALSE]
-    labels <- unique(group$label)
-    taxa <- unique(group[!is.na(group$organism) & nzchar(group$organism),
-                         c("organism", "organism_wikidata"), drop = FALSE])
+  rows$ik2d <- structure_ik2d(rows$inchikey)
+  # A 2D key joins only the three named structure sources, never an unverified library.
+  sources_with_stars <- c("GNPS", "ISDB", "SIRIUS")
+  rows$group_id <- ifelse(is.na(rows$ik2d) | !rows$source %in% sources_with_stars,
+                          paste("unkeyed", rows$source, rows$smiles, sep = "\r"),
+                          paste0("key:", rows$ik2d))
+  tags$div(class = "structure-grid", lapply(unique(rows$group_id), function(id) {
+    group <- rows[rows$group_id == id, , drop = FALSE]
+    smiles <- group$smiles[1L]
+    key <- group$ik2d[1L]
+    sources <- unique(group$source)
+    stars <- lapply(if (is.na(key)) character() else intersect(sources_with_stars, sources), function(source) {
+      evidence <- group[group$source == source, , drop = FALSE]
+      note <- unique(evidence$source_note[nzchar(evidence$source_note)])
+      tip <- paste0(source, ": ", if (is.na(key)) "2D InChIKey not recorded; no cross-source agreement inferred."
+                    else paste("saved 2D InChIKey", key, "(matching key is not confirmed identity)."))
+      color <- switch(source, GNPS = "#2371aa", ISDB = "#69747c", SIRIUS = "#7247a2")
+      if (source == "ISDB") {
+        scores <- suppressWarnings(as.numeric(evidence$score))
+        scores <- unique(scores[is.finite(scores)])
+        taxa <- unique(evidence$organism[!is.na(evidence$organism) &
+                                          nzchar(trimws(evidence$organism))])
+        tip <- paste0(tip, " Saved taxonomy score (0–8): ",
+                      if (length(scores)) paste(format(scores, trim = TRUE), collapse = ", ") else "not recorded",
+                      "; reported taxon: ", if (length(taxa)) paste(taxa, collapse = ", ") else "not recorded",
+                      ". Taxonomy score is not biological confirmation.")
+        if (length(scores)) color <- isdb_star_colors[round(max(0, min(8, max(scores)))) + 1L]
+      }
+      if (length(note)) tip <- paste(tip, paste(note, collapse = " "))
+      tags$span(class = "structure-star", title = tip, `aria-label` = tip,
+                tags$span(source, class = "structure-star-source"),
+                tags$span("\u2605", class = "structure-star-symbol", style = paste0("color:", color)))
+    })
+    taxa <- unique(group[!is.na(group$organism) & nzchar(trimws(group$organism)),
+                         c("source", "organism", "organism_wikidata"), drop = FALSE])
     links <- Filter(Negate(is.null), lapply(unique(group$identification_links), wikidata_anchor))
+    smiles_rows <- unique(group[, c("source", "smiles"), drop = FALSE])
     tags$figure(class = "structure-card",
-      tags$figcaption(paste(labels, collapse = " · ")),
+      tags$figcaption(paste(sources, collapse = " · ")),
+      if (!is.na(key)) tags$small(class = "structure-key", paste("Saved 2D InChIKey:", key))
+      else tags$small(class = "structure-key", "2D InChIKey not recorded; no cross-source match inferred."),
+      if (length(stars)) tags$div(class = "structure-stars", stars),
       if (nchar(smiles, type = "bytes") <= 5000L)
         tags$img(class = "structure-depiction", loading = "lazy", referrerpolicy = "no-referrer",
                  src = paste0("https://api.naturalproducts.net/latest/depict/2D?smiles=",
                               utils::URLencode(smiles, reserved = TRUE),
                               "&toolkit=rdkit&width=440&height=300"),
-                 alt = paste("2D depiction of", paste(labels, collapse = ", ")))
+                 alt = paste("2D depiction from saved", group$source[1L], "SMILES"))
       else tags$p("SMILES exceeds the depiction service's 5000-character limit."),
-      if (nrow(taxa)) tags$div(class = "structure-taxa", tags$strong("Reported taxon (met-annot-enhancer):"),
+      if (nrow(taxa)) tags$div(class = "structure-taxa", tags$strong("Reported taxon (source annotation):"),
         tags$ul(lapply(seq_len(nrow(taxa)), function(i) {
           link <- wikidata_anchor(taxa$organism_wikidata[i])
-          tags$li(taxa$organism[i], if (!is.null(link)) tagList(" — ", link))
+          tags$li(taxa$source[i], ": ", taxa$organism[i],
+                  if (!is.null(link)) tagList(" — ", link))
         }))),
       if (length(links)) tags$div(class = "structure-links", tags$strong("Structure Wikidata:"),
                                  tags$ul(lapply(links, tags$li))),
-      tags$p(class = "structure-fallback", "Depiction unavailable; the saved SMILES is below."),
-      tags$details(tags$summary("Saved SMILES"), tags$code(smiles))
+      tags$p(class = "structure-fallback", "Depiction unavailable; saved source SMILES are below."),
+      tags$details(tags$summary("Saved source SMILES"),
+                   tags$ul(lapply(seq_len(nrow(smiles_rows)), function(i) {
+                     tags$li(smiles_rows$source[i], ": ", tags$code(smiles_rows$smiles[i]))
+                   })))
     )
   }))
 }
@@ -298,16 +413,60 @@ ui <- fluidPage(
       :root {--feature-drawer-width: clamp(320px, 36vw, 620px);}
       #explorer_workspace {transition: margin-right .2s ease;}
       body.feature-drawer-open #explorer_workspace {margin-right: var(--feature-drawer-width);}
+      body.feature-explorer-active #explorer_workspace > .row > .col-sm-3 {display: none;}
+      body.feature-explorer-active #explorer_workspace > .row > .col-sm-9 {width: 100%; float: none;}
+      #status {overflow-wrap: anywhere;}
       #feature_drawer {position: fixed; top: 0; right: 0; bottom: 0; width: var(--feature-drawer-width);
         z-index: 1100; background: #fff; border-left: 1px solid #ccc; box-shadow: -4px 0 16px #0002;
-        overflow-y: auto; padding: 18px; transform: translateX(105%); transition: transform .2s ease;}
-      #feature_drawer.is-open {transform: translateX(0);}
+        overflow-y: auto; padding: 18px; visibility: hidden; opacity: 0; pointer-events: none;
+        transition: opacity .2s ease, visibility .2s ease;}
+      #feature_drawer.is-open {visibility: visible; opacity: 1; pointer-events: auto;}
       #feature_drawer_toggle {position: fixed; top: 40%; right: 0; z-index: 1101; writing-mode: vertical-rl;
-        padding: 12px 8px; border-radius: 5px 0 0 5px; background: #22668a; color: white;}
+        padding: 12px 8px; border-radius: 5px 0 0 5px; background: #22668a; color: white; display: none;}
+      body.feature-drawer-available #feature_drawer_toggle {display: block;}
       #feature_drawer.is-open ~ #feature_drawer_toggle {display: none;}
       .structure-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 12px;}
+      #feature_explorer {scroll-margin-top: 12px;}
+      .feature-picker {float: right; width: min(280px, 100%); margin-left: 16px;}
+      #feature_explorer .feature-focus-grid {clear: both;}
+      #feature_explorer h3 {margin: 8px 0 4px;}
+      #feature_explorer > p {margin-bottom: 8px;}
+      .feature-focus-grid {display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px;}
+      .feature-focus-grid > div {min-width: 0;}
+      .feature-focus-grid h4, .feature-selected-records h4 {margin: 4px 0 8px;}
+      #feature_explorer_structures .structure-grid {display: flex; gap: 12px; overflow-x: auto;
+        padding-bottom: 6px; scroll-snap-type: x proximity;}
+      #feature_explorer_structures .structure-card {flex: 0 0 clamp(220px, 44%, 350px);
+        height: 290px; overflow-y: auto; scroll-snap-align: start;}
+      #feature_explorer_structures .structure-depiction {height: 165px;}
+      .feature-gallery-hint {color: #555; font-size: 12px; margin: 2px 0 8px;}
+      .feature-intensity-toggle .form-group {margin: 0 0 4px;}
+      #explorer_selected_rows .table-responsive {max-height: 145px; overflow: auto; border: 1px solid #ddd;}
+      #explorer_selected_rows table {margin-bottom: 0;}
+      #explorer_selected_rows th {position: sticky; top: 0; background: #fff; z-index: 1;}
+      #explorer_selected_rows th, #explorer_selected_rows td {padding: 4px 6px; white-space: nowrap;}
+      #explorer_selected_rows tr[data-candidate-id], #annotation_table tr[data-candidate-id] {cursor: pointer;}
+      #explorer_selected_rows tr.is-selected > td, #annotation_table tr.is-selected > td {background: #d9edf7;}
+      @media (max-width: 900px) {
+        .feature-focus-grid {grid-template-columns: minmax(0, 1fr);}
+        #feature_explorer_structures .structure-card {flex-basis: min(75vw, 300px);}
+      }
+      @media (max-width: 600px) {
+        .feature-picker {float: none; width: 100%; margin-left: 0;}
+      }
+      #annotation_table .table-responsive {max-height: 480px; overflow: auto; border: 1px solid #ddd;}
+      #annotation_table table {margin-bottom: 0;}
+      #annotation_table th {position: sticky; top: 0; background: #fff; z-index: 1;}
+      #annotation_table th, #annotation_table td {padding: 4px 6px; white-space: nowrap;}
+      #annotation_table td {max-width: 240px; overflow: hidden; text-overflow: ellipsis;}
       .structure-card {margin: 0; padding: 10px; border: 1px solid #ddd; min-width: 0;}
       .structure-card figcaption {font-weight: bold; overflow-wrap: anywhere;}
+      .structure-key {display: block; color: #555; overflow-wrap: anywhere;}
+      .structure-stars {display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0;}
+      .structure-star {display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;}
+      .structure-star-source {font-size: 11px; font-weight: bold;}
+      .structure-star-symbol {font-size: 23px; line-height: 1; -webkit-text-stroke: .5px #425144;
+        text-shadow: 0 0 1px #425144;}
       .structure-depiction {display: block; width: 100%; height: 210px; object-fit: contain;}
       .structure-card code {white-space: normal; overflow-wrap: anywhere;}
       .structure-fallback {display: none;}
@@ -319,18 +478,36 @@ ui <- fluidPage(
     ")),
     tags$script(htmltools::HTML("
       $(document).on('shiny:connected', function() {
-        Shiny.addCustomMessageHandler('featureDrawer', function(open) {
-          document.getElementById('feature_drawer').classList.toggle('is-open', open);
-          document.body.classList.toggle('feature-drawer-open', open);
-          document.getElementById('feature_drawer_toggle').setAttribute('aria-expanded', String(open));
+        Shiny.addCustomMessageHandler('featureDrawer', function(state) {
+          document.getElementById('feature_drawer').classList.toggle('is-open', state.open);
+          document.body.classList.toggle('feature-drawer-open', state.open);
+          document.body.classList.toggle('feature-drawer-available', state.available);
+          document.getElementById('feature_drawer_toggle').setAttribute('aria-expanded', String(state.open));
           setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 220);
         });
       });
+      $(document).on('shown.bs.tab', '#active_tab a', function(event) {
+        document.body.classList.toggle('feature-explorer-active',
+          event.target.getAttribute('data-value') === 'Feature explorer');
+        requestAnimationFrame(function() { window.dispatchEvent(new Event('resize')); });
+      });
       document.addEventListener('click', function(event) {
+        var row = event.target.closest('#annotation_table tr[data-candidate-id], #explorer_selected_rows tr[data-candidate-id]');
+        if (row && !event.target.closest('a:not(.feature-link)')) {
+          event.preventDefault();
+          Shiny.setInputValue('candidate_row', row.dataset.candidateId, {priority: 'event'});
+          if (row.closest('#annotation_table'))
+            document.getElementById('feature_explorer').scrollIntoView({block: 'start', behavior: 'smooth'});
+          return;
+        }
         var link = event.target.closest('a.feature-link');
         if (!link) return;
         event.preventDefault();
-        Shiny.setInputValue('open_feature', link.dataset.featureId, {priority: 'event'});
+        var fromVolcanoTable = link.closest('#volcano_table');
+        var inExplorer = fromVolcanoTable || link.closest('#annotation_table, #consensus_section, #evidence, #explorer_feature_panel');
+        Shiny.setInputValue(inExplorer ? 'explore_feature' : 'open_feature', link.dataset.featureId, {priority: 'event'});
+        if (fromVolcanoTable) window.scrollTo(0, 0);
+        else if (inExplorer) document.getElementById('feature_explorer').scrollIntoView({block: 'start', behavior: 'smooth'});
       });
       document.addEventListener('error', function(event) {
         if (event.target.matches && event.target.matches('img.structure-depiction'))
@@ -347,31 +524,44 @@ ui <- fluidPage(
     ),
     mainPanel(
       uiOutput("status"),
-      tabsetPanel(
+      tabsetPanel(id = "active_tab",
         tabPanel("Overview", tableOutput("summary"), h4("Samples by selected group"), tableOutput("group_counts")),
         tabPanel("PCA", uiOutput("pca_axes"), plotly::plotlyOutput("pca", height = 550), uiOutput("pca_downloads"), textOutput("pca_note"),
                  h4("Feature loadings (select a point for details)"),
                  tags$p("These points are features on the saved loading scale, not the samples above."),
                  plotly::plotlyOutput("pca_loadings", height = 450)),
         tabPanel("PCoA", uiOutput("pcoa_axes"), plotly::plotlyOutput("pcoa", height = 550), uiOutput("pcoa_downloads"), textOutput("pcoa_note")),
-        tabPanel("Saved contrasts", plotly::plotlyOutput("volcano", height = 550), uiOutput("volcano_downloads"),
+        tabPanel("Volcano plots", plotly::plotlyOutput("volcano", height = 550), uiOutput("volcano_downloads"),
                  uiOutput("volcano_table")),
         tabPanel("Validated PLS-DA", uiOutput("plsda_interpretation"), tableOutput("plsda_validation"),
                  h4("Held-out fold predictions"), tableOutput("plsda_predictions"),
                  h4("Saved label permutations"), plotly::plotlyOutput("plsda_null", height = 320), tableOutput("plsda_permutations"),
                  h4("Full-fit scores (illustration, not validation)"), uiOutput("plsda_axes"), plotly::plotlyOutput("plsda_scores", height = 500)),
-        tabPanel("Annotations", uiOutput("consensus_section"),
-                 h4("Candidate records and distinct features"), tableOutput("annotation_counts"),
-                 tags$p("A feature ID identifies one measured feature. Source record keys (for example, sirius:402) identify annotation input rows, not additional features."),
-                 textOutput("annotation_limit"), uiOutput("annotation_table"),
-                 h4("Selected candidate evidence"), uiOutput("evidence"), uiOutput("evidence_structure")),
+        tabPanel("Feature explorer",
+                 tags$div(class = "feature-picker", uiOutput("explorer_feature_picker")),
+                 uiOutput("explorer_feature_panel"),
+                 fluidRow(
+                   column(3, h4("Feature filters"), uiOutput("explorer_controls")),
+                   column(9,
+                     textInput("annotation_query", "Search features and candidates", "",
+                               placeholder = "Feature ID, name, InChIKey, taxon or NPC class"),
+                     uiOutput("annotation_columns_control"),
+                     h4("Candidate records and distinct features"), tableOutput("annotation_counts"),
+                     tags$p("Feature IDs identify measured features; source record keys identify annotation input rows, not other features."),
+                     textOutput("annotation_limit"), uiOutput("annotation_table"),
+                     fluidRow(column(4, actionButton("annotation_prev", "Previous")),
+                              column(4, actionButton("annotation_next", "Next"))),
+                     uiOutput("consensus_section"),
+                     h4("Selected candidate evidence"), uiOutput("evidence")
+                   )
+                 )),
         tabPanel("Provenance & downloads", verbatimTextOutput("manifest"),
                  selectInput("download_table", "Existing saved table", choices = character()),
                  downloadButton("download", "Download verified TSV"))
       ), width = 9
     ),
   )),
-  tags$aside(id = "feature_drawer", class = "feature-drawer", role = "complementary", `aria-label` = "Feature description",
+  tags$aside(id = "feature_drawer", class = "feature-drawer", role = "complementary", `aria-label` = "Feature explorer details",
              tags$div(class = "clearfix", actionButton("close_feature_drawer", "Close", class = "pull-right")),
              h3(textOutput("feature_heading", inline = TRUE)),
              tags$p(textOutput("feature_consensus", inline = TRUE)),
@@ -383,7 +573,7 @@ ui <- fluidPage(
              uiOutput("feature_candidates"),
              h4("Source-specific structures (not confirmed identities)"),
              uiOutput("feature_structures")),
-  actionButton("feature_drawer_toggle", "Feature details", class = "feature-drawer-tab",
+  actionButton("feature_drawer_toggle", "Feature explorer", class = "feature-drawer-tab",
                `aria-controls` = "feature_drawer", `aria-expanded` = "false")
 )
 
@@ -426,44 +616,65 @@ server <- function(input, output, session) {
       paste("peak", measure) else "intensity"
   })
   selected_feature <- reactiveVal(NULL)
+  selected_candidate <- reactiveVal(NULL)
   drawer_open <- reactiveVal(FALSE)
+  drawer_available <- reactiveVal(FALSE)
   known_feature_ids <- reactive(unique(c(raw_feature_ids(), as.character(annotations()$feature_id),
                                           as.character(horizontal_annotations()$feature_id))))
-  open_feature <- function(id) {
+  select_feature <- function(id, from_plot = FALSE, candidate = NULL) {
     if (length(id) != 1L || is.na(id) || !nzchar(id) || !id %in% known_feature_ids()) return()
     selected_feature(id)
-    if (id %in% raw_feature_ids()) updateSelectizeInput(session, "feature_id", selected = id)
-    drawer_open(TRUE)
+    selected_candidate(candidate)
+    updateSelectizeInput(session, "feature_id", selected = id)
+    drawer_available(from_plot)
+    drawer_open(from_plot)
   }
-  sidebar_initialized <- reactiveVal(FALSE)
+  explorer_initialized <- reactiveVal(FALSE)
   observeEvent(input$feature_id, {
-    if (!sidebar_initialized()) { sidebar_initialized(TRUE); return() }
-    if (length(input$feature_id) == 1L && input$feature_id %in% raw_feature_ids()) {
-      selected_feature(input$feature_id)
-      drawer_open(TRUE)
-    }
+    if (!explorer_initialized()) { explorer_initialized(TRUE); return() }
+    if (length(input$feature_id) == 1L && nzchar(input$feature_id) &&
+        !identical(selected_feature(), input$feature_id))
+      select_feature(input$feature_id)
   }, ignoreInit = TRUE)
-  observeEvent(input$open_feature, open_feature(input$open_feature))
+  observeEvent(input$explore_feature, {
+    select_feature(input$explore_feature)
+    if (!identical(input$active_tab, "Feature explorer"))
+      updateTabsetPanel(session, "active_tab", selected = "Feature explorer")
+  })
+  observeEvent(input$open_feature, select_feature(input$open_feature, from_plot = TRUE))
   observeEvent(input$candidate, {
     rows <- annotations()
     if (!"candidate_id" %in% names(rows)) return()
     feature <- rows$feature_id[!is.na(rows$candidate_id) & rows$candidate_id == input$candidate]
-    if (length(feature)) open_feature(as.character(feature[1]))
+    if (length(feature)) select_feature(as.character(feature[1]), candidate = input$candidate)
   })
+  observeEvent(input$candidate_row, {
+    rows <- annotations()
+    if (!"candidate_id" %in% names(rows)) return()
+    feature <- rows$feature_id[!is.na(rows$candidate_id) & rows$candidate_id == input$candidate_row]
+    if (length(feature)) select_feature(as.character(feature[1]), candidate = input$candidate_row)
+  })
+  observeEvent(input$active_tab, {
+    if (identical(input$active_tab, "Feature explorer")) {
+      drawer_open(FALSE)
+      drawer_available(FALSE)
+    }
+  }, ignoreInit = TRUE)
   observeEvent(input$feature_drawer_toggle, {
-    if (is.null(selected_feature()) && length(input$feature_id) == 1L)
-      selected_feature(input$feature_id)
-    drawer_open(!isTRUE(drawer_open()))
+    if (drawer_available()) drawer_open(!isTRUE(drawer_open()))
   })
   observeEvent(input$close_feature_drawer, drawer_open(FALSE))
   observeEvent(input$run, {
     selected_feature(NULL)
+    selected_candidate(NULL)
     drawer_open(FALSE)
-    sidebar_initialized(FALSE)
+    drawer_available(FALSE)
+    explorer_initialized(FALSE)
   }, ignoreInit = TRUE)
-  observe(session$sendCustomMessage("featureDrawer", isTRUE(drawer_open())))
+  observe(session$sendCustomMessage("featureDrawer",
+                                    list(open = isTRUE(drawer_open()), available = isTRUE(drawer_available()))))
   output$feature_heading <- renderText(if (is.null(selected_feature())) "Choose a feature" else paste("Feature", selected_feature()))
-  output$feature_consensus <- renderText({
+  feature_consensus <- reactive({
     req(selected_feature())
     rows <- horizontal_annotations()
     if (is.null(rows)) return("No saved InChIKey2D consensus table in this run.")
@@ -472,6 +683,29 @@ server <- function(input, output, session) {
     counts <- unique(ifelse(is.na(record$sources_number_IK2D), "not recorded",
                             as.character(record$sources_number_IK2D)))
     paste("Saved InChIKey2D agreeing sources (per horizontal row):", paste(counts, collapse = ", "))
+  })
+  output$feature_consensus <- renderText(feature_consensus())
+  output$explorer_feature_panel <- renderUI({
+    feature <- selected_feature()
+    tags$section(id = "feature_explorer",
+      if (is.null(feature)) tags$p("Select a Feature ID or candidate record to inspect its structures and intensities.") else
+        tagList(h3(paste("Feature", feature)), tags$p(feature_consensus()),
+                tags$div(class = "feature-focus-grid",
+                  tags$div(
+                    h4("Candidate structures (not confirmed identities) ",
+                       tags$small("Swipe or scroll to browse")),
+                    uiOutput("feature_explorer_structures")),
+                  tags$div(class = "feature-intensity-toggle",
+                    checkboxInput("show_feature_intensity", "Show feature intensity plot", value = TRUE),
+                    conditionalPanel("input.show_feature_intensity === true",
+                                     uiOutput("explorer_feature_plot_region")))),
+                tags$div(class = "feature-selected-records",
+                  h4("Candidate records for this feature"),
+                  uiOutput("explorer_selected_rows")),
+                tags$details(tags$summary("Measured metadata and extended candidate details"),
+                             h4("Measured feature metadata"), uiOutput("explorer_feature_metadata"),
+                             h4("Candidate annotations"), uiOutput("explorer_feature_candidates")))
+    )
   })
 
   output$status <- renderUI({
@@ -494,16 +728,38 @@ server <- function(input, output, session) {
     groups <- unique(c(intersect(group_default, categorical), categorical))
     stages <- sub("^matrix_(.*)[.]tsv$", "\\1", grep("^matrix_.*[.]tsv$", available_tables(value), value = TRUE))
     contrasts <- table_data("differential", optional = TRUE)
-    feature_ids <- raw_feature_ids()
     tagList(
+      h4("Dataset & metadata"),
       selectInput("group", "Descriptive grouping / point colour", choices = groups),
       if (role_col %in% names(samples)) selectInput("role", "Sample role filter", choices = c("All roles", sort(unique(as.character(stats::na.omit(samples[[role_col]]))))), selected = "All roles"),
       uiOutput("group_levels"),
       hr(), selectInput("stage", "Saved intensity stage", choices = stages, selected = if ("transformed" %in% stages) "transformed" else stages[1]),
-      selectizeInput("feature_id", "Feature ID", choices = feature_ids, options = list(placeholder = "Search feature ID")),
-      if (!is.null(contrasts) && "contrast" %in% names(contrasts)) selectInput("contrast", "Saved planned contrast", choices = unique(contrasts$contrast)),
-      hr(), textInput("annotation_query", "Find annotation (feature, label, InChIKey)", ""),
-      selectInput("annotation_source", "Candidate source", choices = c("All sources", sort(unique(stats::na.omit(annotations()$source))))),
+      if (!is.null(contrasts) && "contrast" %in% names(contrasts)) selectInput("contrast", "Saved planned contrast", choices = unique(contrasts$contrast))
+    )
+  })
+  # Feature explorer hides the sidebar, but its plot still uses these shared inputs.
+  outputOptions(output, "controls", suspendWhenHidden = FALSE)
+  output$explorer_feature_picker <- renderUI({
+    feature_ids <- known_feature_ids()
+    feature_ids <- feature_ids[!is.na(feature_ids) & nzchar(feature_ids)]
+    selected <- isolate(selected_feature())
+    if (is.null(selected)) selected <- ""
+    selectizeInput("feature_id", "Feature ID", choices = c("Choose a feature" = "", feature_ids),
+                   selected = selected, options = list(placeholder = "Search feature ID"))
+  })
+  output$explorer_controls <- renderUI({
+    candidate_rows <- annotations()
+    isdb_taxa <- if (all(c("source", "organism") %in% names(candidate_rows))) {
+      taxa <- trimws(as.character(candidate_rows$organism[!is.na(candidate_rows$source) & candidate_rows$source == "met_annot_enhancer"]))
+      sort(unique(taxa[!is.na(taxa) & nzchar(taxa)]))
+    } else character()
+    tagList(
+      selectInput("annotation_source", "Candidate source", choices = c("All sources", sort(unique(stats::na.omit(candidate_rows$source))))),
+      if (length(isdb_taxa))
+        tagList(selectInput("annotation_taxon", "Reported taxon (ISDB reponderated only)",
+                            choices = c("All reported taxa", isdb_taxa)),
+                textInput("annotation_taxon_query", "Search reported taxon (ISDB reponderated only)",
+                          placeholder = "Type part of a taxon name")),
       if (!is.null(horizontal_annotations()))
         tagList(selectInput("annotation_consensus", "Saved InChIKey2D consensus (sources agreeing)",
                             choices = c("All", stats::setNames(as.character(0:3), paste0(0:3, " sources")))),
@@ -520,6 +776,7 @@ server <- function(input, output, session) {
             conditionalPanel("input.all_groups === false",
                              selectInput("levels", "Groups to show", choices = levels, selected = levels, multiple = TRUE)))
   })
+  outputOptions(output, "group_levels", suspendWhenHidden = FALSE)
   output$classification_filter <- renderUI({
     rows <- annotations()
     if (!all(c("npc_pathway", "npc_superclass", "npc_class") %in% names(rows))) return(NULL)
@@ -632,7 +889,7 @@ server <- function(input, output, session) {
   observeEvent(plotly::event_data("plotly_click", source = "pca_loadings"), {
     clicked <- plotly::event_data("plotly_click", source = "pca_loadings")
     feature <- as.character(clicked$key)
-    if (length(feature) == 1L) open_feature(feature)
+    if (length(feature) == 1L) select_feature(feature, from_plot = TRUE)
   })
   output$pca_note <- renderText("PCA is a saved analysis; changing grouping or sample filters does not refit it.")
   output$pcoa_note <- renderText("PCoA is a saved analysis; changing grouping or sample filters does not recompute distances.")
@@ -782,7 +1039,7 @@ server <- function(input, output, session) {
     clicked <- plotly::event_data("plotly_click", source = "volcano")
     feature <- as.character(clicked$key)
     if (length(feature) == 1L && feature %in% selected_volcano()$feature_id)
-      open_feature(feature)
+      select_feature(feature, from_plot = TRUE)
   })
   feature_matrix <- reactive({
     req(selected_feature(), input$stage)
@@ -791,7 +1048,7 @@ server <- function(input, output, session) {
       list(matrix = matrix, stage = input$stage)
     else list(matrix = raw_matrix(), stage = "raw")
   })
-  output$feature_plot_region <- renderUI({
+  feature_plot_region <- function(plot_id) {
     req(selected_feature(), input$stage)
     data <- feature_matrix()
     if (!selected_feature() %in% names(data$matrix))
@@ -809,9 +1066,11 @@ server <- function(input, output, session) {
       note <- tags$p(paste0(reason, "Selected ", input$stage, " intensities are unavailable; showing saved raw ",
                             intensity_measure(), " instead."))
     }
-    tagList(note, plotly::plotlyOutput("feature", height = 400))
-  })
-  output$feature <- plotly::renderPlotly({
+    tagList(note, plotly::plotlyOutput(plot_id, height = if (identical(plot_id, "feature")) 400 else 270))
+  }
+  output$feature_plot_region <- renderUI(feature_plot_region("feature"))
+  output$explorer_feature_plot_region <- renderUI(feature_plot_region("explorer_feature"))
+  feature_plot <- reactive({
     req(input$stage, input$group, selected_feature())
     feature <- selected_feature()
     data <- feature_matrix()
@@ -854,7 +1113,9 @@ server <- function(input, output, session) {
                                  boxmode = "group", legend = list(itemclick = "toggle", itemdoubleclick = "toggleothers")),
                   "feature")
   })
-  output$feature_metadata <- renderUI({
+  output$feature <- plotly::renderPlotly(feature_plot())
+  output$explorer_feature <- plotly::renderPlotly(feature_plot())
+  feature_metadata_ui <- reactive({
     req(selected_feature())
     rows <- input_variables()
     if (is.null(rows)) rows <- variables()
@@ -867,17 +1128,31 @@ server <- function(input, output, session) {
     feature_table(data.frame(field = names(record)[keep],
                              value = vapply(record[keep], function(column) as.character(column[1]), character(1))))
   })
+  output$feature_metadata <- renderUI(feature_metadata_ui())
+  output$explorer_feature_metadata <- renderUI(feature_metadata_ui())
   feature_candidates <- reactive({
     req(selected_feature())
     rows <- annotations()
     rows[!is.na(rows$feature_id) & rows$feature_id == selected_feature() & !is.na(rows$source), , drop = FALSE]
+  })
+  output$explorer_selected_rows <- renderUI({
+    rows <- feature_candidates()
+    if (!nrow(rows)) return(tags$p("No saved candidate records for this feature."))
+    fields <- intersect(c("feature_id", "source", "candidate_id", "label", "confidence",
+                          "organism", "npc_class"), names(rows))
+    display <- rows[, fields, drop = FALSE]
+    names(display)[names(display) == "candidate_id"] <- "source_record_key"
+    tagList(feature_table(display, compact = TRUE, row_keys = rows$candidate_id,
+                          selected_row = selected_candidate()),
+            tags$p(class = "feature-gallery-hint",
+                   paste(nrow(rows), "saved candidate records; browse filters do not hide these rows.")))
   })
   output$feature_candidate_count <- renderText({
     count <- nrow(feature_candidates())
     if (!count) "No candidate records for this feature." else
       paste("Showing", min(count, 20L), "of", count, "source-specific candidates.")
   })
-  output$feature_candidates <- renderUI({
+  feature_candidates_ui <- reactive({
     rows <- feature_candidates()
     fields <- intersect(c("feature_id", "source", "candidate_id", "label", "confidence", "confidence_metric",
                           "molecular_formula", "inchikey", "organism", "organism_wikidata",
@@ -886,31 +1161,18 @@ server <- function(input, output, session) {
     names(display)[names(display) == "candidate_id"] <- "source_record_key"
     feature_table(display)
   })
-  output$feature_structures <- renderUI({
+  output$feature_candidates <- renderUI(feature_candidates_ui())
+  output$explorer_feature_candidates <- renderUI(feature_candidates_ui())
+  feature_structures_ui <- reactive({
     req(selected_feature())
-    cards <- data.frame(label = character(), smiles = character(), organism = character(),
-                        identification_links = character(), organism_wikidata = character())
     horizontal <- horizontal_annotations()
-    if (!is.null(horizontal)) {
-      record <- horizontal[!is.na(horizontal$feature_id) & horizontal$feature_id == selected_feature(), , drop = FALSE]
-      if (nrow(record)) for (index in seq_len(nrow(record))) {
-        for (column in grep("_smiles$", names(record), value = TRUE, ignore.case = TRUE)) {
-          cards <- rbind(cards, data.frame(label = if (nrow(record) == 1L) column else paste(column, "row", index),
-                                           smiles = as.character(record[[column]][index]), organism = NA_character_,
-                                           identification_links = NA_character_, organism_wikidata = NA_character_))
-        }
-      }
-    }
-    candidates <- feature_candidates()
-    if ("smiles" %in% names(candidates) && nrow(candidates)) {
-      cards <- rbind(cards, data.frame(label = paste("source record", candidates$candidate_id),
-                                       smiles = candidate_field(candidates, "smiles"),
-                                       organism = candidate_field(candidates, "organism"),
-                                       identification_links = candidate_field(candidates, "identification_links"),
-                                       organism_wikidata = candidate_field(candidates, "organism_wikidata")))
-    }
-    structure_cards(cards)
+    if (!is.null(horizontal))
+      horizontal <- horizontal[!is.na(horizontal$feature_id) &
+                                 horizontal$feature_id == selected_feature(), , drop = FALSE]
+    structure_cards(feature_structure_rows(horizontal, feature_candidates()))
   })
+  output$feature_structures <- renderUI(feature_structures_ui())
+  output$feature_explorer_structures <- renderUI(feature_structures_ui())
   consensus_rows <- reactive({
     rows <- horizontal_annotations()
     if (is.null(rows)) return(NULL)
@@ -925,7 +1187,7 @@ server <- function(input, output, session) {
     query <- tolower(trimws(if (is.null(input$annotation_query)) "" else input$annotation_query))
     if (nzchar(query)) {
       candidates <- annotations()
-      fields <- intersect(c("feature_id", "label", "inchikey", "npc_pathway", "npc_superclass", "npc_class", "component_id"), names(candidates))
+      fields <- intersect(c("feature_id", "candidate_id", "label", "inchikey", "organism", "npc_pathway", "npc_superclass", "npc_class", "component_id"), names(candidates))
       matched <- Reduce(`|`, lapply(candidates[fields], function(column)
         grepl(query, tolower(as.character(column)), fixed = TRUE)), init = rep(FALSE, nrow(candidates)))
       ids <- as.character(rows$feature_id)
@@ -936,7 +1198,7 @@ server <- function(input, output, session) {
     tagList(h4("Saved InChIKey2D consensus per feature"),
             tags$p(length(unique(rows$feature_id)), "features across", nrow(rows), "saved horizontal rows match the consensus selection",
                    if (nrow(rows) > 100L) " (showing first 100 rows)." else ".",
-                   " Candidate source and NPC filters apply only to candidate records below."),
+                   " Candidate source, reported taxon and NPC filters apply only to candidate records in the table above."),
             feature_table(rows[seq_len(min(100L, nrow(rows))), fields, drop = FALSE]))
   })
   filtered_annotations <- reactive({
@@ -948,6 +1210,14 @@ server <- function(input, output, session) {
       rows <- rows[!is.na(rows$feature_id) & as.character(rows$feature_id) %in% ids, , drop = FALSE]
     }
     if (!is.null(input$annotation_source) && input$annotation_source != "All sources") rows <- rows[!is.na(rows$source) & rows$source == input$annotation_source, , drop = FALSE]
+    if (!is.null(input$annotation_taxon) && input$annotation_taxon != "All reported taxa" &&
+        all(c("source", "organism") %in% names(rows)))
+      rows <- rows[!is.na(rows$source) & rows$source == "met_annot_enhancer" &
+                     !is.na(rows$organism) & trimws(as.character(rows$organism)) == input$annotation_taxon, , drop = FALSE]
+    taxon_query <- tolower(trimws(if (is.null(input$annotation_taxon_query)) "" else input$annotation_taxon_query))
+    if (nzchar(taxon_query) && all(c("source", "organism") %in% names(rows)))
+      rows <- rows[!is.na(rows$source) & rows$source == "met_annot_enhancer" &
+                     !is.na(rows$organism) & grepl(taxon_query, tolower(as.character(rows$organism)), fixed = TRUE), , drop = FALSE]
     for (column in c("npc_pathway", "npc_superclass", "npc_class")) {
       selected <- input[[paste0("filter_", column)]]
       if (column %in% names(rows) && !is.null(selected) && selected != "All")
@@ -955,7 +1225,7 @@ server <- function(input, output, session) {
     }
     query <- tolower(trimws(if (is.null(input$annotation_query)) "" else input$annotation_query))
     if (nzchar(query)) {
-      fields <- intersect(c("feature_id", "label", "inchikey", "npc_pathway", "npc_superclass", "npc_class", "component_id"), names(rows))
+      fields <- intersect(c("feature_id", "candidate_id", "source", "label", "inchikey", "organism", "molecular_formula", "npc_pathway", "npc_superclass", "npc_class", "component_id"), names(rows))
       matches <- Reduce(`|`, lapply(rows[fields], function(column) grepl(query, tolower(as.character(column)), fixed = TRUE)), init = rep(FALSE, nrow(rows)))
       rows <- rows[matches, , drop = FALSE]
     }
@@ -983,41 +1253,48 @@ server <- function(input, output, session) {
                    choices = c("Choose a candidate" = "", stats::setNames(rows$candidate_id, labels)),
                    selected = "", options = list(maxOptions = 100))
   })
+  output$annotation_columns_control <- renderUI({
+    columns <- setdiff(names(annotations()), "feature_id")
+    defaults <- intersect(c("source", "label", "confidence", "organism", "npc_class"), columns)
+    selectizeInput("annotation_columns", "Table columns (Feature ID always shown)",
+                   choices = columns, selected = defaults, multiple = TRUE)
+  })
+  annotation_page <- reactiveVal(1L)
+  observeEvent(filtered_annotations(), annotation_page(1L), ignoreInit = TRUE)
+  observeEvent(input$annotation_prev, annotation_page(max(1L, annotation_page() - 1L)))
+  observeEvent(input$annotation_next, {
+    count <- sum(!is.na(filtered_annotations()$source))
+    annotation_page(min(max(1L, ceiling(count / 100L)), annotation_page() + 1L))
+  })
   output$annotation_limit <- renderText({
     rows <- filtered_annotations()
     count <- if ("source" %in% names(rows)) sum(!is.na(rows$source)) else 0L
-    if (count > 100L) paste("Showing the first 100 of", count, "rows. Narrow the filters or download the complete saved table.")
+    if (!count) return("No candidate records match the filters.")
+    current <- min(annotation_page(), ceiling(count / 100L))
+    paste0("Showing ", (current - 1L) * 100L + 1L, "–", min(count, current * 100L),
+           " of ", count, " candidate records (page ", current, " of ", ceiling(count / 100L),
+           "). Search or page through the results; download the complete saved TSV from Provenance & downloads.")
   })
   output$annotation_table <- renderUI({
     rows <- filtered_annotations()
     rows <- rows[!is.na(rows$source), , drop = FALSE]
     if (!nrow(rows)) return(tags$p("No annotation candidates match the filters (annotations may be optional)."))
-    fields <- intersect(c("feature_id", "source", "label", "confidence", "confidence_metric", "npc_pathway", "npc_superclass", "npc_class", "component_id", "feature_in_dataset"), names(rows))
-    feature_table(rows[seq_len(min(100L, nrow(rows))), fields, drop = FALSE])
+    fields <- c("feature_id", intersect(input$annotation_columns, names(rows)))
+    current <- min(annotation_page(), ceiling(nrow(rows) / 100L))
+    indices <- seq.int((current - 1L) * 100L + 1L, min(nrow(rows), current * 100L))
+    feature_table(rows[indices, fields, drop = FALSE], compact = TRUE,
+                  row_keys = rows$candidate_id[indices], selected_row = selected_candidate())
   })
   output$evidence <- renderUI({
-    req(input$candidate)
+    req(selected_candidate())
     rows <- annotations()
     if (!"candidate_id" %in% names(rows)) return(NULL)
-    record <- rows[!is.na(rows$candidate_id) & rows$candidate_id == input$candidate, , drop = FALSE]
+    record <- rows[!is.na(rows$candidate_id) & rows$candidate_id == selected_candidate(), , drop = FALSE]
     if (!nrow(record)) return(NULL)
     fields <- names(record)
     fields[fields == "candidate_id"] <- "source_record_key"
     feature_table(data.frame(field = fields,
                              value = vapply(record, function(column) as.character(column[1]), character(1))))
-  })
-  output$evidence_structure <- renderUI({
-    req(input$candidate)
-    rows <- annotations()
-    if (!all(c("candidate_id", "smiles") %in% names(rows))) return(NULL)
-    record <- rows[!is.na(rows$candidate_id) & rows$candidate_id == input$candidate, , drop = FALSE]
-    if (!nrow(record)) return(NULL)
-    structure_cards(data.frame(label = paste("Source record", record$candidate_id[1],
-                                             "(feature", paste0(record$feature_id[1], ")")),
-                               smiles = candidate_field(record, "smiles"),
-                               organism = candidate_field(record, "organism"),
-                               identification_links = candidate_field(record, "identification_links"),
-                               organism_wikidata = candidate_field(record, "organism_wikidata")))
   })
   output$manifest <- renderPrint({
     manifest <- run()$manifest

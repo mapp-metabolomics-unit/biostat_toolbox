@@ -35,7 +35,7 @@ export_results <- function(dataset, processed, analyses, manifest, directory) {
   if (!is.null(analyses$plsda)) {
     write_tsv(data.frame(status = analyses$plsda$status, reason = analyses$plsda$reason),
               file.path(directory, "tables", "plsda_status.tsv"))
-    for (name in c("summary", "fold_predictions", "permutations", "scores")) {
+    for (name in c("summary", "fold_predictions", "permutations", "scores", "loadings", "vip")) {
       value <- analyses$plsda[[name]]
       if (is.data.frame(value) && nrow(value)) {
         write_tsv(value, file.path(directory, "tables", paste0("plsda_", name, ".tsv")))

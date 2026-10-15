@@ -1,12 +1,20 @@
 run_pca <- function(x, metadata, group_column, components = 5) {
   if (nrow(x) < 2L || !ncol(x) || any(!is.finite(x))) stop("PCA requires at least two samples and finite, nonempty features.", call. = FALSE)
-  variable <- apply(x, 2, stats::sd, na.rm = TRUE) > 0
+  feature_sd <- apply(x, 2, stats::sd, na.rm = TRUE)
+  variable <- feature_sd > 0
   if (!any(variable)) stop("PCA has no varying features.", call. = FALSE)
-  fit <- stats::prcomp(x[, variable, drop = FALSE], center = TRUE, scale. = FALSE, rank. = min(components, nrow(x) - 1, sum(variable)))
-  scores <- data.frame(sample = rownames(fit$x), fit$x, check.names = FALSE)
+  input <- x[, variable, drop = FALSE]
+  fit <- ropls::opls(input, predI = min(components, nrow(input) - 1L, ncol(input)),
+                     orthoI = 0L, crossvalI = min(7L, nrow(input)), permI = 0L,
+                     scaleC = "center", fig.pdfC = "none", info.txtC = "none")
+  score_matrix <- as.matrix(ropls::getScoreMN(fit))
+  loading_matrix <- as.matrix(ropls::getLoadingMN(fit))
+  axes <- paste0("PC", seq_len(ncol(score_matrix)))
+  colnames(score_matrix) <- colnames(loading_matrix) <- axes
+  scores <- data.frame(sample = rownames(score_matrix), score_matrix, check.names = FALSE)
   scores <- cbind(scores, metadata[match(scores$sample, rownames(metadata)), , drop = FALSE])
-  loadings <- data.frame(feature_id = rownames(fit$rotation), fit$rotation, check.names = FALSE)
-  variance <- data.frame(component = colnames(fit$x), variance_percent = 100 * fit$sdev[seq_len(ncol(fit$x))]^2 / sum(fit$sdev^2))
+  loadings <- data.frame(feature_id = rownames(loading_matrix), loading_matrix, check.names = FALSE)
+  variance <- data.frame(component = axes, variance_percent = 100 * ropls::getPcaVarVn(fit) / sum(feature_sd[variable]^2))
   list(scores = scores, loadings = loadings, variance = variance)
 }
 
@@ -120,18 +128,28 @@ run_omnibus <- function(x, metadata, group_column, block_column = NULL) {
   data.frame(feature_id = colnames(x), statistic = statistic, numerator_df = df1, denominator_df = df2, p_value = p_value, q_value = stats::p.adjust(p_value, "BH"))
 }
 
-run_analyses <- function(processed, recipe) {
+run_analyses <- function(processed, recipe, on_stage = NULL) {
   analyses <- recipe$analyses %||% list()
   group_column <- recipe$design$group
   result <- list()
-  if (isTRUE(analyses$pca$enabled)) result$pca <- run_pca(processed$matrices$scaled, processed$sample_metadata, group_column, analyses$pca$components %||% 5)
+  if (isTRUE(analyses$pca$enabled)) {
+    if (!is.null(on_stage)) on_stage("PCA")
+    result$pca <- run_pca(processed$matrices$scaled, processed$sample_metadata, group_column, analyses$pca$components %||% 5)
+  }
   if (isTRUE(analyses$pcoa$enabled)) {
     stage <- analyses$pcoa$stage %||% "normalized"
     if (!stage %in% c("imputed", "normalized", "transformed", "scaled")) stop("PCoA stage must contain biological samples: imputed, normalized, transformed, or scaled.", call. = FALSE)
+    if (!is.null(on_stage)) on_stage("PCoA")
     result$pcoa <- run_pcoa(processed$matrices[[stage]], processed$sample_metadata, analyses$pcoa$distance %||% "bray", analyses$pcoa$components %||% 5)
   }
-  if (isTRUE(analyses$omnibus$enabled)) result$omnibus <- run_omnibus(processed$matrices$transformed, processed$sample_metadata, group_column, recipe$design$block %||% NULL)
-  if (isTRUE(analyses$differential$enabled)) result$differential <- run_differential(processed$matrices$transformed, processed$sample_metadata, recipe$design, processed$methods$transformation$method %||% "log2")
+  if (isTRUE(analyses$omnibus$enabled)) {
+    if (!is.null(on_stage)) on_stage("omnibus F-tests")
+    result$omnibus <- run_omnibus(processed$matrices$transformed, processed$sample_metadata, group_column, recipe$design$block %||% NULL)
+  }
+  if (isTRUE(analyses$differential$enabled)) {
+    if (!is.null(on_stage)) on_stage("differential contrasts")
+    result$differential <- run_differential(processed$matrices$transformed, processed$sample_metadata, recipe$design, processed$methods$transformation$method %||% "log2")
+  }
   result
 }
 

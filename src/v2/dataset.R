@@ -1,4 +1,9 @@
-read_mzmine_dataset <- function(dataset_config) {
+read_mzmine_dataset <- function(dataset_config, sample_plan = NULL) {
+  if ("sample_plan" %in% names(dataset_config))
+    stop("dataset.sample_plan is obsolete; pass recipe.sample_plan to read_mzmine_dataset.", call. = FALSE)
+  verify_input_sha256(dataset_config)
+  roles_config <- dataset_roles(dataset_config)
+  if (!is.null(sample_plan)) validate_sample_plan(sample_plan)
   required_metadata <- c("filename", "sample_id", "sample_type")
   mapping <- dataset_config$metadata_columns %||% list()
   source_columns <- vapply(required_metadata, function(field) mapping[[field]] %||% field, character(1))
@@ -55,6 +60,27 @@ read_mzmine_dataset <- function(dataset_config) {
          paste(metadata_only_rows, collapse = ", "), call. = FALSE)
   }
   metadata <- metadata[match(sample_names, metadata$filename), , drop = FALSE]
+  if (!is.null(sample_plan)) {
+    if (!sample_plan$group_column %in% names(metadata) || !roles_config$column %in% names(metadata) ||
+        "analysis_group" %in% names(metadata))
+      stop("Missing or conflicting sample-plan metadata columns.", call. = FALSE)
+    roles <- metadata[[roles_config$column]]
+    biological <- !is.na(roles) & roles == roles_config$levels$sample
+    other <- !is.na(roles) & roles %in% c(roles_config$levels$qc, roles_config$levels$blank)
+    if (any(!biological & !other)) stop("Unknown source sample roles.", call. = FALSE)
+    sources <- vapply(sample_plan$groups, `[[`, character(1), "source")
+    targets <- vapply(sample_plan$groups, `[[`, character(1), "target")
+    groups <- as.character(metadata[[sample_plan$group_column]][biological])
+    if (anyNA(groups) || any(!nzchar(trimws(groups))))
+      stop("Missing biological source groups.", call. = FALSE)
+    if (any(!sources %in% groups)) stop("Sample plan contains unknown biological group source.", call. = FALSE)
+    selected <- match(as.character(metadata[[sample_plan$group_column]]), sources)
+    keep <- other | (biological & !is.na(selected))
+    metadata <- metadata[keep, , drop = FALSE]
+    metadata$analysis_group <- ifelse(other[keep], NA_character_, targets[selected[keep]])
+    intensity_columns <- intensity_columns[keep]
+    sample_names <- sample_names[keep]
+  }
   rownames(metadata) <- metadata$filename
   intensities <- lapply(intensity_columns, function(column) {
     values <- quant[[column]]
@@ -96,7 +122,7 @@ read_mzmine_dataset <- function(dataset_config) {
 validate_dataset <- function(dataset, recipe = list()) {
   sm <- dataset$sample_metadata
   x <- dataset$raw
-  roles <- recipe$roles %||% list(column = "sample_type", levels = list(sample = "sample", qc = "QC", blank = "blank"))
+  roles <- recipe$roles %||% dataset_roles(dataset$source %||% list())
   role_column <- roles$column
   if (!role_column %in% names(sm)) stop("Sample-role column not found: ", role_column, call. = FALSE)
   counts <- vapply(roles$levels, function(level) sum(sm[[role_column]] == level, na.rm = TRUE), integer(1))

@@ -8,11 +8,11 @@ normalize_annotations <- function(dataset) {
   columns <- c("feature_id", "source", "candidate_id", "label", "confidence", "confidence_metric",
                "npc_pathway", "npc_superclass", "npc_class", "component_id", "feature_in_dataset",
                "rank", "molecular_formula", "adduct", "inchikey", "smiles", "library", "msms_score",
-               "final_score", "class_probability", "superclass_probability", "pathway_probability",
-               "organism", "organism_wikidata", "identification_links")
+               "final_score", "taxonomic_score", "class_probability", "superclass_probability",
+               "pathway_probability", "organism", "organism_wikidata", "identification_links")
   empty <- as.data.frame(setNames(rep(list(character()), length(columns)), columns), stringsAsFactors = FALSE)
-  empty$confidence <- empty$msms_score <- empty$final_score <- empty$class_probability <-
-    empty$superclass_probability <- empty$pathway_probability <- numeric()
+  empty$confidence <- empty$msms_score <- empty$final_score <- empty$taxonomic_score <-
+    empty$class_probability <- empty$superclass_probability <- empty$pathway_probability <- numeric()
   empty$feature_in_dataset <- logical()
 
   pick <- function(table, keys, numeric = FALSE) {
@@ -36,7 +36,8 @@ normalize_annotations <- function(dataset) {
                             inchikey_columns = character(), smiles_columns = character(), library_columns = character(),
                             msms_columns = character(), final_columns = character(), organism_columns = character(),
                             organism_link_columns = character(), links_columns = character(),
-                            class_probability_columns = character(), superclass_probability_columns = character(),
+                            taxonomic_columns = character(), class_probability_columns = character(),
+                            superclass_probability_columns = character(),
                             pathway_probability_columns = character()) {
     if (is.null(table)) return(empty)
     if (!is.data.frame(table)) stop("Annotation source must be a table: ", source, call. = FALSE)
@@ -53,6 +54,7 @@ normalize_annotations <- function(dataset) {
       adduct = pick(table, adduct_columns), inchikey = pick(table, inchikey_columns),
       smiles = pick(table, smiles_columns), library = pick(table, library_columns),
       msms_score = pick(table, msms_columns, TRUE), final_score = pick(table, final_columns, TRUE),
+      taxonomic_score = pick(table, taxonomic_columns, TRUE),
       class_probability = pick(table, class_probability_columns, TRUE),
       superclass_probability = pick(table, superclass_probability_columns, TRUE),
       pathway_probability = pick(table, pathway_probability_columns, TRUE),
@@ -100,6 +102,7 @@ normalize_annotations <- function(dataset) {
                   inchikey_columns = c("structure_inchikey", "short_inchikey"),
                   smiles_columns = c("structure_smiles"), library_columns = c("libname"),
                   msms_columns = c("msms_score"), final_columns = c("final_score"),
+                  taxonomic_columns = c("score_taxo"),
                   organism_columns = c("organism_name"), organism_link_columns = c("organism_wikidata"),
                   links_columns = c("structure_wikidata"))
   )
@@ -129,7 +132,9 @@ horizontal_annotation_summary <- function(table) {
   if (any(!is.na(table$sources_number_IK2D) & (is.na(counts) | !is.finite(counts) |
                                                     counts < 0 | counts != floor(counts))))
     stop("Horizontal sources_number_IK2D must contain nonnegative whole counts or be missing.", call. = FALSE)
-  fields <- unique(c(required, intersect("sources_IK2D", names(table)),
+  fields <- unique(c(required, intersect(c("sources_IK2D", "gnps_IK2D", "isdb_IK2D", "sirius_IK2D",
+                                           "isdb_libname", "isdb_score_taxo", "isdb_organism_name",
+                                           "isdb_organism_wikidata"), names(table)),
                      grep("_smiles$", names(table), value = TRUE, ignore.case = TRUE)))
   result <- table[, fields, drop = FALSE]
   result$feature_id <- ids

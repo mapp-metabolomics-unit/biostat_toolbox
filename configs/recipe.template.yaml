@@ -1,8 +1,6 @@
 seed: 1
-output_root: results/stats_v2
-roles:
-  column: sample_type
-  levels: {sample: sample, qc: QC, blank: blank}
+# Optional human-readable label for completed-job history (excluded from scientific hash):
+# presentation: {description: "WT versus treatment across biological samples"}
 preprocessing:
   blank_filter: {enabled: true, minimum_sample_to_blank_ratio: 5, minimum_blank_prevalence: 0.5}
   qc_rsd_filter: {enabled: true, threshold_percent: 30}
@@ -10,6 +8,15 @@ preprocessing:
   normalization: {method: pqn}
   transformation: {method: log2}
   scaling: {method: pareto}
+# Optional: map source groups without editing the shared dataset or input metadata:
+# sample_plan:
+#   group_column: ATTRIBUTE_group
+#   groups:
+#     - {source: control_A, target: control}
+#     - {source: control_B, target: control}
+#     - {source: treatment_A, target: treatment}
+#     - {source: treatment_B, target: treatment}
+# If sample_plan is enabled, set design.group to analysis_group.
 design:
   group: ATTRIBUTE_group
   # block: ATTRIBUTE_block
