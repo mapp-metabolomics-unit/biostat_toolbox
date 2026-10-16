@@ -1,5 +1,0 @@
-clustergrammer
-scipy
-pandas
-requests
-tqdm

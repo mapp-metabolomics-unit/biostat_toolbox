@@ -1,8 +1,6 @@
+kind: study
 seed: 1
-output_root: results/stats_v2
-roles:
-  column: sample_type
-  levels: {sample: sample, qc: QC, blank: blank}
+# Optional presentation: {description: "Batch-wide untargeted exploration"}
 preprocessing:
   blank_filter: {enabled: true, minimum_sample_to_blank_ratio: 5, minimum_blank_prevalence: 0.5}
   qc_rsd_filter: {enabled: true, threshold_percent: 30}
@@ -10,14 +8,9 @@ preprocessing:
   normalization: {method: pqn}
   transformation: {method: log2}
   scaling: {method: pareto}
-design:
-  group: ATTRIBUTE_group
-  # block: ATTRIBUTE_block
-  contrasts:
-    - {name: treatment_vs_control, numerator: treatment, denominator: control}
+# Display labels do not subset injections or affect fitted PCA/PCoA axes.
+display_group: sample_type
 analyses:
-  pca: {enabled: true, components: 5}
-  pcoa: {enabled: true, stage: normalized, distance: bray, components: 5}
-  omnibus: {enabled: true}
-  differential: {enabled: true}
+  pca: {enabled: true, components: 5, include_qc: false, include_blanks: false}
+  pcoa: {enabled: true, stage: normalized, distance: bray, components: 5, include_qc: false, include_blanks: false}
 

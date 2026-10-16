@@ -1,0 +1,179 @@
+run_pca <- function(x, metadata, group_column, components = 5) {
+  if (nrow(x) < 2L || !ncol(x) || any(!is.finite(x))) stop("PCA requires at least two samples and finite, nonempty features.", call. = FALSE)
+  feature_sd <- apply(x, 2, stats::sd, na.rm = TRUE)
+  variable <- feature_sd > 0
+  if (!any(variable)) stop("PCA has no varying features.", call. = FALSE)
+  input <- x[, variable, drop = FALSE]
+  fit <- ropls::opls(input, predI = min(components, nrow(input) - 1L, ncol(input)),
+                     orthoI = 0L, crossvalI = min(7L, nrow(input)), permI = 0L,
+                     scaleC = "center", fig.pdfC = "none", info.txtC = "none")
+  score_matrix <- as.matrix(ropls::getScoreMN(fit))
+  loading_matrix <- as.matrix(ropls::getLoadingMN(fit))
+  axes <- paste0("PC", seq_len(ncol(score_matrix)))
+  colnames(score_matrix) <- colnames(loading_matrix) <- axes
+  scores <- data.frame(sample = rownames(score_matrix), score_matrix, check.names = FALSE)
+  scores <- cbind(scores, metadata[match(scores$sample, rownames(metadata)), , drop = FALSE])
+  loadings <- data.frame(feature_id = rownames(loading_matrix), loading_matrix, check.names = FALSE)
+  variance <- data.frame(component = axes, variance_percent = 100 * ropls::getPcaVarVn(fit) / sum(feature_sd[variable]^2))
+  list(scores = scores, loadings = loadings, variance = variance)
+}
+
+bray_curtis <- function(x) {
+  n <- nrow(x)
+  result <- matrix(0, n, n, dimnames = list(rownames(x), rownames(x)))
+  if (n < 2L) stop("Bray-Curtis requires at least two samples.", call. = FALSE)
+  for (i in seq_len(n - 1L)) for (j in seq.int(i + 1L, n)) {
+    denominator <- sum(x[i, ] + x[j, ], na.rm = TRUE)
+    value <- if (denominator == 0) 0 else sum(abs(x[i, ] - x[j, ]), na.rm = TRUE) / denominator
+    result[i, j] <- result[j, i] <- value
+  }
+  stats::as.dist(result)
+}
+
+run_pcoa <- function(x, metadata, method = "bray", components = 5) {
+  if (nrow(x) < 2L || !ncol(x) || any(!is.finite(x))) stop("PCoA requires at least two samples and finite, nonempty features.", call. = FALSE)
+  if (method == "bray" && any(x < 0, na.rm = TRUE)) stop("Bray-Curtis requires a nonnegative matrix.", call. = FALSE)
+  distance <- if (method == "bray") bray_curtis(x) else stats::dist(x, method = method)
+  fit <- stats::cmdscale(distance, k = min(components, nrow(x) - 1), eig = TRUE, add = TRUE)
+  points <- if (is.list(fit)) fit$points else fit
+  points <- as.matrix(points)
+  rownames(points) <- rownames(x)
+  colnames(points) <- paste0("PCoA", seq_len(ncol(points)))
+  scores <- data.frame(sample = rownames(points), points, check.names = FALSE)
+  scores <- cbind(scores, metadata[match(scores$sample, rownames(metadata)), , drop = FALSE])
+  positive <- fit$eig[fit$eig > 0]
+  if (!length(positive)) stop("PCoA distances have no positive eigenvalues.", call. = FALSE)
+  variance <- data.frame(component = paste0("PCoA", seq_along(positive)), variance_percent = 100 * positive / sum(positive))
+  list(scores = scores, variance = variance)
+}
+
+design_matrix <- function(metadata, group_column, block_column = NULL) {
+  if (is.null(group_column) || !group_column %in% names(metadata)) stop("Design group column is missing.", call. = FALSE)
+  group <- factor(metadata[[group_column]])
+  if (anyNA(group)) stop("The design group contains missing values.", call. = FALSE)
+  frame <- data.frame(group = group)
+  formula <- ~ 0 + group
+  if (!is.null(block_column) && nzchar(block_column)) {
+    if (!block_column %in% names(metadata)) stop("Block column not found: ", block_column, call. = FALSE)
+    frame$block <- factor(metadata[[block_column]])
+    if (anyNA(frame$block)) stop("The block column contains missing values.", call. = FALSE)
+    formula <- ~ 0 + group + block
+  }
+  matrix <- stats::model.matrix(formula, frame)
+  colnames(matrix) <- sub("^group", "", colnames(matrix))
+  if (anyDuplicated(colnames(matrix)) || qr(matrix)$rank < ncol(matrix)) stop("The group/block design is rank-deficient; planned effects cannot be estimated.", call. = FALSE)
+  if (nrow(matrix) <= ncol(matrix)) stop("The design has no residual degrees of freedom.", call. = FALSE)
+  list(matrix = matrix, group = group)
+}
+
+fit_contrast <- function(fit, numerator, denominator, contrast_name, effect_label) {
+  design <- fit$design
+  if (!all(c(numerator, denominator) %in% colnames(design))) stop("Contrast levels are absent from the design: ", numerator, ", ", denominator, call. = FALSE)
+  if (identical(numerator, denominator)) stop("A contrast must compare distinct groups.", call. = FALSE)
+  contrast <- numeric(ncol(design)); names(contrast) <- colnames(design)
+  contrast[numerator] <- 1; contrast[denominator] <- -1
+  effects <- as.numeric(crossprod(contrast, fit$coefficients))
+  standard_error <- sqrt(as.numeric(crossprod(contrast, fit$covariance %*% contrast)) * fit$sigma2)
+  statistic <- effects / standard_error
+  p_value <- 2 * stats::pt(abs(statistic), df = fit$residual_df, lower.tail = FALSE)
+  data.frame(
+    feature_id = fit$feature_ids, contrast = contrast_name, numerator = numerator, denominator = denominator,
+    effect = effects, effect_scale = effect_label, standard_error = standard_error,
+    statistic = statistic, degrees_of_freedom = fit$residual_df, p_value = p_value,
+    q_value = stats::p.adjust(p_value, method = "BH"), stringsAsFactors = FALSE
+  )
+}
+
+run_differential <- function(x, metadata, design_config, transformation_method) {
+  group_column <- design_config$group
+  block_column <- design_config$block %||% NULL
+  design <- design_matrix(metadata, group_column, block_column)
+  contrasts <- expand_biostats_contrasts(design_config, levels(design$group))
+  if (!length(contrasts)) return(data.frame())
+  if (any(!is.finite(x))) stop("Differential analysis requires finite transformed intensities.", call. = FALSE)
+  fitted <- stats::lm.fit(design$matrix, x)
+  if (fitted$rank < ncol(design$matrix) || nrow(design$matrix) <= fitted$rank)
+    stop("Contrast design is rank-deficient or lacks residual degrees of freedom.", call. = FALSE)
+  residual_df <- nrow(design$matrix) - fitted$rank
+  pivot_order <- order(fitted$qr$pivot)
+  covariance <- chol2inv(qr.R(fitted$qr))
+  fit <- list(design = design$matrix, coefficients = fitted$coefficients,
+              sigma2 = colSums(fitted$residuals^2, na.rm = TRUE) / residual_df,
+              covariance = covariance[pivot_order, pivot_order, drop = FALSE], residual_df = residual_df,
+              feature_ids = colnames(x))
+  effect_label <- if (tolower(transformation_method) == "log2") "log2_fold_change" else "difference_on_transformed_scale"
+  rows <- lapply(contrasts, function(contrast) {
+    fit_contrast(fit, contrast$numerator, contrast$denominator, contrast$name, effect_label)
+  })
+  do.call(rbind, rows)
+}
+
+run_omnibus <- function(x, metadata, group_column, block_column = NULL) {
+  design_full <- design_matrix(metadata, group_column, block_column)$matrix
+  if (any(!is.finite(x))) stop("Omnibus analysis requires finite transformed intensities.", call. = FALSE)
+  if (is.null(block_column) || !nzchar(block_column)) {
+    design_reduced <- matrix(1, nrow(x), 1)
+  } else {
+    design_reduced <- stats::model.matrix(~ factor(metadata[[block_column]]))
+  }
+  full <- stats::lm.fit(design_full, x)
+  reduced <- stats::lm.fit(design_reduced, x)
+  df1 <- full$rank - reduced$rank
+  df2 <- nrow(x) - full$rank
+  if (full$rank < ncol(design_full) || reduced$rank < ncol(design_reduced) || df1 < 1L || df2 < 1L) stop("Omnibus design is rank-deficient or lacks test degrees of freedom.", call. = FALSE)
+  rss_full <- colSums(full$residuals^2)
+  rss_reduced <- colSums(reduced$residuals^2)
+  statistic <- (pmax(0, rss_reduced - rss_full) / df1) / (rss_full / df2)
+  p_value <- stats::pf(statistic, df1, df2, lower.tail = FALSE)
+  data.frame(feature_id = colnames(x), statistic = statistic, numerator_df = df1, denominator_df = df2, p_value = p_value, q_value = stats::p.adjust(p_value, "BH"))
+}
+
+add_ordination_groups <- function(ordination, metadata, roles, group_column) {
+  scores <- ordination$scores
+  matched <- match(scores$sample, rownames(metadata))
+  role <- match(metadata[[roles$column]][matched], unlist(roles$levels[c("sample", "qc", "blank")], use.names = FALSE))
+  if (anyNA(matched) || anyNA(role)) stop("Ordination scores contain unrecognized sample roles.", call. = FALSE)
+  groups <- as.character(metadata[[group_column]][matched])
+  labels <- c("QC (quality control)", "blank (control)")
+  for (index in seq_along(labels))
+    while (labels[index] %in% c(groups[role == 1L], labels[seq_len(index - 1L)]))
+      labels[index] <- paste0(labels[index], " [injection]")
+  groups[role == 2L] <- labels[1L]
+  groups[role == 3L] <- labels[2L]
+  scores$ordination_group <- groups
+  scores$ordination_role <- c("sample", "qc", "blank")[role]
+  ordination$scores <- scores
+  ordination
+}
+
+run_analyses <- function(processed, recipe, on_stage = NULL) {
+  analyses <- recipe$analyses %||% list()
+  group_column <- recipe$design$group
+  result <- list()
+  if (isTRUE(analyses$pca$enabled)) {
+    if (!is.null(on_stage)) on_stage("PCA")
+    input <- processed$ordination$pca %||% list(matrices = processed$matrices, sample_metadata = processed$sample_metadata)
+    result$pca <- add_ordination_groups(
+      run_pca(input$matrices$scaled, input$sample_metadata, group_column, analyses$pca$components %||% 5),
+      input$sample_metadata, recipe$roles %||% default_biostats_roles(), group_column)
+  }
+  if (isTRUE(analyses$pcoa$enabled)) {
+    stage <- analyses$pcoa$stage %||% "normalized"
+    if (!stage %in% c("imputed", "normalized", "transformed", "scaled")) stop("PCoA stage must contain biological samples: imputed, normalized, transformed, or scaled.", call. = FALSE)
+    if (!is.null(on_stage)) on_stage("PCoA")
+    input <- processed$ordination$pcoa %||% list(matrices = processed$matrices, sample_metadata = processed$sample_metadata)
+    result$pcoa <- add_ordination_groups(
+      run_pcoa(input$matrices[[stage]], input$sample_metadata, analyses$pcoa$distance %||% "bray", analyses$pcoa$components %||% 5),
+      input$sample_metadata, recipe$roles %||% default_biostats_roles(), group_column)
+  }
+  if (isTRUE(analyses$omnibus$enabled)) {
+    if (!is.null(on_stage)) on_stage("omnibus F-tests")
+    result$omnibus <- run_omnibus(processed$matrices$transformed, processed$sample_metadata, group_column, recipe$design$block %||% NULL)
+  }
+  if (isTRUE(analyses$differential$enabled)) {
+    if (!is.null(on_stage)) on_stage("differential contrasts")
+    result$differential <- run_differential(processed$matrices$transformed, processed$sample_metadata, recipe$design, processed$methods$transformation$method %||% "log2")
+  }
+  result
+}
+

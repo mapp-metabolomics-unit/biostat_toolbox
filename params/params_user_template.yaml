@@ -1,9 +1,0 @@
-# Copy this file and rename as params_user.yaml.
-# The documented installation path in this repository targets macOS and Linux.
-paths:
-  docs: '/your/input/dir/docs' #example
-  output: '/your/output/dir' # Not mandatory, default is in the stats subdirectory
-
-operating_system:
-  system: unix
-  pandoc: "pandoc"
