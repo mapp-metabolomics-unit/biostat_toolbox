@@ -1,13 +1,13 @@
-/* Browser-only explorer: saved views read published outputs; Advanced downloads plans without modifying batch data. */
+/* Browser-only explorer: saved views read published outputs without modifying batch data. */
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'plsda', 'features', 'classes', 'downloads', 'advanced'];
+  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'plsda', 'features', 'classes', 'downloads'];
   const hex = /^[0-9a-f]{64}$/;
   const outputPath = /^(tables\/[A-Za-z0-9_.-]+\.tsv|plots\/[A-Za-z0-9_.-]+\.(?:png|pdf))$/;
-  const palette = ['#197b8a', '#ca7544', '#664ba0', '#42805f', '#a94564', '#976522', '#3459a2', '#77853b'];
+  const palette = ['#0074e8', '#ec432d', '#05a566', '#963be1', '#db8b00', '#e32f85',
+    '#008da9', '#7e9d00', '#3e55cc', '#b64e0f', '#009c87', '#b039a9'];
   let catalogue = [];
-  let builderSource = null;
   let current = null;
   let generation = 0;
   const detachedMode = new URL(location.href).searchParams.get('detached') === '1';
@@ -73,9 +73,9 @@
       cell.classList.add('linked-value');
     } else cell.textContent = content;
   }
-  function table(headers, rows, onFeature, filename = 'dashboard-table.tsv') {
+  function table(headers, rows, onFeature, filename = 'dashboard-table.tsv', options = {}) {
     const size = 100;
-    const visible = new Set(headers.map((_,i) => i));
+    const visible = new Set(headers.map((_,i) => i).filter((i) => !options.hiddenColumns?.includes(headers[i])));
     const filters = headers.map(() => '');
     const numericColumns = headers.map((_,i) => {
       let found = false;
@@ -125,7 +125,7 @@
     const columns = el('details',{class:'table-columns'},el('summary',{text:'Columns'}),columnOptions);
     const checkboxes = headers.map((heading,i) => {
       const checkbox = el('input',{type:'checkbox'});
-      checkbox.checked = true;
+      checkbox.checked = visible.has(i);
       checkbox.addEventListener('change',() => {
         if (checkbox.checked) visible.add(i);
         else visible.delete(i);
@@ -164,7 +164,10 @@
         placeholder:numericColumns[i] ? 'Filter… >2 or 1..3' : 'Filter…',
         title:numericColumns[i] ? 'Numeric: >2, >=2, <2, <=2, =2, or inclusive 1..3; otherwise match text' : 'Match text',
         'aria-label':'Filter '+heading});
-      filter.addEventListener('input',() => { filters[i] = filter.value; page = 0; update(); });
+      filter.addEventListener('input',() => {
+        filters[i] = filter.value; page = 0; update();
+        options.onFilter?.(displayed);
+      });
       return el('th',{scope:'col'},sort,filter);
     });
     const wrap = el('div',{class:'table-wrap'},el('table',{},el('thead',{},el('tr',{},...headings)),body));
@@ -182,7 +185,7 @@
           const cell = el('td',{title:label(row[i])});
           if (onFeature && i === 0 && row[i])
             cell.append(el('button',{type:'button',class:'text-button',text:row[i],onClick:() => onFeature(row[i])}));
-          else appendLinkedText(cell,row[i]);
+          else if (!options.renderCell?.(cell,row,i)) appendLinkedText(cell,row[i]);
           tr.append(cell);
         });
         fragment.append(tr);
@@ -249,11 +252,17 @@
   function listed(ctx, path) {
     if (!outputPath.test(path) || !Object.hasOwn(ctx.run.outputs, path) || !hex.test(ctx.run.outputs[path]))
       throw new Error('File is not a valid published output: ' + path);
+    const source = ctx.run.sources?.[path];
+    const expected = ctx.run.kind === 'comparison' && source !== undefined ?
+      'comparisons/' + ctx.run.study_hash + '/' + ctx.run.hash : (ctx.run.study_hash ?? ctx.run.hash);
+    if (source !== undefined && source !== expected)
+      throw new Error('Invalid published source for ' + path);
+    return expected;
   }
   async function verifiedBytes(ctx, path) {
-    listed(ctx, path);
+    const source = listed(ctx, path);
     if (!window.crypto?.subtle) throw new Error('SHA-256 verification requires HTTPS or loopback HTTP (localhost). This page cannot use unverified files.');
-    const response = await fetch('../' + ctx.run.hash + '/' + path, {signal:ctx.controller.signal});
+    const response = await fetch('../' + source + '/' + path, {signal:ctx.controller.signal});
     if (!response.ok) throw new Error('Could not load ' + path + ' (HTTP ' + response.status + ')');
     const bytes = await response.arrayBuffer();
     const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (x) => x.toString(16).padStart(2, '0')).join('');
@@ -286,6 +295,30 @@
     const match = /^([a-z]{14})(?:-|$)/i.exec(text(value).trim());
     return match ? match[1].toUpperCase() : '';
   }
+  function featureCompoundIndex(candidates,horizontal) {
+    const features = new Map();
+    function add(id,key,source,smiles,name,taxon) {
+      if (!id || !key) return;
+      if (!features.has(id)) features.set(id,new Map());
+      const keys = features.get(id);
+      if (!keys.has(key)) keys.set(key,{sources:new Set(),names:new Set(),taxa:new Set(),smiles:[]});
+      const entry = keys.get(key);
+      if (recordedText(source)) entry.sources.add(source);
+      if (recordedText(name)) entry.names.add(name);
+      if (recordedText(taxon)) entry.taxa.add(taxon);
+      const structure = usableSmiles(smiles);
+      if (structure && !entry.smiles.includes(structure)) entry.smiles.push(structure);
+    }
+    for (const row of candidates) {
+      const source = structureSource(row.source,row.library);
+      if (source) add(row.feature_id,structureKey(row.inchikey),source,row.smiles,row.label,row.organism);
+    }
+    for (const row of horizontal) for (const source of preferredStructureSources) {
+      add(row.feature_id,structureKey(row[source+'_IK2D']),source,row[source+'_SMILES'],'',
+        source === 'isdb' ? row.isdb_organism_name : '');
+    }
+    return features;
+  }
   function galleryStructures(candidates, horizontal) {
     const structures = new Map();
     function add(smiles, source, key, record) {
@@ -303,7 +336,7 @@
       const provenance = source ? source.toUpperCase()+
         (source === 'isdb' && !recordedText(row.library) ? ' (library not recorded)' : '') :
         (recordedText(row.library) || recordedText(row.source) || 'Source not recorded');
-      add(row.smiles,source,row.inchikey,{label:row.label,provenance,
+      add(row.smiles,source,row.inchikey,{label:row.label,provenance,origin:'candidate',
         libraryKnown:!!recordedText(row.library),score:row.taxonomic_score,taxon:row.organism});
     }
     for (const row of horizontal) for (const sourceName of preferredStructureSources) {
@@ -314,12 +347,28 @@
         (source === 'isdb' && !recordedText(library) ? ' (library not recorded)' : '') :
         (recordedText(library) || 'Source not recorded')+' (horizontal '+sourceName+'_SMILES)';
       add(row[sourceName+'_SMILES'],source,row[sourceName+'_IK2D'],
-        {label:'Saved horizontal structure',provenance,
+        {label:'Saved horizontal structure',provenance,origin:'horizontal',
           libraryKnown:sourceName !== 'isdb' || !!recordedText(library),
           score:sourceName === 'isdb' ? row.isdb_score_taxo : '',
           taxon:sourceName === 'isdb' ? row.isdb_organism_name : ''});
     }
     return structures;
+  }
+  function distinctStructureRecords(records) {
+    const groups = [], keyed = new Map();
+    for (const record of records) {
+      // Do not merge unkeyed structures: matching SMILES alone does not establish provenance.
+      const identity = record.source && record.ik2d ?
+        record.source+'\u0000'+record.ik2d+'\u0000'+record.smiles : '';
+      if (identity && keyed.has(identity)) {
+        keyed.get(identity).push(record);
+      } else {
+        const group = [record];
+        groups.push(group);
+        if (identity) keyed.set(identity,group);
+      }
+    }
+    return groups;
   }
   function sourceStar(source, records) {
     const related = records.filter((record) => record.source === source);
@@ -684,7 +733,7 @@
     const dispatch = {overview:renderOverview, pca:(ctx,target,token) => renderOrdination(ctx,target,token,'pca','PC'),
       pcoa:(ctx,target,token) => renderOrdination(ctx,target,token,'pcoa','PCoA'), volcano:renderVolcano,
       plsda:renderPlsda, features:(ctx,target,token) => renderFeatures(ctx,target,token,detachedMode),
-      classes:renderClasses, downloads:renderDownloads, advanced:renderAdvanced};
+      classes:renderClasses, downloads:renderDownloads};
     safeRender(activeTab, dispatch[activeTab]);
   }
   function featurePlotKey(hash) { return 'mapp:feature-plot:' + hash; }
@@ -731,6 +780,35 @@
     });
     if (!detachedMode) syncDetached();
   }
+  function comparisonMetadata(shared, selected) {
+    if (!selected.length || !shared.length || !Object.hasOwn(selected[0], 'analysis_group'))
+      throw new Error('Comparison sample metadata has no selected biological groups.');
+    const addedFields = Object.keys(selected[0]).filter((field) =>
+      field === 'analysis_group' || !Object.hasOwn(shared[0], field));
+    const roles = current.run.effective_dataset?.roles;
+    const roleColumn = roles?.column ?? 'sample_type';
+    const biologicalRole = roles?.levels?.sample ?? 'sample';
+    const bySample = new Map();
+    for (const row of shared) {
+      const key = sampleKey(row);
+      if (!key || bySample.has(key)) throw new Error('Shared sample metadata has missing or duplicate sample keys.');
+      bySample.set(key, row);
+    }
+    const groups = new Map();
+    for (const row of selected) {
+      const key = sampleKey(row);
+      const original = bySample.get(key);
+      if (!key || groups.has(key) || !original || original[roleColumn] !== biologicalRole ||
+          !row.analysis_group || row.analysis_group === 'NA' ||
+          (row.sample_id && original.sample_id && row.sample_id !== original.sample_id))
+        throw new Error('Comparison metadata contains an unmatched or invalid biological sample: ' + label(key));
+      groups.set(key, row);
+    }
+    return shared.map((row) => {
+      const match = row[roleColumn] === biologicalRole ? groups.get(sampleKey(row)) : null;
+      return {...row, ...Object.fromEntries(addedFields.map((field) => [field,match?.[field] ?? '']))};
+    });
+  }
   function setupMetadata(data) {
     metadata = data;
     if (!data.length) throw new Error('sample_metadata.tsv contains no samples');
@@ -738,7 +816,9 @@
     sampleGroupColumns = Object.keys(data[0]).filter((key) =>
       !forbidden.test(key) && new Set(data.map((row) => row[key]).filter(Boolean)).size <= 30);
     if (!sampleGroupColumns.length) throw new Error('No descriptive grouping columns in sample_metadata.tsv');
-    defaultGroup = sampleGroupColumns.includes(current.run.design_group) ? current.run.design_group :
+    const studyGroup = current.run.kind === 'comparison' ?
+      catalogue.find((run) => run.hash === current.run.study_hash)?.design_group : current.run.design_group;
+    defaultGroup = sampleGroupColumns.includes(studyGroup) ? studyGroup :
       sampleGroupColumns.includes('sample_type') ? 'sample_type' : sampleGroupColumns[0];
     groupColors = new Map();
     const primary = [...new Set(metadata.map((row) => groupName(row,defaultGroup)))].sort();
@@ -752,11 +832,14 @@
     }));
   }
   function infoFacts(run) {
-    const facts = [['Dataset',run.dataset_id], ['Run hash',run.hash], ['Description',run.description ?? 'Not in this catalogue'],
+    const facts = [['Dataset',run.dataset_id], ['Study hash',run.study_hash], ['Run hash',run.hash],
+      ['Selection',run.kind === 'comparison' ? 'Sealed comparison · shared ordinations' :
+        run.kind === 'study' ? 'Shared study · no comparison selected' : 'Historical standalone run'],
+      ['Description',run.description ?? 'Not in this catalogue'],
       ['Recipe SHA-256',run.recipe_sha256 ?? 'Not in this catalogue'],
       ['Changes vs previous dataset run',run.changes_vs_previous_dataset_run ?? 'Not in this catalogue'],
       ['Created',run.created_at], ['Saved schema',run.schema_version],
-      ['Method','V2 saved analyses'], ['Design group',run.design_group], ['Intensity',run.intensity_measure], ['Transformation',run.transformation]];
+      ['Method','Biostats saved analyses'], ['Design group',run.design_group], ['Intensity',run.intensity_measure], ['Transformation',run.transformation]];
     $('run-facts').replaceChildren(...facts.map(([key, value]) => el('div', {}, el('dt', {text:key}), el('dd', {text:label(value), class:key === 'Run hash' ? 'mono' : ''}))));
   }
   async function chooseRun(hash, updateHistory = false, feature = '') {
@@ -765,6 +848,7 @@
       url.searchParams.set('run', hash);
       history.pushState(null, '', url);
     }
+    const previous = current;
     if (current) current.controller.abort();
     closeFeatureDrawer();
     hideFeatureHover();
@@ -786,24 +870,41 @@
       panel(tab).replaceChildren();
     }
     $('run-facts').replaceChildren();
+    const comparisonPicker = $('comparison-picker');
     if (!run) {
       $('run-select').value = '';
+      comparisonPicker.hidden = true;
       status('Unknown run hash in URL: ' + hash + '. Select an available run.', true);
       message(panel(activeTab), 'This run is not in the published catalogue. Choose an available run above.', true);
       return;
     }
-    const ctx = {run, cache:new Map(), controller:new AbortController(), version:generation};
+    const study = run.kind === 'comparison' ? catalogue.find((item) => item.hash === run.study_hash) : run;
+    const children = study.kind === 'study' ?
+      catalogue.filter((item) => item.kind === 'comparison' && item.study_hash === study.hash) : [];
+    comparisonPicker.hidden = study.kind !== 'study';
+    $('comparison-select').replaceChildren(el('option', {value:'',text:'None · shared study only'}),
+      ...children.map((item) => el('option', {value:item.hash,
+        text:item.hash.slice(0,12) + ' · ' + (item.description ?? 'Saved comparison') + ' · ' + label(item.created_at)})));
+    $('comparison-select').value = run.kind === 'comparison' ? run.hash : '';
+    const sameStudy = previous && (previous.run.study_hash ?? previous.run.hash) ===
+      (run.study_hash ?? run.hash);
+    const ctx = {run, cache:new Map(), controller:new AbortController(), version:generation,
+      scoreMaps:sameStudy ? {pca:previous.scoreMaps?.pca, pcoa:previous.scoreMaps?.pcoa} : undefined};
     current = ctx;
     if (!detachedMode) syncDetached();
-    $('run-select').value = hash;
+    $('run-select').value = study.hash;
     infoFacts(run);
     status('Verifying sample metadata for ' + run.dataset_id + ' · ' + hash.slice(0,12) + '…');
     try {
-      const samples = await rows(ctx, 'sample_metadata');
+      const [samples, selected] = await Promise.all([rows(ctx, 'sample_metadata'),
+        run.kind === 'comparison' ? rows(ctx, 'comparison_sample_metadata') : null]);
       if (!valid(ctx)) return;
-      setupMetadata(samples);
+      setupMetadata(selected ? comparisonMetadata(samples, selected) : samples);
+      if (selected) ctx.comparisonSamples = new Set(selected.map((row) => sampleKey(row)));
       if (!detachedMode) syncDetached();
-      status('Viewing ' + run.dataset_id + ' / ' + hash.slice(0,12) + ' · saved results only');
+      status('Viewing ' + run.dataset_id + ' / ' + hash.slice(0,12) +
+        (run.kind === 'comparison' ? ' · shared PCA/PCoA; selected comparison changes inference only' :
+          run.kind === 'study' ? ' · shared PCA/PCoA; choose a comparison for inference' : ' · saved results only'));
       render();
       if ($('hover-settings').open) featureHoverIndex(ctx).catch((error) => {
         if (valid(ctx)) message($('hover-field-choices'),error.message,true);
@@ -818,11 +919,18 @@
       if (!response.ok) throw new Error('Could not load runs.json (HTTP ' + response.status + ')');
       const data = await response.json();
       if (data.schema_version !== 1 || !Array.isArray(data.runs)) throw new Error('Unsupported runs.json catalogue schema');
-      builderSource = data.builder_source ?? null;
       catalogue = data.runs;
       if (!catalogue.length) throw new Error('No completed runs are published in runs.json');
+      const hashes = new Set();
       for (const run of catalogue) {
-        if (!hex.test(run.hash) || !run.outputs || typeof run.outputs !== 'object' || Array.isArray(run.outputs) ||
+        if (!run || typeof run !== 'object' || !hex.test(run.hash) || hashes.has(run.hash) ||
+            !run.outputs || typeof run.outputs !== 'object' || Array.isArray(run.outputs) ||
+            (run.kind !== undefined && !['study','comparison'].includes(run.kind)) ||
+            (run.kind === 'study' && run.study_hash !== run.hash) ||
+            (run.kind === 'comparison' && (!hex.test(run.study_hash) || run.study_hash === run.hash)) ||
+            (run.kind !== undefined && (!run.hashes || !hex.test(run.hashes.dataset_hash) ||
+              !hex.test(run.hashes.preprocess_hash))) ||
+            (run.kind === undefined && (run.study_hash !== undefined || run.sources !== undefined)) ||
             (run.description !== undefined && (typeof run.description !== 'string' || !run.description ||
               run.description.trim() !== run.description || [...run.description].length > 160 ||
               /[\x00-\x1f\x7f-\x9f]/u.test(run.description))) ||
@@ -833,17 +941,45 @@
                 run.changes_vs_previous_dataset_run.trim() !== run.changes_vs_previous_dataset_run ||
                 run.changes_vs_previous_dataset_run.length > 8192 ||
                 /[\x00-\x1f\x7f-\x9f]/u.test(run.changes_vs_previous_dataset_run))) ||
-            Object.entries(run.outputs).some(([path, sha]) => !outputPath.test(path) && path.startsWith('tables/') || !hex.test(sha))) {
+            Object.entries(run.outputs).some(([path, sha]) =>
+              !/^(?:tables|plots|objects)\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(path) ||
+              path.split('/').some((part) => part === '.' || part === '..') || !hex.test(sha)) ||
+            (run.sources !== undefined && (!run.sources || typeof run.sources !== 'object' ||
+              Array.isArray(run.sources)))) {
           throw new Error('Invalid run entry or output checksum in runs.json');
         }
+        hashes.add(run.hash);
+      }
+      for (const run of catalogue) {
+        const sources = run.sources ?? {};
+        if (run.kind !== 'comparison') {
+          if (Object.keys(sources).length) throw new Error('A standalone run cannot have comparison sources.');
+          continue;
+        }
+        const study = catalogue.find((item) => item.hash === run.study_hash && item.kind === 'study');
+        const childSource = 'comparisons/' + run.study_hash + '/' + run.hash;
+        if (!study || run.dataset_id !== study.dataset_id ||
+            run.hashes?.dataset_hash !== study.hashes?.dataset_hash ||
+            run.hashes?.preprocess_hash !== study.hashes?.preprocess_hash ||
+            !Object.hasOwn(run.outputs,'tables/comparison_sample_metadata.tsv') ||
+            Object.keys(sources).some((path) => !Object.hasOwn(run.outputs,path) || sources[path] !== childSource) ||
+            Object.entries(run.outputs).some(([path, sha]) =>
+              Object.hasOwn(sources,path) ?
+                Object.hasOwn(study.outputs,path) ||
+                  !(/^(?:tables\/(?:comparison_sample_metadata|omnibus|differential|plsda_[A-Za-z0-9_.-]+)\.tsv|plots\/volcano_[A-Za-z0-9_.-]+\.(?:png|pdf)|objects\/[A-Za-z0-9_.-]+)$/.test(path)) :
+                study.outputs[path] !== sha) ||
+            Object.keys(study.outputs).some((path) => run.outputs[path] !== study.outputs[path]))
+          throw new Error('Invalid or incomplete comparison sources in runs.json');
       }
       const select = $('run-select');
-      select.replaceChildren(...catalogue.map((run, i) => el('option', {value:run.hash,
+      const parents = catalogue.filter((run) => run.kind !== 'comparison');
+      if (!parents.length) throw new Error('No shared studies or standalone runs are published.');
+      select.replaceChildren(...parents.map((run, i) => el('option', {value:run.hash,
         text:run.hash.slice(0,12) + ' · ' + (run.description ?? run.dataset_id) +
           ' · ' + label(run.created_at) + (i === 0 ? ' · latest' : '')})));
       select.disabled = false;
       const requested = new URL(location.href).searchParams.get('run');
-      await chooseRun(requested === null ? catalogue[0].hash : requested,false,
+      await chooseRun(requested === null ? parents[0].hash : requested,false,
         detachedMode ? new URL(location.href).searchParams.get('feature') || '' : '');
       if (detachedMode) window.opener?.postMessage({kind:'mapp-feature-ready'},location.origin);
     } catch (error) {
@@ -862,9 +998,11 @@
     hideFeatureHover();
   });
   $('run-select').addEventListener('change', (event) => chooseRun(event.target.value, true));
+  $('comparison-select').addEventListener('change', (event) =>
+    chooseRun(event.target.value || $('run-select').value, true));
   window.addEventListener('popstate', () => {
     const url = new URL(location.href);
-    chooseRun(url.searchParams.get('run') ?? catalogue[0]?.hash,false,
+    chooseRun(url.searchParams.get('run') ?? catalogue.find((run) => run.kind !== 'comparison')?.hash,false,
       detachedMode ? url.searchParams.get('feature') || '' : '');
   });
   window.addEventListener('storage',(event) => {
@@ -1052,6 +1190,224 @@
   function numericAxes(data, prefix) {
     return data.length ? Object.keys(data[0]).filter((key) => new RegExp('^' + prefix + '[1-9][0-9]*$').test(key)).sort((a,b) => Number(a.slice(prefix.length)) - Number(b.slice(prefix.length))) : [];
   }
+  function numericSampleColumns(scores, bySample) {
+    return Object.keys(metadata[0]).filter((field) => {
+      let min = Infinity, max = -Infinity;
+      for (const score of scores) {
+        const cell = bySample.get(score.sample)?.[field];
+        if (cell === '' || cell === 'NA' || cell === 'ND' || cell === null || cell === undefined) continue;
+        const value = number(cell);
+        if (!Number.isFinite(value)) return false;
+        min = Math.min(min,value);
+        max = Math.max(max,value);
+      }
+      return min < max;
+    });
+  }
+  function scoreMapControls(ctx, stem, scores, bySample, redraw) {
+    const fields = Object.keys(metadata[0]);
+    const numeric = new Set(numericSampleColumns(scores,bySample));
+    const saved = ctx.scoreMaps ??= {};
+    const state = saved[stem] ??= {cards:[],open:false,order:[],colors:new Map()};
+    state.cards = state.cards.filter((card) => fields.includes(card.field));
+    const details = el('details',{class:'score-map-options'},
+      el('summary',{text:'Map metadata onto sample scores'}));
+    details.open = state.open;
+    details.addEventListener('toggle',() => { state.open = details.open; });
+    const body = el('div',{class:'score-map-body'});
+    const chooser = el('select',{'aria-label':stem+' metadata field to add'});
+    const add = el('button',{type:'button',class:'button secondary small',text:'Add field'});
+    const picker = el('div',{class:'score-map-picker'},
+      el('label',{},document.createTextNode('Saved metadata column'),chooser),add);
+    const cards = el('div',{class:'score-map-cards'});
+    const legend = el('details',{class:'score-map-groups'},el('summary',{text:'Legend groups'}));
+    const groupList = el('div',{class:'score-map-group-list'});
+    legend.append(groupList);
+    body.append(note('Combine categorical fields into one legend; one numeric field can use a shared Viridis scale. Missing values remain visible. Display only.'),picker,cards,legend);
+    details.append(body);
+    function refreshPicker() {
+      const available = fields.filter((field) => !state.cards.some((card) => card.field === field));
+      const previous = chooser.value;
+      chooser.replaceChildren(el('option',{value:'',text:'Select a column…'}),
+        ...available.map((field) => el('option',{value:field,text:field})));
+      if (available.includes(previous)) chooser.value = previous;
+      add.disabled = !chooser.value;
+    }
+    function refreshCards() {
+      cards.replaceChildren(...state.cards.map((card) => {
+        const row = el('div',{class:'score-map-card'});
+        row.append(el('strong',{text:card.field}));
+        if (numeric.has(card.field)) {
+          const mode = el('select',{'aria-label':'Display '+card.field+' as'},
+            el('option',{value:'continuous',text:'Viridis colour scale'}),
+            el('option',{value:'category',text:'Categorical combination'}));
+          mode.value = card.mode;
+          mode.addEventListener('change',() => {
+            if (mode.value === 'continuous')
+              for (const other of state.cards) if (other !== card) other.mode = 'category';
+            card.mode = mode.value;
+            refreshCards();
+            redraw();
+          });
+          row.append(mode);
+        } else row.append(el('span',{class:'note',text:'Categorical combination'}));
+        const remove = el('button',{type:'button',class:'button secondary small',
+          'aria-label':'Remove '+card.field,text:'Remove'});
+        remove.addEventListener('click',() => {
+          state.cards.splice(state.cards.indexOf(card),1);
+          refreshCards();
+          refreshPicker();
+          redraw();
+        });
+        row.append(remove);
+        return row;
+      }));
+    }
+    chooser.addEventListener('change',() => { add.disabled = !chooser.value; });
+    add.addEventListener('click',() => {
+      const field = chooser.value;
+      if (!field || state.cards.some((card) => card.field === field)) return;
+      state.cards.push({field,mode:numeric.has(field) && !state.cards.some((card) => card.mode === 'continuous') ?
+        'continuous' : 'category'});
+      refreshCards();
+      refreshPicker();
+      redraw();
+    });
+    function refreshGroups(groups,continuous) {
+      legend.hidden = !groups.length;
+      legend.querySelector('summary').textContent = `Legend groups (${groups.length}) · order`+
+        (continuous ? '' : ' and colours');
+      groupList.replaceChildren(...groups.map((group,index) => {
+        const row = el('div',{class:'score-map-group'+(continuous ? ' continuous' : '')});
+        const name = el('span',{class:'score-map-group-name',text:group.short,title:group.name});
+        const up = el('button',{type:'button',class:'button secondary small',
+          'aria-label':'Move '+group.name+' up',text:'↑'});
+        const down = el('button',{type:'button',class:'button secondary small',
+          'aria-label':'Move '+group.name+' down',text:'↓'});
+        up.disabled = index === 0;
+        down.disabled = index === groups.length-1;
+        for (const [button,offset] of [[up,-1],[down,1]]) button.addEventListener('click',() => {
+          [state.order[index],state.order[index+offset]] = [state.order[index+offset],state.order[index]];
+          redraw();
+        });
+        row.append(name,up,down);
+        if (!continuous) {
+          const color = el('input',{type:'color','aria-label':'Colour for '+group.name});
+          color.value = state.colors.get(group.key) || groupColor(group.name);
+          color.addEventListener('change',() => {
+            if (state.cards.length) state.colors.set(group.key,color.value);
+            else {
+              updateGroupColor(group.name,color.value);
+              const sidebar = [...$('group-color-choices').querySelectorAll('input[type="color"]')]
+                .find((picker) => picker.getAttribute('aria-label') === 'Colour for '+group.name);
+              if (sidebar) sidebar.value = color.value;
+            }
+            redraw();
+          });
+          row.append(color);
+        }
+        return row;
+      }));
+      if (continuous) groupList.append(note('Viridis controls marker colours. Change the numeric card to categorical to pick group colours.'));
+    }
+    refreshCards();
+    refreshPicker();
+    return {node:details,state,refreshGroups};
+  }
+  function scorePlotTraces(scores, bySample, state, x, y, z, view, fallback) {
+    const included = scores.filter((row) => bySample.has(row.sample) &&
+      [x,y,z].filter(Boolean).every((axis) => Number.isFinite(number(row[axis]))));
+    const continuous = state.cards.find((card) => card.mode === 'continuous')?.field;
+    const categories = state.cards.filter((card) => card.field !== continuous).map((card) => card.field);
+    const groups = new Map();
+    let minimum = Infinity, maximum = -Infinity;
+    for (const row of included) {
+      const source = bySample.get(row.sample);
+      const role = row.ordination_role || 'sample';
+      const values = categories.map((field) => {
+        const cell = source[field];
+        return cell === 'ND' || cell === 'NA' || cell === '' || cell === null || cell === undefined ?
+          'Not recorded' : label(cell);
+      });
+      const name = categories.length ?
+        (role === 'sample' ? '' : role === 'qc' ? 'QC · ' : 'blank · ') +
+          categories.map((field,i) => `${field}: ${values[i]}`).join(' · ') :
+        fallback(row);
+      const key = JSON.stringify([role,categories.length ? categories.map((field,i) => [field,values[i]]) : [name]]);
+      if (!groups.has(key)) groups.set(key,{key,name,role,values,rows:[]});
+      groups.get(key).rows.push(row);
+      if (continuous) {
+        const value = number(source[continuous]);
+        if (Number.isFinite(value)) {
+          minimum = Math.min(minimum,value);
+          maximum = Math.max(maximum,value);
+        }
+      }
+    }
+    const range = minimum === maximum ? [minimum-.5,maximum+.5] : [minimum,maximum];
+    const present = new Set(groups.keys());
+    state.order = state.order.filter((key) => present.has(key));
+    const ordered = new Set(state.order);
+    for (const key of present) if (!ordered.has(key)) state.order.push(key);
+    const sorted = state.order.map((key) => groups.get(key));
+    const compact = sorted.map((group) => {
+      if (!categories.length) return group.name;
+      if (group.role !== 'sample' && group.values.every((value) => value === 'Not recorded'))
+        return group.role === 'qc' ? 'QC' : 'blank';
+      const prefix = group.role === 'sample' ? '' : group.role === 'qc' ? 'QC · ' : 'blank · ';
+      const values = group.values.map((value) => value.length > 28 ?
+        value.slice(0,18)+'…'+value.slice(-8) : value);
+      const short = prefix + values.join(' · ');
+      return short.length > 54 ? short.slice(0,51)+'…' : short;
+    });
+    const counts = new Map();
+    for (const name of compact) counts.set(name,(counts.get(name) || 0)+1);
+    const used = new Set();
+    sorted.forEach((group,index) => {
+      let short = counts.get(compact[index]) === 1 ? compact[index] : group.name;
+      if (used.has(short)) short = group.name;
+      if (used.has(short)) short += ` (${index+1})`;
+      used.add(short);
+      group.short = short;
+    });
+    let showscale = true;
+    const traces = [];
+    for (const {key,name,short,role,rows:groupRows} of sorted) {
+      const parts = continuous ?
+        [groupRows.filter((row) => Number.isFinite(number(bySample.get(row.sample)[continuous]))),
+          groupRows.filter((row) => !Number.isFinite(number(bySample.get(row.sample)[continuous])))] :
+        [groupRows];
+      parts.forEach((part,index) => {
+        if (!part.length) return;
+        const missing = Boolean(continuous && index);
+        const title = missing ? `${short} · no value` : short;
+        const marker = continuous && !missing ?
+          {color:part.map((row) => number(bySample.get(row.sample)[continuous])),
+            colorscale:'Viridis',cmin:range[0],cmax:range[1],showscale,
+            colorbar:{title:{text:escapePlot(continuous)}}} :
+          {color:missing ? '#9daab0' : state.colors.get(key) || groupColor(name)};
+        if (continuous && !missing) showscale = false;
+        traces.push({type:view?'scatter3d':'scatter',mode:'markers',name:escapePlot(title),
+          x:part.map((row) => number(row[x])),
+          y:part.map((row,i) => y ? number(row[y]) : ((i % 9)-4)*.02),
+          ...(view ? {z:part.map((row) => number(row[z]))} : {}),
+          customdata:part.map((row) => {
+            const source = bySample.get(row.sample);
+            return [escapePlot(source.sample_id || row.sample),escapePlot(name),
+              continuous ? escapePlot(source[continuous] || 'Not recorded') : ''];
+          }),
+          hovertemplate:'Sample: %{customdata[0]}<br>Metadata: %{customdata[1]}' +
+            (continuous ? '<br>'+escapePlot(continuous)+': %{customdata[2]}' : '')+
+            '<br>'+x+': %{x:.3f}'+(y ? '<br>'+y+': %{y:.3f}' : '')+
+            (view ? '<br>'+z+': %{z:.3f}' : '')+'<extra></extra>',
+          marker:{size:view?5:9,...marker,
+            symbol:role === 'qc' ? 'diamond' : role === 'blank' ? 'x' : 'circle',opacity:.82},
+          legendgroup:title});
+      });
+    }
+    return {traces,continuous,included:included.length,groups:sorted};
+  }
+
   async function renderOrdination(ctx, target, token, stem, prefix) {
     const [scores,colorData] = await Promise.all([
       rows(ctx,stem + '_scores',true),
@@ -1061,13 +1417,21 @@
     if (!scores?.length) { message(target,'No saved ' + stem.toUpperCase() + ' scores for this run.'); return; }
     const axes = numericAxes(scores,prefix);
     if (!axes.length) { message(target,'No saved components found in ' + stem + '_scores.tsv.',true); return; }
+    const bySample = new Map(metadata.map((row) => [sampleKey(row),row]));
     const ui = el('div', {class:'controls'});
     const choices = axes.map((axis) => [axis,axis]);
     if (axes.length >= 3) ui.append(control('View',stem+'-axis-view',[['2D','2D'],['3D','3D']]));
     ui.append(control('X axis',stem+'-axis-x',choices,axes[0]));
     if (axes.length >= 2) ui.append(control('Y axis',stem+'-axis-y',choices,axes[1]));
     if (axes.length >= 3) ui.append(control('Z axis',stem+'-axis-z',choices,axes[2]));
-    const wrapper = card('Sample scores',ui,note('Saved scores only. Biological scores may not include QC / blank samples.'));
+    const includedRoles = ['qc','blank'].filter((role) => scores.some((row) => row.ordination_role === role));
+    const controls = includedRoles.map((role) => role === 'qc' ? 'QC' : 'blank').join(' and ');
+    const mapping = scoreMapControls(ctx,stem,scores,bySample,() => redraw().catch((error) => {
+      if (viewValid(ctx,stem,token)) message(plot,error.message,true);
+    }));
+    const wrapper = card('Sample scores',ui,mapping.node,note(includedRoles.length ?
+      `${controls} injections participate in the fitted axes; inferential analyses remain biological-only. Diamonds are QC; crosses are blanks.` :
+      'Saved biological sample scores. Enable QC / blanks separately for PCA or PCoA in the recipe.'));
     const plot = plotNode(wrapper,true);
     const loading = stem === 'pca' && available(ctx,'pca_loadings') ? card('Feature loadings',note('These points represent features, not samples. Click a point to inspect the feature.')) : null;
     const loadingPlot = loading ? plotNode(loading) : null;
@@ -1108,22 +1472,17 @@
         if (loadingPlot) message(loadingPlot,'Choose distinct saved components for each axis.',true);
         return;
       }
-      const selected = new Map(metadata.map((row) => [sampleKey(row),row]));
-      const included = scores.filter((row) => selected.has(row.sample) && [x,y,z].filter(Boolean).every((axis) => Number.isFinite(number(row[axis]))));
-      if (!included.length) { message(plot,'No finite saved scores for the chosen components.'); return; }
-      const names = [...new Set(included.map((row) => groupName(selected.get(row.sample))))].sort();
-      const traces = names.map((name,i) => {
-        const data = included.filter((row) => groupName(selected.get(row.sample)) === name);
-        return {type:view?'scatter3d':'scatter',mode:'markers',name:escapePlot(name),x:data.map((row) => number(row[x])),
-          y:data.map((row,j) => y ? number(row[y]) : ((j % 9)-4)*.02),
-          ...(view ? {z:data.map((row) => number(row[z]))} : {}),
-          customdata:data.map((row) => escapePlot(selected.get(row.sample).sample_id || '(sample identifier unavailable)')),
-          hovertemplate:'Sample: %{customdata}<br>' + x + ': %{x:.3f}' + (y ? '<br>' + y + ': %{y:.3f}' : '') + (view ? '<br>' + z + ': %{z:.3f}' : '') + '<extra></extra>',
-          marker:{size:view?5:9,color:groupColor(name),opacity:.82},legendgroup:name};
-      });
+      const mapped = scorePlotTraces(scores,bySample,mapping.state,x,y,z,view,
+        (row) => row.ordination_group ? label(row.ordination_group) : groupName(bySample.get(row.sample)));
+      if (!mapped.included) { message(plot,'No finite saved scores for the chosen components.'); return; }
+      mapping.refreshGroups(mapped.groups,mapped.continuous);
       plot.replaceChildren();
-      plot.dataset.sampleGroups = 'true';
-      plotting(ctx,plot,traces,view ? {scene:{xaxis:{title:x},yaxis:{title:y},zaxis:{title:z}}} : {xaxis:{title:x},yaxis:{title:y || '1D jitter (display only)'},hovermode:'closest'});
+      if (mapped.continuous) plot.removeAttribute('data-sample-groups');
+      else plot.dataset.sampleGroups = 'true';
+      plotting(ctx,plot,mapped.traces,view ?
+        {scene:{xaxis:{title:x},yaxis:{title:y},zaxis:{title:z}},...(mapped.continuous ? {margin:{r:120}} : {})} :
+        {xaxis:{title:x},yaxis:{title:y || '1D jitter (display only)'},hovermode:'closest',
+          ...(mapped.continuous ? {margin:{r:120}} : {})});
       if (!loadingPlot) return;
       try {
         const [loadings,hoverIndex] = await Promise.all([rows(ctx,'pca_loadings'),featureHoverIndex(ctx)]);
@@ -1171,7 +1530,9 @@
     const statusRows = await rows(ctx,'plsda_status',true);
     if (!viewValid(ctx,'plsda',token)) return;
     if (!statusRows?.length) {
-      message(target,'No PLS-DA analysis was saved for this run. Select a completed supervised run.');
+      message(target,ctx.run.kind === 'study' ?
+        'This is the shared study. Choose a sealed comparison above to view its saved PLS-DA.' :
+        'No PLS-DA analysis was saved for this run. Select a completed supervised run.');
       return;
     }
     if (statusRows[0].status !== 'validated') {
@@ -1191,6 +1552,7 @@
           .every((key) => Number.isFinite(number(summary[key])))) {
       throw new Error('Saved PLS-DA validation outputs are incomplete.');
     }
+    const bySample = new Map(metadata.map((row) => [sampleKey(row),row]));
     const validation = card('Held-out validation',
       metrics([['Balanced accuracy',summary.balanced_accuracy],['Accuracy',summary.accuracy],
         ['Permutation p-value',summary.permutation_p_value],
@@ -1205,7 +1567,8 @@
     ui.append(control('X axis','plsda-axis-x',choices,axes[0]));
     if (axes.length >= 2) ui.append(control('Y axis','plsda-axis-y',choices,axes[1]));
     if (axes.length >= 3) ui.append(control('Z axis','plsda-axis-z',choices,axes[2]));
-    const scoreCard = card('Full-fit sample scores',ui,
+    const mapping = scoreMapControls(ctx,'plsda',scores,bySample,redraw);
+    const scoreCard = card('Full-fit sample scores',ui,mapping.node,
       note('Illustration of the fitted model only; these points are not held-out predictions.'));
     const scorePlot = plotNode(scoreCard,true);
     const loadingCard = card('Full-fit feature loadings',
@@ -1276,27 +1639,17 @@
         if (loadingPlot) message(loadingPlot,'Choose distinct saved components for each axis.',true);
         return;
       }
-      const included = scores.filter((row) => [x,y,z].filter(Boolean)
-        .every((component) => Number.isFinite(number(row[component]))));
-      if (!included.length) { message(scorePlot,'No finite saved scores for the chosen components.'); return; }
-      const names = [...new Set(included.map((row) => label(row[ctx.run.design_group])))].sort();
-      const sampleIds = new Map(metadata.map((row) => [sampleKey(row),row.sample_id || row.filename]));
-      const traces = names.map((name,i) => {
-        const data = included.filter((row) => label(row[ctx.run.design_group]) === name);
-        return {type:view?'scatter3d':'scatter',mode:'markers',name:escapePlot(name),
-          x:data.map((row) => number(row[x])),
-          y:data.map((row,j) => y ? number(row[y]) : ((j % 9)-4)*.02),
-          ...(view ? {z:data.map((row) => number(row[z]))} : {}),
-          customdata:data.map((row) => escapePlot(sampleIds.get(row.sample) || row.sample)),
-          hovertemplate:'Sample: %{customdata}<br>'+x+': %{x:.3f}'+
-            (y ? '<br>'+y+': %{y:.3f}' : '')+(view ? '<br>'+z+': %{z:.3f}' : '')+'<extra></extra>',
-          marker:{size:view?5:9,color:groupColor(name),opacity:.82},legendgroup:name};
-      });
+      const mapped = scorePlotTraces(scores,bySample,mapping.state,x,y,z,view,
+        (row) => label(row[ctx.run.design_group]));
+      if (!mapped.included) { message(scorePlot,'No finite saved scores for the chosen components.'); return; }
+      mapping.refreshGroups(mapped.groups,mapped.continuous);
       scorePlot.replaceChildren();
-      scorePlot.dataset.sampleGroups = 'true';
-      plotting(ctx,scorePlot,traces,view ?
-        {scene:{xaxis:{title:x},yaxis:{title:y},zaxis:{title:z}}} :
-        {xaxis:{title:x},yaxis:{title:y || '1D jitter (display only)'},hovermode:'closest'});
+      if (mapped.continuous) scorePlot.removeAttribute('data-sample-groups');
+      else scorePlot.dataset.sampleGroups = 'true';
+      plotting(ctx,scorePlot,mapped.traces,view ?
+        {scene:{xaxis:{title:x},yaxis:{title:y},zaxis:{title:z}},...(mapped.continuous ? {margin:{r:120}} : {})} :
+        {xaxis:{title:x},yaxis:{title:y || '1D jitter (display only)'},hovermode:'closest',
+          ...(mapped.continuous ? {margin:{r:120}} : {})});
       if (!loadingPlot) return;
       const matching = loadings.filter((row) => row.feature_id && [x,y,z].filter(Boolean)
         .every((component) => Number.isFinite(number(row[component]))));
@@ -1343,7 +1696,12 @@
       rows(ctx,'differential',true),featureHoverIndex(ctx),featureColorData(ctx)
     ]);
     if (!viewValid(ctx,'volcano',token)) return;
-    if (!data?.length) { message(target,'No saved differential tests for this run.'); return; }
+    if (!data?.length) {
+      message(target,ctx.run.kind === 'study' ?
+        'This is the shared study. Choose a sealed comparison above to view its saved volcano tests.' :
+        'No saved differential tests for this run.');
+      return;
+    }
     const comparisons = new Map();
     for (const row of data) {
       if (!row.contrast || !row.numerator || !row.denominator || row.numerator === row.denominator) continue;
@@ -1353,7 +1711,9 @@
     }
     if (!comparisons.size) { message(target,'No named group comparisons found in differential.tsv.',true); return; }
     const all = [...comparisons.values()];
-    const groups = [...new Set([...metadata.map((row) => row[ctx.run.design_group]),
+    const groups = [...new Set([...metadata
+      .filter((row) => !ctx.comparisonSamples || ctx.comparisonSamples.has(sampleKey(row)))
+      .map((row) => row[ctx.run.design_group]),
       ...all.flatMap((item) => [item.numerator,item.denominator])].filter((name) => name && name !== 'NA'))].sort();
     const validGroups = new Set(groups);
     let left = all[0].denominator, right = all[0].numerator, selectedGroup = '';
@@ -1514,72 +1874,201 @@
       if (viewValid(ctx,activeTab,token) && version === drawerVersion) message(content,error.message || text(error),true);
     });
   }
-  function selectedFilterRows(features) {
-    const source = $('candidate-source').value;
-    const agreement = $('candidate-consensus')?.value || '';
-    const npc = ['npc_pathway','npc_superclass','npc_class'].map((field) => $(field).value);
-    const taxon = $('taxon-filter').value.trim().toLocaleLowerCase();
-    const query = $('candidate-search').value.trim().toLocaleLowerCase();
-    return features.filter(({id, records, agreements}) =>
-      (!agreement || agreements.has(agreement)) &&
-      (!source || records.some((row) => row.source === source)) &&
-      npc.every((value,i) => !value || records.some((row) => row[['npc_pathway','npc_superclass','npc_class'][i]] === value)) &&
-      (!taxon || records.some((row) => row.source === 'met_annot_enhancer' &&
-        text(row.organism).toLocaleLowerCase().includes(taxon))) &&
+  function registerFeatureFields(groups,definitions,source,title,records,fields) {
+    if (!records?.length) return;
+    const available = fields.map((field) => {
+      let found = false, numeric = true;
+      for (const row of records) {
+        const value = row[field];
+        if (value === '' || value === 'NA' || value === null || value === undefined) continue;
+        found = true;
+        if (!Number.isFinite(number(value))) numeric = false;
+      }
+      const definition = {source,field,numeric:found && numeric,key:source+':'+field,
+        label:title.split(' · ')[0]+' · '+field};
+      definitions.set(definition.key,definition);
+      return definition;
+    });
+    if (available.length) groups.push({title,fields:available});
+  }
+  function appliedFeatureFilters(filters,definitions) {
+    const active = new Map();
+    let pending = 0;
+    for (const rule of filters) {
+      const field = definitions.get(rule.key), value = text(rule.value).trim();
+      if (!field || !value || (field.numeric && !Number.isFinite(Number(value)))) { pending++; continue; }
+      if (!active.has(field.source)) active.set(field.source,[]);
+      active.get(field.source).push({field:field.field,operator:rule.operator,
+        value:field.numeric ? Number(value) : value.toLocaleLowerCase(),numeric:field.numeric});
+    }
+    return {active,pending};
+  }
+  function matchesFeatureRule(row,rule) {
+    const raw = row[rule.field];
+    if (raw === '' || raw === 'NA' || raw === null || raw === undefined) return false;
+    if (rule.numeric) {
+      const value = number(raw);
+      if (!Number.isFinite(value)) return false;
+      switch (rule.operator) {
+        case '>': return value > rule.value;
+        case '>=': return value >= rule.value;
+        case '<': return value < rule.value;
+        case '<=': return value <= rule.value;
+        case '=': return value === rule.value;
+        case '!=': return value !== rule.value;
+        default: return false;
+      }
+    }
+    const value = text(raw).toLocaleLowerCase();
+    return rule.operator === 'contains' ? value.includes(rule.value) :
+      rule.operator === '=' ? value === rule.value : rule.operator === '!=' && value !== rule.value;
+  }
+  function matchesFeatureFilters(active,sourceRows) {
+    for (const [source,rules] of active) {
+      if (!sourceRows(source)?.some((row) => rules.every((rule) => matchesFeatureRule(row,rule)))) return false;
+    }
+    return true;
+  }
+  function renderFeatureFilterRows(container,groups,definitions,filters,update) {
+    container.replaceChildren(...filters.map((rule,index) => {
+      const definition = definitions.get(rule.key);
+      if (!definition) return null;
+      const fieldSelect = el('select',{'aria-label':'Filter field '+(index+1)});
+      for (const group of groups) fieldSelect.append(el('optgroup',{label:group.title},
+        ...group.fields.map((item) => el('option',{value:item.key,text:item.label}))));
+      fieldSelect.value = rule.key;
+      const operators = definition.numeric ?
+        [['>','>'],['>=','≥'],['<','<'],['<=','≤'],['=','='],['!=','≠']] :
+        [['contains','contains'],['=','is'],['!=','is not']];
+      const comparison = el('select',{'aria-label':'Filter operator '+(index+1)},
+        ...operators.map(([value,name]) => el('option',{value,text:name})));
+      comparison.value = rule.operator;
+      const value = el('input',{type:definition.numeric ? 'number' : 'search',
+        step:'any',value:rule.value,placeholder:definition.numeric ? 'Enter number' : 'Enter text',
+        'aria-label':'Filter value '+(index+1)});
+      fieldSelect.addEventListener('change',() => {
+        rule.key = fieldSelect.value;
+        rule.operator = definitions.get(rule.key).numeric ? '>' : 'contains';
+        rule.value = '';
+        renderFeatureFilterRows(container,groups,definitions,filters,update);
+        update();
+      });
+      comparison.addEventListener('change',() => { rule.operator = comparison.value; update(); });
+      value.addEventListener('input',() => { rule.value = value.value; update(); });
+      const remove = el('button',{type:'button',class:'button secondary small',
+        'aria-label':'Remove filter '+(index+1),text:'Remove',onClick:() => {
+          filters.splice(index,1);
+          renderFeatureFilterRows(container,groups,definitions,filters,update);
+          update();
+        }});
+      return el('div',{class:'class-filter-row'},
+        el('label',{},el('span',{text:'Field '+(index+1)}),fieldSelect),
+        el('label',{},el('span',{text:'Operator'}),comparison),
+        el('label',{},el('span',{text:'Value'}),value),remove);
+    }));
+  }
+  function selectedFilterRows(features,active,query) {
+    return features.filter(({id,bySource}) =>
+      matchesFeatureFilters(active,(source) => bySource.get(source)) &&
       (!query || id.toLocaleLowerCase().includes(query) ||
-        records.some((row) => Object.values(row).some((value) => text(value).toLocaleLowerCase().includes(query)))));
+        [...bySource.values()].some((records) => records.some((row) =>
+          Object.values(row).some((value) => text(value).toLocaleLowerCase().includes(query))))));
   }
   async function renderFeatures(ctx,target,token,drawer = false,version = 0) {
-    const [candidates, consensus, variables, raw, hoverIndex] = await Promise.all([
+    const [candidates, consensus, variables, inputVariables, raw, hoverIndex] = await Promise.all([
       rows(ctx,'annotation_candidates',true),rows(ctx,'annotation_horizontal',true),
-      rows(ctx,'variable_metadata',true),rows(ctx,'matrix_raw',true),featureHoverIndex(ctx)]);
+      rows(ctx,'variable_metadata',true),rows(ctx,'variable_metadata_input',true),
+      rows(ctx,'matrix_raw',true),featureHoverIndex(ctx)]);
     const hostTab = drawer ? activeTab : 'features';
     if (!viewValid(ctx,hostTab,token) ||
         (drawer && !detachedMode && (version !== drawerVersion || !$('feature-drawer').open))) return;
     const ids = new Set([...(candidates ?? []).map((row) => row.feature_id),
       ...(consensus ?? []).map((row) => row.feature_id),
-      ...(variables ?? []).map((row) => row.feature_id),
+      ...(inputVariables ?? variables ?? []).map((row) => row.feature_id),
       ...Object.keys(raw?.[0] ?? {}).filter((key) => key !== 'sample')].filter(Boolean));
     const focus = el('div');
-    let features, picker, chooser, browse, filterControls, taxonInput, search, results;
+    let features, picker, chooser, browse, search, results, filterFeedback, filterRows, filterFields, filterState,
+      mode, depictions, compoundDetails;
     if (!drawer) {
       const byFeature = new Map();
       function feature(id) {
-        if (!byFeature.has(id)) byFeature.set(id,{id,records:[],agreements:new Set(),agreeingSources:new Set()});
+        if (!byFeature.has(id)) byFeature.set(id,{id,records:[],agreements:new Set(),
+          agreeingSources:new Set(),bySource:new Map()});
         return byFeature.get(id);
       }
-      for (const row of candidates ?? []) if (row.feature_id) feature(row.feature_id).records.push(row);
+      function attach(row,source) {
+        if (!row.feature_id) return;
+        const sources = feature(row.feature_id).bySource;
+        if (!sources.has(source)) sources.set(source,[]);
+        sources.get(source).push(row);
+      }
+      for (const row of candidates ?? []) if (row.feature_id) {
+        feature(row.feature_id).records.push(row);
+        attach(row,'candidate');
+        if (row.source) attach(row,row.source);
+      }
       for (const row of consensus ?? []) if (row.feature_id) {
         const item = feature(row.feature_id);
         if (row.sources_number_IK2D !== '') item.agreements.add(row.sources_number_IK2D);
         if (row.sources_IK2D) item.agreeingSources.add(row.sources_IK2D);
+        attach(row,'horizontal');
       }
+      for (const row of inputVariables ?? variables ?? []) attach(row,'mzmine');
+      for (const row of variables ?? []) attach(row,'retained');
+      for (const id of ids) feature(id);
       features = [...byFeature.values()].sort((a,b) => a.id.localeCompare(b.id,undefined,{numeric:true}));
       picker = el('input', {type:'search', id:'feature-id', list:'feature-ids', placeholder:'e.g. 467', value:selectedFeature});
       const options = el('datalist',{id:'feature-ids'},...[...ids].map((id) => el('option',{value:id})));
       chooser = card('Inspect a feature', el('label',{for:'feature-id',text:'Feature ID'}),picker,options,
         note('Enter a saved feature ID or select one from the feature table / plots.'));
       browse = card('Search saved features');
-      filterControls = el('div',{class:'controls'});
-      const sources = [...new Set((candidates ?? []).map((row) => row.source).filter(Boolean))].sort();
-      filterControls.append(control('Candidate record source (not structure agreement)','candidate-source',
-        [['','All record sources'],...sources.map((v) => [v,v])]));
-      if (consensus) filterControls.append(control('Saved InChIKey2D agreement','candidate-consensus',
-        [['','All'],...['0','1','2','3'].map((v) => [v,v+' agreeing source'+(v === '1' ? '' : 's')])]));
-      else filterControls.append(note('No saved InChIKey2D consensus table in this run.'));
-      for (const field of ['npc_pathway','npc_superclass','npc_class']) {
-        const values = [...new Set((candidates ?? []).map((row) => row[field]).filter(Boolean))].sort();
-        filterControls.append(control(field.replace('_',' ').toUpperCase(),field,[['','All'],...values.map((v) => [v,v])]));
+      const filterGroups = [], definitions = new Map();
+      if (candidates?.length) {
+        registerFeatureFields(filterGroups,definitions,'candidate','Candidate · any source',candidates,['source']);
+        for (const source of [...new Set(candidates.map((row) => row.source).filter(Boolean))].sort())
+          registerFeatureFields(filterGroups,definitions,source,
+            source === 'met_annot_enhancer' ? 'met-annot-enhancer · candidate rows' : source.toUpperCase()+' · candidate rows',
+            candidates.filter((row) => row.source === source),
+            Object.keys(candidates[0]).filter((field) => field !== 'feature_id' && field !== 'source'));
       }
-      taxonInput = el('input',{type:'search',id:'taxon-filter',placeholder:'Case-insensitive taxon name'});
-      filterControls.append(el('div',{},el('label',{for:'taxon-filter',text:'Reported taxon contains'}),taxonInput));
-      search = el('input',{type:'search',id:'candidate-search',placeholder:'ID, source key, label, NPC, taxon…'});
+      if (consensus?.length) registerFeatureFields(filterGroups,definitions,'horizontal',
+        'Horizontal · saved annotations',consensus,Object.keys(consensus[0]).filter((field) => field && field !== 'feature_id'));
+      const measured = inputVariables ?? variables;
+      if (measured?.length) registerFeatureFields(filterGroups,definitions,'mzmine',
+        'MZmine · input features',measured,Object.keys(measured[0]).filter((field) => field && field !== 'feature_id'));
+      if (variables?.length && measured !== variables) registerFeatureFields(filterGroups,definitions,'retained',
+        'Retained · processed features',variables,Object.keys(variables[0]).filter((field) => field && field !== 'feature_id'));
+      filterFields = definitions;
+      filterState = ctx.featureBrowseFilters ??= [];
+      filterState.splice(0,filterState.length,...filterState.filter((rule) => filterFields.has(rule.key)));
+      const defaultFilter = filterFields.has('horizontal:sources_number_IK2D') ?
+        'horizontal:sources_number_IK2D' : filterGroups[0]?.fields[0]?.key;
+      filterRows = el('div',{class:'class-filter-rows'});
+      filterFeedback = el('p',{class:'note','aria-live':'polite'});
+      const addFilter = el('button',{type:'button',class:'button secondary small',text:'Add feature filter',
+        onClick:() => {
+          filterState.push({key:defaultFilter,operator:filterFields.get(defaultFilter).numeric ? '>' : 'contains',value:''});
+          renderFeatureFilterRows(filterRows,filterGroups,filterFields,filterState,browseRows);
+          browseRows();
+        }});
+      addFilter.disabled = !defaultFilter;
+      search = el('input',{type:'search',id:'candidate-search',placeholder:'ID, source, NPC, taxon, score…'});
+      mode = control('Browse by','feature-browse-view',
+        [['features','Individual features'],['compounds','Reported compounds · saved 2D key']],
+        ctx.featureBrowseMode ?? 'features');
+      depictions = el('input',{type:'checkbox',id:'feature-table-depictions'});
       results = el('div');
-      browse.append(filterControls,
-        note('Record source matches an annotation candidate row: SIRIUS, CANOPUS class predictions, or met_annot_enhancer (ISDB/MS1 evidence). GNPS can contribute to saved 2D-key agreement without a candidate row here. Selecting a record source does not recalculate or narrow the saved consensus count.'),
-        el('label',{for:'candidate-search',text:'Search all saved candidate fields'}),search,
-        note('Each feature appears once. Saved InChIKey2D agreement and agreeing names come only from annotation_horizontal.tsv (GNPS, ISDB, SIRIUS). CANOPUS reports classes, not structure consensus; its source-specific record remains available when inspecting a feature.'),results);
-      target.replaceChildren(chooser,focus,browse);
+      compoundDetails = el('div',{id:'compound-details'});
+      browse.append(el('div',{class:'controls'},mode,
+          el('label',{for:'feature-table-depictions'},depictions,
+            document.createTextNode(' Show structure thumbnails (external service)'))),
+        el('fieldset',{class:'class-filter-set'},
+          el('legend',{text:'Feature filters · match all'}),filterRows,addFilter,filterFeedback),
+        note('Choose any saved candidate, horizontal annotation or MZmine feature field. Numeric fields support >, ≥, <, ≤, = and ≠. Conditions on one source must match the same saved row; conditions across sources match the same feature. Saved agreement and taxonomic scores are not recomputed.'),
+        el('label',{for:'candidate-search',text:'Search saved feature and annotation fields'}),search,
+        note('Filters select features first. Compound view groups their reported 2D keys; a feature with several keys appears under each one. A 2D key does not establish identical stereochemistry or confirm identification. Features without keys remain available in Individual features. Turning on thumbnails sends displayed saved SMILES and your network address to the Natural Products API; it is off by default.'),results);
+      target.replaceChildren(chooser,focus,browse,compoundDetails);
+      renderFeatureFilterRows(filterRows,filterGroups,filterFields,filterState,browseRows);
     } else target.replaceChildren(focus);
     async function focusFeature() {
       focus.replaceChildren();
@@ -1656,16 +2145,27 @@
         if (new Set(records.map((row) => row.smiles)).size > 1)
           structure.append(note('One representative SMILES is depicted; saved source SMILES differ.'));
         const details = el('details',{},el('summary',{text:'Saved source SMILES and evidence'}));
-        for (const record of records) {
-          const score = recordedText(record.score), taxon = recordedText(record.taxon);
+        for (const matching of distinctStructureRecords(records)) {
+          const record = matching[0];
+          const provenances = [...new Set(matching.map((row) => row.provenance))];
+          const labels = [...new Set(matching.filter((row) => row.origin === 'candidate')
+            .map((row) => recordedText(row.label)).filter(Boolean))];
+          const evidence = new Map();
+          for (const row of matching) {
+            const score = recordedText(row.score), taxon = recordedText(row.taxon);
+            if (!score && !taxon) continue;
+            const facts = [score ? 'Saved taxonomic score: '+score : '',
+              taxon ? 'Reported taxon: '+taxon : ''].filter(Boolean).join(' · ');
+            if (!evidence.has(facts)) evidence.set(facts,(row.origin === 'horizontal' ?
+              'Horizontal summary' : 'Candidate record')+' · '+facts);
+          }
           details.append(el('div',{class:'structure-record'},
-            el('span',{class:'structure-record-label',text:record.provenance+
-              (record.label && record.label !== 'Saved horizontal structure' ? ' · '+record.label : '')+
+            el('span',{class:'structure-record-label',text:provenances.join(' / ')+
+              (labels.length ? ' · '+labels.join(' / ') : '')+
               (record.ik2d ? ' · 2D key '+record.ik2d : ' · 2D key not recorded')}),
             el('code',{text:record.smiles}),
-            score || taxon ? el('span',{class:'structure-record-evidence',text:
-              [score ? 'Saved taxonomic score: '+score : '',taxon ? 'Reported taxon: '+taxon : '']
-                .filter(Boolean).join(' · ')}) : null));
+            ...[...evidence.entries()].map(([facts,origin]) =>
+              el('span',{class:'structure-record-evidence',text:matching.length > 1 ? origin : facts}))));
         }
         structure.append(details);
         gallery.append(structure);
@@ -1696,7 +2196,8 @@
         evidence.append(selected,details);
         updateEvidence();
       }
-      const vm = (variables ?? []).find((row) => row.feature_id === id);
+      const vm = (variables ?? []).find((row) => row.feature_id === id) ||
+        (inputVariables ?? []).find((row) => row.feature_id === id);
       if (vm) evidence.append(el('h4',{text:'Measured feature metadata'}),
         table(['Saved field','Value'],Object.entries(vm).filter(([key,value]) => key && value).map(([key,value]) => [key,value]),null,'feature-metadata.tsv'));
       const split = el('div',{class:'split'},annotation,plotCard);
@@ -1724,7 +2225,13 @@
           message(box,'No finite intensities match the controls in this plot.');
           return;
         }
-        const names = [...new Set(values.map((row) => groupName(selected.get(row.sample),groupField)))].sort();
+        const groupOrder = ctx.classView?.field === groupField ?
+          [ctx.classView.first,ctx.classView.second] : [];
+        const names = [...new Set(values.map((row) => groupName(selected.get(row.sample),groupField)))].sort((a,b) => {
+          const aIndex = groupOrder.indexOf(a), bIndex = groupOrder.indexOf(b);
+          return (aIndex < 0 ? groupOrder.length : aIndex) -
+            (bIndex < 0 ? groupOrder.length : bIndex) || a.localeCompare(b);
+        });
         const facetNames = facetField ?
           [...new Set(values.map((row) => groupName(selected.get(row.sample),facetField)))].sort() : [''];
         const faceted = facetNames.length > 1;
@@ -1808,36 +2315,114 @@
       });
       await drawBox();
     }
+    function chooseFeature(id) {
+      selectedFeature = id; picker.value = id; featureCandidate = 0;
+      publishFeatureSelection();
+      focusFeature().catch((error) => { if (valid(ctx)) message(focus,error.message,true); });
+      chooser.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    function thumbnail(cell,row,index) {
+      if (index !== 1) return false;
+      const smiles = usableSmiles(row[index]);
+      if (!smiles) { cell.textContent = 'No keyed SMILES'; return true; }
+      const image = el('img',{class:'table-structure-thumb',loading:'lazy',referrerpolicy:'no-referrer',
+        src:depictionUrl(smiles,160,110),alt:'Representative saved 2D structure; identity not confirmed'});
+      image.addEventListener('error',() => { cell.textContent = 'Depiction unavailable'; });
+      cell.append(image);
+      return true;
+    }
     function browseRows() {
-      const filtered = selectedFilterRows(features);
+      const {active,pending} = appliedFeatureFilters(filterState,filterFields);
+      filterFeedback.textContent = pending ?
+        pending+' incomplete filter'+(pending === 1 ? '' : 's')+' not applied; enter a value for each.' :
+        active.size ? 'All entered filters match the same feature; conditions on one source match one saved row.' :
+          'Add filters to combine saved feature and annotation metadata.';
+      const filtered = selectedFilterRows(features,active,search.value.trim().toLocaleLowerCase());
       const joined = (records,field) => [...new Set(records.map((row) => row[field]).filter((value) => value && value !== 'NA'))].join(' · ');
-      const t = table(['Feature ID','Saved InChIKey2D agreement','Saved agreeing structure sources','Source record keys','Candidate labels','NPC classes','Reported taxa'],
-        filtered.map(({id,records,agreements,agreeingSources}) => [id,[...agreements].sort().join(' · '),
-          [...agreeingSources].join(' · '),joined(records,'candidate_id'),joined(records,'label'),
-          joined(records,'npc_class'),joined(records,'organism')]),(id) => {
-          selectedFeature = id; picker.value = id; featureCandidate = 0;
-          publishFeatureSelection();
-          focusFeature().catch((error) => { if (valid(ctx)) message(focus,error.message,true); });
-          chooser.scrollIntoView({behavior:'smooth',block:'start'});
-        },'feature-browse.tsv');
-      results.replaceChildren(note(filtered.length+' features match the feature search and selectors.'),t);
+      const showImages = depictions.checked;
+      const byFeature = mode.querySelector('select').value === 'compounds' || showImages ?
+        (ctx.featureCompoundIndex ??= featureCompoundIndex(candidates ?? [],consensus ?? [])) : null;
+      const imageColumn = showImages ? ['Structure (representative SMILES)'] : [];
+      const imageOptions = showImages ? {renderCell:thumbnail} : {};
+      if (mode.querySelector('select').value === 'compounds') {
+        const compounds = new Map();
+        let withoutKeys = 0, multipleKeys = 0;
+        for (const item of filtered) {
+          const reported = byFeature.get(item.id);
+          if (!reported?.size) { withoutKeys++; continue; }
+          if (reported.size > 1) multipleKeys++;
+          for (const [key,evidence] of reported) {
+            if (!compounds.has(key)) compounds.set(key,{key,members:[],sources:new Set(),names:new Set(),
+              taxa:new Set(),smiles:[]});
+            const compound = compounds.get(key);
+            compound.members.push({item,evidence});
+            for (const [field,values] of [['sources',evidence.sources],['names',evidence.names],['taxa',evidence.taxa]])
+              for (const value of values) compound[field].add(value);
+            for (const smiles of evidence.smiles) if (!compound.smiles.includes(smiles)) compound.smiles.push(smiles);
+          }
+        }
+        const list = [...compounds.values()].sort((a,b) =>
+          b.members.length-a.members.length || a.key.localeCompare(b.key));
+        const summary = note(filtered.length+' filtered features report '+list.length+' distinct 2D keys; '+
+          withoutKeys+' features have no saved key; '+multipleKeys+
+          ' features report multiple keys and appear in each applicable group.');
+        const headers = ['InChIKey2D',...imageColumn,'Measured features','Reporting sources','Candidate labels','Reported taxa'];
+        const data = list.map((entry) => [entry.key,...(showImages ? [entry.smiles[0] ?? ''] : []),
+          entry.members.length,[...entry.sources].sort().join(' · '),
+          [...entry.names].sort().join(' · '),[...entry.taxa].sort().join(' · ')]);
+        const view = table(headers,data,(key) => {
+          ctx.selectedCompoundKey = key;
+          showCompound(compounds.get(key));
+          compoundDetails.scrollIntoView({behavior:'smooth',block:'start'});
+        },'reported-2d-keys.tsv',imageOptions);
+        results.replaceChildren(summary,view);
+        showCompound(compounds.get(ctx.selectedCompoundKey));
+      } else {
+        const headers = ['Feature ID',...imageColumn,'Saved InChIKey2D agreement','Saved agreeing structure sources',
+          'Source record keys','Candidate labels','NPC classes','Reported taxa'];
+        const data = filtered.map(({id,records,agreements,agreeingSources}) =>
+          [id,...(showImages ?
+              [[...(byFeature.get(id)?.values() ?? [])].flatMap((entry) => entry.smiles)[0] ?? ''] : []),
+            [...agreements].sort().join(' · '),[...agreeingSources].join(' · '),
+            joined(records,'candidate_id'),joined(records,'label'),joined(records,'npc_class'),
+            joined(records,'organism')]);
+        results.replaceChildren(note(filtered.length+' features match the feature search and filters.'),
+          table(headers,data,chooseFeature,'feature-browse.tsv',imageOptions));
+        compoundDetails.replaceChildren();
+      }
+    }
+    function showCompound(compound) {
+      if (!compound) { compoundDetails.replaceChildren(); return; }
+      const data = compound.members.map(({item,evidence}) => [
+        item.id,[...evidence.sources].sort().join(' · '),
+        joinedCandidateKeys(item.records,compound.key),
+        [...evidence.names].sort().join(' · '),[...evidence.taxa].sort().join(' · '),
+        [...(ctx.featureCompoundIndex.get(item.id)?.keys() ?? [])].filter((key) => key !== compound.key).join(' · ')
+      ]);
+      compoundDetails.replaceChildren(card('Reported 2D key '+compound.key,
+        note('One row per measured feature. Matching 2D keys do not prove identical stereochemistry or confirmed identity; click a feature to inspect its saved source records and intensities.'),
+        table(['Feature ID','Reporting sources','Candidate record keys','Candidate labels',
+          'Reported taxa','Other 2D keys for this feature'],data,chooseFeature,'reported-key-'+compound.key+'.tsv')));
+    }
+    function joinedCandidateKeys(records,key) {
+      return [...new Set(records.filter((row) =>
+        structureSource(row.source,row.library) && structureKey(row.inchikey) === key)
+        .map((row) => recordedText(row.candidate_id)).filter(Boolean))].join(' · ');
     }
     if (!drawer) {
-      picker.addEventListener('change',() => {
-        selectedFeature = picker.value.trim(); featureCandidate = 0;
-        publishFeatureSelection();
-        focusFeature().catch((error) => { if (valid(ctx)) message(focus,error.message,true); });
-      });
+      picker.addEventListener('change',() => chooseFeature(picker.value.trim()));
       search.addEventListener('input',browseRows);
-      taxonInput.addEventListener('input',browseRows);
-      filterControls.addEventListener('change',browseRows);
+      mode.addEventListener('change',() => { ctx.featureBrowseMode = mode.querySelector('select').value; browseRows(); });
+      depictions.addEventListener('change',browseRows);
       browseRows();
     }
     await focusFeature();
   }
 
   async function renderClasses(ctx,target,token) {
-    const [candidates,raw] = await Promise.all([rows(ctx,'annotation_candidates',true),rows(ctx,'matrix_raw',true)]);
+    const [candidates,raw,variables,horizontal] = await Promise.all([
+      rows(ctx,'annotation_candidates',true),rows(ctx,'matrix_raw',true),
+      rows(ctx,'variable_metadata_input',true),rows(ctx,'annotation_horizontal',true)]);
     if (!viewValid(ctx,'classes',token)) return;
     if (!candidates?.length || !raw?.length) {
       message(target,'This sealed run has no saved CANOPUS candidates or raw intensity matrix for chemical-class exploration.');
@@ -1865,6 +2450,36 @@
       message(target,'No CANOPUS-predicted features have saved raw measurements in this run.');
       return;
     }
+    const variableById = new Map((variables || []).map((row) => [row.feature_id,row]));
+    const horizontalById = new Map();
+    for (const row of horizontal || []) {
+      if (!horizontalById.has(row.feature_id)) horizontalById.set(row.feature_id,[]);
+      horizontalById.get(row.feature_id).push(row);
+    }
+    const recordsBySource = new Map();
+    for (const row of candidates) {
+      if (!row.source || row.source === 'NA') continue;
+      if (!recordsBySource.has(row.source)) recordsBySource.set(row.source,new Map());
+      const byId = recordsBySource.get(row.source);
+      if (!byId.has(row.feature_id)) byId.set(row.feature_id,[]);
+      byId.get(row.feature_id).push(row);
+    }
+    const candidateFields = Object.keys(candidates[0]).filter((field) => field !== 'feature_id');
+    const variableFields = variables?.length ? Object.keys(variables[0]).filter((field) => field && field !== 'feature_id') : [];
+    const filterGroups = [], filterFields = new Map();
+    const registerFields = (source,title,records,fields) =>
+      registerFeatureFields(filterGroups,filterFields,source,title,records,fields);
+    registerFields('canopus','CANOPUS · selected class',[...predicted.values()],candidateFields);
+    for (const source of recordsBySource.keys()) {
+      if (source === 'canopus') continue;
+      registerFields(source,source === 'met_annot_enhancer' ? 'met-annot-enhancer · candidates' :
+        source.toUpperCase()+' · candidates',candidates.filter((row) => row.source === source),candidateFields);
+    }
+    if (variables?.length) registerFields('mzmine','MZmine · input features',variables,variableFields);
+    if (horizontal?.length) registerFields('horizontal','Horizontal · saved annotations',horizontal,
+      Object.keys(horizontal[0]).filter((field) => field !== 'feature_id' && field));
+    const defaultFilter = filterFields.has('canopus:class_probability') ?
+      'canopus:class_probability' : filterGroups[0]?.fields[0]?.key;
     const root = {name:'All NPC pathways',level:0,ids:[],children:new Map()};
     const taxonomy = ['npc_pathway','npc_superclass','npc_class'];
     for (const [id,row] of predicted) {
@@ -1879,21 +2494,59 @@
       node.children.set(id,{name:id,level:4,ids:[id],children:new Map()});
     }
     const state = ctx.classView ??= {field:groupFields.includes(defaultGroup) ? defaultGroup : groupFields[0],
-      first:'',second:'',path:[]};
+      first:'',second:'',path:[],filters:[]};
     if (!groupFields.includes(state.field)) state.field = groupFields[0];
     const field = control('Compare biological groups by','class-group-field',groupFields.map((value) => [value,value]),state.field);
     const first = control('Group A','class-group-a',[]);
     const second = control('Group B','class-group-b',[]);
     const fieldSelect = field.querySelector('select'), aSelect = first.querySelector('select'), bSelect = second.querySelector('select');
     const controls = el('div',{class:'controls'},field,first,second);
-    const context = note('CANOPUS class assignments are predictions, not confirmed chemical identities. Each feature contributes once to one saved pathway → superclass → class branch. Raw peak heights are summed per biological sample, then averaged within each selected group; no statistical tests or normalization are performed.');
+    const filterRows = el('div',{class:'class-filter-rows'});
+    const filterFeedback = el('p',{class:'note','aria-live':'polite'});
+    const addFilter = el('button',{type:'button',class:'button secondary small',text:'Add feature filter',
+      onClick:() => {
+        if (!defaultFilter) return;
+        state.filters.push({key:defaultFilter,operator:filterFields.get(defaultFilter).numeric ? '>' : 'contains',value:''});
+        renderFilterRows();
+        update();
+      }});
+    addFilter.disabled = !defaultFilter;
+    const filterSet = el('fieldset',{class:'class-filter-set'},
+      el('legend',{text:'Feature filters · match all'}),filterRows,addFilter,filterFeedback);
+    const context = note('CANOPUS class assignments are predictions, not confirmed chemical identities. Each measured feature contributes once to one saved pathway → superclass → class branch. At each level, raw peak heights are summed within each biological sample; boxes show those sample totals, and group means average the totals without normalization or new statistical tests. Group A/B, their order, and shared sidebar colours carry into a feature’s intensity plot; select its raw stage for direct comparison to these raw totals.');
     const summary = el('p',{class:'notice','aria-live':'polite'});
     const trail = el('nav',{class:'class-trail','aria-label':'NPC hierarchy'});
     const results = el('div');
-    const chart = plotNode(card('Group composition · share of parent'));
+    const chart = plotNode(card('Raw intensity by chemical class and sample'));
     const chartCard = chart.parentNode;
-    chartCard.append(note('Each bar is the percentage of the current parent’s mean summed raw intensity contributed by that child. The table shows absolute group means and B/A; unequal sample counts are averaged per sample.'));
-    target.replaceChildren(card('Compare saved chemical classes',controls,context,summary),card('Explore pathway → superclass → class → feature',trail,results),chartCard);
+    chartCard.append(note('Boxes and points show per-sample raw intensities summed across the features in each child branch (one feature at the leaf level). Dashed lines mark group means, also listed in the table. The plot displays the 15 children with the highest combined group means; the table lists every child.'));
+    target.replaceChildren(card('Compare saved chemical classes',controls,filterSet,context,summary),
+      card('Explore pathway → superclass → class → feature',trail,results),chartCard);
+    function renderFilterRows() {
+      renderFeatureFilterRows(filterRows,filterGroups,filterFields,state.filters,update);
+    }
+    function followClassGroups() {
+      if (!state.first || !state.second || state.first === state.second) return;
+      const stages = Object.keys(ctx.run.outputs)
+        .filter((path) => /^tables\/matrix_[A-Za-z0-9_.-]+\.tsv$/.test(path))
+        .map((path) => path.slice(14,-4));
+      const settings = ctx.featurePlotSettings ??= savedFeaturePlotSettings(ctx,stages,[]);
+      settings.group = state.field;
+      settings.role = 'sample';
+      settings.facet = '';
+      settings.groups = new Set([state.first,state.second]);
+      saveFeaturePlotSettings(ctx);
+      const drawer = $('feature-drawer');
+      if (!detachedMode && activeTab === 'classes' && drawer.open && !drawer.hidden && selectedFeature) {
+        const content = $('feature-drawer-content'), version = ++drawerVersion;
+        if (window.Plotly) content.querySelectorAll('.plot.js-plotly-plot').forEach((plot) => Plotly.purge(plot));
+        message(content,'Updating feature plot for '+state.first+' vs '+state.second+'…');
+        renderFeatures(ctx,content,ctx.viewToken,true,version).catch((error) => {
+          if (viewValid(ctx,'classes',ctx.viewToken) && version === drawerVersion)
+            message(content,error.message || text(error),true);
+        });
+      }
+    }
     function groupOptions() {
       const values = [...new Set(biological.map((row) => row[state.field]).filter((value) =>
         value && value !== 'NA'))].sort((a,b) => a.localeCompare(b));
@@ -1903,6 +2556,7 @@
       selector(bSelect,values);
       aSelect.value = state.first;
       bSelect.value = state.second;
+      followClassGroups();
     }
     function branch() {
       let node = root;
@@ -1927,20 +2581,30 @@
         return;
       }
       const node = branch();
-      const mean = (ids,samples) => {
+      const {active,pending} = appliedFeatureFilters(state.filters,filterFields);
+      filterFeedback.textContent = pending ?
+        pending+' incomplete filter'+(pending === 1 ? '' : 's')+' not applied; enter a value for each.' :
+        active.size ? 'All filters must match. Multiple conditions on one candidate source must match the same saved candidate row.' :
+          'Add a filter to select measured features by saved candidate or feature metadata.';
+      const eligible = (id) => matchesFeatureFilters(active,(source) => {
+        if (source === 'canopus') return predicted.has(id) ? [predicted.get(id)] : null;
+        if (source === 'mzmine') return variableById.has(id) ? [variableById.get(id)] : null;
+        return source === 'horizontal' ? horizontalById.get(id) : recordsBySource.get(source)?.get(id);
+      });
+      const retained = new Set(node.ids.filter(eligible));
+      const sampleTotals = (ids,samples) => samples.map((sample) => {
+        const measurements = rawBySample.get(sampleKey(sample));
         let total = 0;
-        for (const sample of samples) {
-          const measurements = rawBySample.get(sampleKey(sample));
-          for (const id of ids) {
-            const value = number(measurements[id]);
-            if (Number.isFinite(value) && value > 0) total += value;
-          }
+        for (const id of ids) {
+          const value = number(measurements[id]);
+          if (Number.isFinite(value) && value > 0) total += value;
         }
-        return total / samples.length;
-      };
-      const baseA = mean(node.ids,aSamples), baseB = mean(node.ids,bSamples);
+        return total;
+      });
+      const average = (values) => values.reduce((sum,value) => sum+value,0)/values.length;
+      const kept = retained.size;
       summary.textContent = state.first+' ('+aSamples.length+' samples) vs '+state.second+' ('+bSamples.length+
-        ' samples) · '+node.ids.length+' distinct CANOPUS-predicted measured features in this branch.';
+        ' samples) · '+kept+' / '+node.ids.length+' CANOPUS-predicted measured features retained in this branch.';
       trail.replaceChildren();
       const crumbs = [{name:root.name,depth:0}];
       let ancestor = root;
@@ -1956,43 +2620,79 @@
         trail.append(button);
       }
       const children = [...node.children.values()].map((child) => {
-        const a = mean(child.ids,aSamples), b = mean(child.ids,bSamples);
-        return {child,a,b,shareA:baseA ? 100*a/baseA : 0,shareB:baseB ? 100*b/baseB : 0};
-      });
+        const ids = child.ids.filter((id) => retained.has(id));
+        if (!ids.length) return null;
+        const aValues = sampleTotals(ids,aSamples), bValues = sampleTotals(ids,bSamples);
+        return {child,ids,aValues,bValues,a:average(aValues),b:average(bValues)};
+      }).filter(Boolean);
       const precision = (value) => Number(value.toPrecision(5));
       const level = ['','NPC pathway','NPC superclass','NPC class','Feature ID'][node.level+1] || 'Feature ID';
-      const view = table([level,'Features',state.first+' mean raw '+ctx.run.intensity_measure,
-        state.second+' mean raw '+ctx.run.intensity_measure,state.second+' / '+state.first,
-        state.first+' share (%)',state.second+' share (%)'],
-      children.map(({child,a,b,shareA,shareB}) =>
-        [child.name,child.ids.length,precision(a),precision(b),a > 0 ? precision(b/a) : 'Not defined',
-          precision(shareA),precision(shareB)]),(name) => {
+      const extraHeaders = node.level === 3 ? [
+        ...candidateFields.map((name) => 'CANOPUS '+name),
+        ...variableFields.map((name) => 'MZmine '+name)] : [];
+      const headers = [level,'Features',state.first+' mean raw '+ctx.run.intensity_measure,
+        state.second+' mean raw '+ctx.run.intensity_measure,state.second+' / '+state.first,...extraHeaders];
+      const view = table(headers,children.map(({child,ids,a,b}) => [
+        child.name,ids.length,precision(a),precision(b),a > 0 ? precision(b/a) : 'Not defined',
+        ...(node.level === 3 ? [
+          ...candidateFields.map((name) => predicted.get(child.name)?.[name] ?? ''),
+          ...variableFields.map((name) => variableById.get(child.name)?.[name] ?? '')] : [])]),
+      (name) => {
         if (node.level === 3) openFeature(name);
         else { state.path.push(name); update(); }
-      },'npc-'+node.level+'-'+ctx.run.hash.slice(0,12)+'.tsv');
-      results.replaceChildren(note('Choose a row to drill down. Click a feature ID for its saved evidence and sample intensities.'),view);
-      if (chart.data && window.Plotly) Plotly.purge(chart);
-      const top = children.sort((left,right) => right.shareA+right.shareB-left.shareA-right.shareB).slice(0,15).reverse();
-      const labels = top.map(({child}) => escapePlot(child.name));
-      const traces = [[state.first,'shareA'],[state.second,'shareB']].map(([name,key]) =>
-        ({type:'bar',orientation:'h',name:escapePlot(name),y:labels,x:top.map((row) => row[key]),
-          marker:{color:groupColor(name)},customdata:top.map((row) => row.child.ids.length),
-          hovertemplate:'%{y}<br>'+escapePlot(name)+': %{x:.2f}% of parent<br>%{customdata} features<extra></extra>'}));
-      chart.style.height = Math.max(390,top.length*32+120)+'px';
-      chart.dataset.sampleGroups = 'true';
-      plotting(ctx,chart,traces,{barmode:'group',xaxis:{title:'Share of parent mean raw intensity (%)',rangemode:'tozero'},
-        yaxis:{automargin:true},margin:{l:Math.min(260,Math.max(110,...labels.map((name) => name.length*7))),r:20,t:25,b:65}});
-      if (typeof chart.removeAllListeners === 'function') chart.removeAllListeners('plotly_click');
-      chart.on('plotly_click',(event) => {
-        const name = top[event.points?.[0]?.pointNumber]?.child.name;
-        if (!name) return;
-        if (node.level === 3) openFeature(name);
-        else { state.path.push(name); update(); }
-      });
+      },'npc-'+node.level+'-'+ctx.run.hash.slice(0,12)+'.tsv',{
+        hiddenColumns:extraHeaders,
+        onFilter:(displayed) => {
+          const names = new Set(displayed.map((row) => row[0]));
+          drawPlot(children.filter(({child}) => names.has(child.name)));
+        }});
+      results.replaceChildren(note('Choose a row to drill down. Click a feature ID for saved evidence. Table filters also update the plot; all saved CANOPUS and MZmine feature columns are available under Columns at the feature level.'),view);
+      function drawPlot(items) {
+        if (chart.data && window.Plotly) Plotly.purge(chart);
+        chart.replaceChildren();
+        if (!items.length) {
+          message(chart,'No features match the current feature and table filters.');
+          return;
+        }
+        const top = [...items].sort((left,right) => right.a+right.b-left.a-left.b ||
+          left.child.name.localeCompare(right.child.name)).slice(0,15).reverse();
+        const labels = top.map(({child}) => escapePlot(child.name));
+        const shown = new Set(), traces = [];
+        for (const {child,aValues,bValues,a,b} of top) {
+          for (const [name,samples,values,mean] of [[state.first,aSamples,aValues,a],[state.second,bSamples,bValues,b]]) {
+            const color = groupColor(name);
+            traces.push({type:'box',orientation:'h',name:escapePlot(name),legendgroup:name,offsetgroup:name,
+              showlegend:!shown.has(name),meta:{child:child.name},
+              x:values,y:values.map(() => escapePlot(child.name)),
+              customdata:samples.map((sample) => escapePlot(sample.sample_id || sampleKey(sample))),
+              boxpoints:'all',boxmean:true,jitter:.25,pointpos:0,
+              marker:{color,size:6,opacity:.75},line:{color},
+              hovertemplate:'%{y}<br>'+escapePlot(name)+'<br>Sample: %{customdata}<br>Raw '+
+                escapePlot(ctx.run.intensity_measure)+': %{x:,.0f}<br>Group mean: '+
+                precision(mean).toLocaleString()+'<extra></extra>'});
+            shown.add(name);
+          }
+        }
+        chart.style.height = Math.max(390,top.length*60+130)+'px';
+        chart.dataset.sampleGroups = 'true';
+        plotting(ctx,chart,traces,{boxmode:'group',boxgap:.15,boxgroupgap:.12,
+          xaxis:{title:'Summed raw '+ctx.run.intensity_measure+' per sample',rangemode:'tozero',tickformat:'.3s'},
+          yaxis:{type:'category',automargin:true,categoryorder:'array',categoryarray:labels},
+          margin:{l:Math.min(310,Math.max(110,...labels.map((name) => name.length*7))),r:20,t:25,b:75}});
+        if (typeof chart.removeAllListeners === 'function') chart.removeAllListeners('plotly_click');
+        chart.on('plotly_click',(event) => {
+          const name = event.points?.[0]?.data?.meta?.child;
+          if (!name) return;
+          if (node.level === 3) openFeature(name);
+          else { state.path.push(name); update(); }
+        });
+      }
+      drawPlot(children);
     }
     fieldSelect.addEventListener('change',() => { state.field = fieldSelect.value; groupOptions(); update(); });
-    aSelect.addEventListener('change',() => { state.first = aSelect.value; update(); });
-    bSelect.addEventListener('change',() => { state.second = bSelect.value; update(); });
+    aSelect.addEventListener('change',() => { state.first = aSelect.value; followClassGroups(); update(); });
+    bSelect.addEventListener('change',() => { state.second = bSelect.value; followClassGroups(); update(); });
+    renderFilterRows();
     groupOptions();
     update();
   }
@@ -2024,7 +2724,10 @@
       const button = el('button',{type:'button',class:'button secondary small',text:'Download verified '+path.split('.').pop().toUpperCase()});
       button.addEventListener('click',() => download(ctx,path,button));
       return el('div',{class:'download-item'},
-        el('div',{},el('span',{class:'mono',text:path}),el('code',{class:'checksum',text:'SHA-256 ' + ctx.run.outputs[path]})),
+        el('div',{},el('span',{class:'mono',text:path}),
+          el('span',{class:'output-origin',text:ctx.run.kind === 'comparison' ?
+            (Object.hasOwn(ctx.run.sources,path) ? ' · comparison' : ' · shared study') : ''}),
+          el('code',{class:'checksum',text:'SHA-256 ' + ctx.run.outputs[path]})),
         button);
     }));
   }
@@ -2041,305 +2744,16 @@
         table(['Run hash','Completed (UTC)','Dataset ID','Description','Recipe SHA-256','Changes vs previous dataset run','Design group'],
           jobs,(hash) => chooseRun(hash,true), 'completed-jobs-filtered.tsv')),
       card('Selected run',table(['Property','Saved value'],[
-        ['Dataset ID',ctx.run.dataset_id],['Run hash',ctx.run.hash],['Description',ctx.run.description ?? 'Not in this catalogue'],
+        ['Dataset ID',ctx.run.dataset_id],['Study hash',ctx.run.study_hash],
+        ['Run hash',ctx.run.hash],['Description',ctx.run.description ?? 'Not in this catalogue'],
         ['Recipe SHA-256',ctx.run.recipe_sha256 ?? 'Not in this catalogue'],
         ['Changes vs previous dataset run',ctx.run.changes_vs_previous_dataset_run ?? 'Not in this catalogue'],
         ['Created at',ctx.run.created_at],['Schema version',ctx.run.schema_version],
-        ['Analysis method','V2 saved statistics'],['Design group',ctx.run.design_group],
+        ['Analysis method','Biostats saved statistics'],['Design group',ctx.run.design_group],
         ['Intensity measure',ctx.run.intensity_measure],['Transformation',ctx.run.transformation]],null,'run-properties.tsv')),
       card('Saved TSV tables · SHA-256 verified before download',downloadButtons(ctx,tsv)),
       card('Saved PNG/PDF · original unfiltered plots',downloadButtons(ctx,plots)),
       note('All filtering, dimensions, searches and box plots on this page are descriptive views of published values. Inferential test results are never recomputed.'));
-  }
-  // Advanced is independent of the selected subset. Only the catalogue's canonical full-batch
-  // sealed run supplies its source metadata, through the same SHA-256 verifier as saved views.
-  async function renderAdvanced(ctx,target,token) {
-    const source = builderSource;
-    if (!source) {
-      message(target,'A complete original-batch sealed run is not published for this batch. This older catalogue cannot build a new plan; select or publish a canonical full-batch run first.');
-      return;
-    }
-    const run = catalogue.find((item) => item.hash === source.run_hash);
-    if (!run || !hex.test(source.run_hash) || source.dataset_id !== run.dataset_id ||
-        !Object.hasOwn(run.outputs,'tables/sample_metadata.tsv')) {
-      message(target,'The catalogue does not contain the full-batch source metadata and its checksum. A new plan cannot be made safely.',true);
-      return;
-    }
-    if (!ctx.advancedMetadata) {
-      const sourceContext = {run,controller:ctx.controller};
-      ctx.advancedMetadata = verifiedBytes(sourceContext,'tables/sample_metadata.tsv')
-        .then((bytes) => parseTSV(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
-    }
-    const full = await ctx.advancedMetadata;
-    if (!viewValid(ctx,'advanced',token)) return;
-    const roles = source.roles;
-    if (!roles?.column || !roles.levels?.sample || !roles.levels?.qc || !roles.levels?.blank ||
-        !full.length || !Object.hasOwn(full[0],roles.column) ||
-        !/^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(source.dataset_id)) {
-      message(target,'The published full-batch source has invalid role or dataset details. No plan can be made safely.',true);
-      return;
-    }
-    const counts = {sample:0,qc:0,blank:0,other:0};
-    for (const row of full) {
-      const role = Object.entries(roles.levels).find(([,level]) => row[roles.column] === level)?.[0];
-      counts[role && Object.hasOwn(counts,role) ? role : 'other']++;
-    }
-    const samples = full.filter((row) => row[roles.column] === roles.levels.sample);
-    const excluded = new Set(['filename','sample_id','sample','analysis_group']);
-    const columns = Object.keys(full[0]).filter((column) =>
-      column !== roles.column && !excluded.has(column.toLowerCase()) &&
-      samples.every((row) => row[column] && row[column].trim() && row[column] !== 'NA') &&
-      new Set(samples.map((row) => row[column])).size >= 2 &&
-      new Set(samples.map((row) => row[column])).size <= 30);
-    if (!columns.length) {
-      message(target,'The full-batch sample metadata has no complete categorical biological grouping column.',true);
-      return;
-    }
-    const defaults = source.defaults || {};
-    const prep = defaults.preprocessing || {};
-    const analyses = defaults.analyses || {};
-    if (!ctx.advanced) {
-      ctx.advanced = {
-        column:columns.includes(source.group_column) ? source.group_column : columns[0],
-        groups:new Map(), slug:'merged-groups', description:'Group comparison by '+(columns.includes(source.group_column) ? source.group_column : columns[0]),
-        seed:defaults.seed ?? 275,
-        preprocessing:{
-          blank_filter:{enabled:prep.blank_filter?.enabled ?? true,
-            minimum_sample_to_blank_ratio:prep.blank_filter?.minimum_sample_to_blank_ratio ?? 5,
-            minimum_blank_prevalence:prep.blank_filter?.minimum_blank_prevalence ?? 0.5},
-          qc_rsd_filter:{enabled:prep.qc_rsd_filter?.enabled ?? true,
-            threshold_percent:prep.qc_rsd_filter?.threshold_percent ?? 30},
-          missing_values:{method:prep.missing_values?.method ?? 'half_minimum'},
-          normalization:{method:prep.normalization?.method ?? 'none'},
-          transformation:{method:prep.transformation?.method ?? 'log2'},
-          scaling:{method:prep.scaling?.method ?? 'pareto'}},
-        analyses:{
-          pca:{enabled:analyses.pca?.enabled ?? true,components:analyses.pca?.components ?? 5},
-          pcoa:{enabled:analyses.pcoa?.enabled ?? true,components:analyses.pcoa?.components ?? 5,
-            stage:analyses.pcoa?.stage ?? 'normalized',distance:analyses.pcoa?.distance ?? 'bray'},
-          omnibus:{enabled:analyses.omnibus?.enabled ?? true},
-          differential:{enabled:analyses.differential?.enabled ?? true},
-          plsda:{enabled:analyses.plsda?.enabled ?? false,components:analyses.plsda?.components ?? 3,
-            folds:analyses.plsda?.folds ?? 3,repeats:analyses.plsda?.repeats ?? 5,
-            permutations:analyses.plsda?.permutations ?? 99}}
-      };
-    }
-    const state = ctx.advanced;
-    if (!columns.includes(state.column)) state.column = columns[0];
-    const sourceGroups = () => [...new Set(samples.map((row) => row[state.column]))].sort((a,b) => a.localeCompare(b));
-    function initializeGroups() {
-      state.groups = new Map(sourceGroups().map((name) => [name,{include:true,target:name}]));
-    }
-    if (!state.groups.size) initializeGroups();
-    const choice = (title,value,values,change) => {
-      const node = el('select',{},...values.map(([key,label]) => el('option',{value:key,text:label})));
-      node.value = value;
-      node.addEventListener('change',() => { change(node.value); update(); });
-      return el('label',{class:'advanced-field'},el('span',{text:title}),node);
-    };
-    const numeric = (title,value,min,max,step,change) => {
-      const input = el('input',{type:'number',required:'',min:String(min),step:String(step),value:String(value)});
-      if (max !== null) input.max = String(max);
-      input.addEventListener('input',() => { change(input.value); update(); });
-      return el('label',{class:'advanced-field'},el('span',{text:title}),input);
-    };
-    const toggle = (title,value,change) => {
-      const input = el('input',{type:'checkbox'});
-      input.checked = value === true;
-      input.addEventListener('change',() => { change(input.checked); update(); });
-      return el('label',{class:'advanced-toggle'},input,document.createTextNode(title));
-    };
-    const field = choice('Source group column',state.column,columns.map((name) => [name,name]),(value) => {
-      const previousDefault = 'Group comparison by '+state.column;
-      state.column = value;
-      if (state.description === previousDefault) {
-        state.description = 'Group comparison by '+value;
-        descriptionInput.value = state.description;
-      }
-      initializeGroups();
-      drawGroups();
-    });
-    const groupRows = el('tbody');
-    const groupPreview = el('div',{class:'advanced-preview','aria-live':'polite'});
-    const issues = el('div',{class:'advanced-issues',role:'status','aria-live':'polite'});
-    function drawGroups() {
-      groupRows.replaceChildren(...sourceGroups().map((name) => {
-        const entry = state.groups.get(name);
-        const include = el('input',{type:'checkbox','aria-label':'Include '+name});
-        include.checked = entry.include;
-        include.addEventListener('change',() => { entry.include = include.checked; update(); });
-        const targetInput = el('input',{type:'text',value:entry.target,'aria-label':'Merged target label for '+name,required:'',spellcheck:'false'});
-        targetInput.addEventListener('input',() => { entry.target = targetInput.value; update(); });
-        return el('tr',{},el('th',{scope:'row',text:name}),
-          el('td',{text:String(samples.filter((row) => row[state.column] === name).length)}),
-          el('td',{},include),el('td',{},targetInput));
-      }));
-      update();
-    }
-    const slugInput = el('input',{type:'text',value:state.slug,required:'',pattern:'[a-z][a-z0-9_-]{2,50}',spellcheck:'false'});
-    slugInput.addEventListener('input',() => { state.slug = slugInput.value; update(); });
-    const slug = el('label',{class:'advanced-field'},el('span',{text:'Output slug (3–51 characters; starts with a letter)'}),slugInput);
-    const descriptionInput = el('input',{type:'text',value:state.description,maxlength:'160',
-      'aria-label':'Plan description (optional, at most 160 characters)'});
-    descriptionInput.addEventListener('input',() => { state.description = descriptionInput.value; update(); });
-    const description = el('label',{class:'advanced-field'},
-      el('span',{text:'Description (optional, one line, up to 160 characters)'}),descriptionInput);
-    const seed = numeric('Random seed',state.seed,0,2147483647,1,(value) => { state.seed = value; });
-    const pp = state.preprocessing, an = state.analyses;
-    const filterControls = el('div',{class:'advanced-fields'},
-      toggle('Blank filter',pp.blank_filter.enabled,(v) => { pp.blank_filter.enabled = v; }),
-      numeric('Minimum sample / blank ratio',pp.blank_filter.minimum_sample_to_blank_ratio,0,null,'any',(v) => { pp.blank_filter.minimum_sample_to_blank_ratio = v; }),
-      numeric('Minimum blank prevalence (0–1)',pp.blank_filter.minimum_blank_prevalence,0,1,'any',(v) => { pp.blank_filter.minimum_blank_prevalence = v; }),
-      toggle('QC RSD filter',pp.qc_rsd_filter.enabled,(v) => { pp.qc_rsd_filter.enabled = v; }),
-      numeric('QC RSD threshold (%)',pp.qc_rsd_filter.threshold_percent,0,null,'any',(v) => { pp.qc_rsd_filter.threshold_percent = v; }),
-      ...[
-        ['missing_values','Missing values',['none','half_minimum']],
-        ['normalization','Normalization',['none','total_sum','median','pqn']],
-        ['transformation','Transformation',['none','log2','log10','log1p']],
-        ['scaling','Scaling',['none','pareto','autoscale']]
-      ].map(([key,title,options]) => choice(title,pp[key].method,options.map((name) => [name,name.replaceAll('_',' ')]),(v) => { pp[key].method = v; })));
-    const pcoaStage = choice('PCoA matrix stage',an.pcoa.stage,
-      ['imputed','normalized','transformed','scaled'].map((v) => [v,v]),(v) => { an.pcoa.stage = v; });
-    const pcoaDistance = choice('PCoA distance',an.pcoa.distance,
-      ['bray','euclidean','maximum','manhattan','canberra','binary','minkowski'].map((v) => [v,v]),(v) => { an.pcoa.distance = v; });
-    const analysisControls = el('div',{class:'advanced-fields'},
-      toggle('PCA',an.pca.enabled,(v) => { an.pca.enabled = v; }),
-      numeric('PCA components',an.pca.components,1,null,1,(v) => { an.pca.components = v; }),
-      toggle('PCoA',an.pcoa.enabled,(v) => { an.pcoa.enabled = v; }),
-      numeric('PCoA components',an.pcoa.components,1,null,1,(v) => { an.pcoa.components = v; }),
-      pcoaStage,pcoaDistance,
-      toggle('Omnibus test',an.omnibus.enabled,(v) => { an.omnibus.enabled = v; }),
-      toggle('Differential contrasts (all pairs)',an.differential.enabled,(v) => { an.differential.enabled = v; }),
-      toggle('Validated PLS-DA',an.plsda.enabled,(v) => { an.plsda.enabled = v; }),
-      numeric('PLS-DA components',an.plsda.components,1,null,1,(v) => { an.plsda.components = v; }),
-      numeric('PLS-DA folds',an.plsda.folds,2,null,1,(v) => { an.plsda.folds = v; }),
-      numeric('PLS-DA repeats',an.plsda.repeats,2,null,1,(v) => { an.plsda.repeats = v; }),
-      numeric('PLS-DA permutations',an.plsda.permutations,19,null,1,(v) => { an.plsda.permutations = v; }));
-    const downloadPlan = el('button',{type:'button',class:'button',text:'Download JSON plan'});
-    function update() {
-      const errors = [];
-      const merged = new Map();
-      const selected = [];
-      for (const name of sourceGroups()) {
-        const entry = state.groups.get(name);
-        if (!entry.include) continue;
-        const target = entry.target.trim();
-        if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(target) || target === 'NA')
-          errors.push('Target for '+name+' must start with a letter, use only letters, digits, _ or -, and not be NA.');
-        selected.push({source:name,target});
-        merged.set(target,(merged.get(target) || 0) + samples.filter((row) => row[state.column] === name).length);
-      }
-      if (merged.size < 2) errors.push('Select at least two distinct target biological groups.');
-      if ([...merged.values()].some((count) => count < 3)) errors.push('Each target biological group needs at least three samples.');
-      const smallest = Math.min(...merged.values());
-      if (an.plsda.enabled && ([...merged.values()].some((count) => count < 4) || Number(an.plsda.folds) > smallest))
-        errors.push('PLS-DA needs at least four samples per group and folds no greater than the smallest group.');
-      if (pp.blank_filter.enabled && !counts.blank) errors.push('Blank filtering requires blank samples.');
-      if (pp.qc_rsd_filter.enabled && counts.qc < 3) errors.push('QC RSD filtering requires at least three QC samples.');
-      if (counts.other) errors.push('The source has '+counts.other+' unrecognized sample roles; review the sealed run before materializing.');
-      if (an.pcoa.enabled && an.pcoa.distance === 'bray' && !['imputed','normalized'].includes(an.pcoa.stage))
-        errors.push('Bray-Curtis PCoA requires the imputed or normalized nonnegative stage. Select another stage or distance.');
-      if (!/^[a-z][a-z0-9_-]{2,50}$/.test(state.slug)) errors.push('Slug must start with a lowercase letter and contain 3–51 lowercase letters, digits, _ or -.');
-      if (state.description && (state.description.trim() !== state.description ||
-          [...state.description].length > 160 || /[\x00-\x1f\x7f-\x9f]/u.test(state.description)))
-        errors.push('Description must be one trimmed line of at most 160 characters.');
-      function integer(value,title,min,max = Number.MAX_SAFE_INTEGER) {
-        const n = Number(value);
-        if (value === '' || !Number.isSafeInteger(n) || n < min || n > max) errors.push(title+' must be an integer from '+min+' to '+max+'.');
-        return n;
-      }
-      function decimal(value,title,max = Infinity) {
-        const n = Number(value);
-        if (value === '' || !Number.isFinite(n) || n < 0 || n > max) errors.push(title+' must be a number between 0 and '+(max === Infinity ? 'infinity' : max)+'.');
-        return n;
-      }
-      const seedValue = integer(state.seed,'Seed',0,2147483647);
-      const blankRatio = decimal(pp.blank_filter.minimum_sample_to_blank_ratio,'Sample / blank ratio');
-      const blankPrevalence = decimal(pp.blank_filter.minimum_blank_prevalence,'Blank prevalence',1);
-      const qcThreshold = decimal(pp.qc_rsd_filter.threshold_percent,'QC RSD threshold');
-      const pcaComponents = integer(an.pca.components,'PCA components',1);
-      const pcoaComponents = integer(an.pcoa.components,'PCoA components',1);
-      const plsdaComponents = integer(an.plsda.components,'PLS-DA components',1);
-      const folds = integer(an.plsda.folds,'PLS-DA folds',2);
-      const repeats = integer(an.plsda.repeats,'PLS-DA repeats',2);
-      const permutations = integer(an.plsda.permutations,'PLS-DA permutations',19);
-      for (const [key,options] of Object.entries({
-        missing_values:['none','half_minimum'],normalization:['none','total_sum','median','pqn'],
-        transformation:['none','log2','log10','log1p'],scaling:['none','pareto','autoscale']})) {
-        if (!options.includes(pp[key].method)) errors.push('Unsupported '+key+' method in source defaults.');
-      }
-      if (!['imputed','normalized','transformed','scaled'].includes(an.pcoa.stage) ||
-          !['bray','euclidean','maximum','manhattan','canberra','binary','minkowski'].includes(an.pcoa.distance))
-        errors.push('Unsupported PCoA stage or distance in source defaults.');
-      groupPreview.replaceChildren(
-        el('p',{text:selected.reduce((sum,item) => sum + samples.filter((row) => row[state.column] === item.source).length,0)+
-          ' / '+counts.sample+' biological samples kept · '+counts.qc+' QC and '+counts.blank+' blanks carried through.'}),
-        el('ul',{},...[...merged.entries()].sort(([a],[b]) => a.localeCompare(b)).map(([name,count]) =>
-          el('li',{text:name+': '+count+' biological samples'}))));
-      issues.replaceChildren(...errors.map((error) => note(error,true)));
-      downloadPlan.disabled = errors.length > 0;
-      return errors.length ? null : {
-        schema_version:1,source_run_hash:source.run_hash,slug:state.slug,group_column:state.column,
-        ...(state.description ? {description:state.description} : {}),
-        groups:selected,seed:seedValue,
-        preprocessing:{
-          blank_filter:{enabled:pp.blank_filter.enabled,minimum_sample_to_blank_ratio:blankRatio,minimum_blank_prevalence:blankPrevalence},
-          qc_rsd_filter:{enabled:pp.qc_rsd_filter.enabled,threshold_percent:qcThreshold},
-          missing_values:{method:pp.missing_values.method},normalization:{method:pp.normalization.method},
-          transformation:{method:pp.transformation.method},scaling:{method:pp.scaling.method}},
-        analyses:{
-          pca:{enabled:an.pca.enabled,components:pcaComponents},
-          pcoa:{enabled:an.pcoa.enabled,components:pcoaComponents,stage:an.pcoa.stage,distance:an.pcoa.distance},
-          omnibus:{enabled:an.omnibus.enabled},differential:{enabled:an.differential.enabled},
-          plsda:{enabled:an.plsda.enabled,components:plsdaComponents,folds,repeats,permutations}},
-        contrasts:'all'};
-    }
-    downloadPlan.addEventListener('click',() => {
-      const plan = update();
-      if (!plan) return;
-      const blob = new Blob([JSON.stringify(plan,null,2)+'\n'],{type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const link = el('a',{href:url,download:plan.slug+'-plan.json'});
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url),60000);
-    });
-    const command = el('pre',{class:'advanced-commands'});
-    function instructions() {
-      if (!/^[a-z][a-z0-9_-]{2,50}$/.test(state.slug)) {
-        command.textContent = 'Enter a valid slug to display local commands.';
-        return;
-      }
-      const batch = '../../didier-reinhardt-group/docs/'+source.dataset_id;
-      const base = batch+'/recipes/'+state.slug;
-      command.textContent = '# From biostat_toolbox/v2; replace the --plan path with your downloaded file\n'+
-        'rig run -r 4.6.1 -f ../scripts/materialize_stats_recipe.R -- --batch '+batch+
-        ' --plan /path/to/'+state.slug+'-plan.json\n\n'+
-        '# After materialization (it prints these commands too):\n'+
-        'rig run -r 4.6.1 -f run.R -- validate --dataset '+base+'/dataset.yaml --recipe '+base+'/recipe.yaml\n'+
-        'rig run -r 4.6.1 -f run.R -- plan --dataset '+base+'/dataset.yaml --recipe '+base+'/recipe.yaml\n'+
-        'rig run -r 4.6.1 -f run.R -- run --dataset '+base+'/dataset.yaml --recipe '+base+'/recipe.yaml';
-    }
-    slugInput.addEventListener('input',instructions);
-    target.replaceChildren(
-      card('Complete original batch (not the selected run)',
-        note(source.dataset_id+' · source run '+source.run_hash+' · SHA-256 verified tables/sample_metadata.tsv'),
-        metrics([['All rows',full.length],['Biological samples',counts.sample],['QC',counts.qc],['Blanks',counts.blank],['Other roles',counts.other]]),
-        note('The current run picker affects saved views only. Advanced always starts with the canonical original metadata; candidate annotations are not sample metadata.')),
-      card('1 · Choose and merge biological groups',field,
-        el('div',{class:'table-wrap'},el('table',{class:'advanced-group-table'},
-          el('thead',{},el('tr',{},...['Original group','Samples','Include','Merged target label'].map((heading) => el('th',{scope:'col',text:heading})))),
-          groupRows)),
-        el('h4',{text:'Preview: resulting groups'}),groupPreview,issues),
-      card('2 · Name the plan',el('div',{class:'advanced-fields'},slug,description,seed)),
-      card('3 · V2 preprocessing',note('The original QC and blank rows remain available for enabled filters.'),filterControls),
-      card('4 · V2 analyses',analysisControls),
-      card('5 · Download and run locally',downloadPlan,
-        note('This is a configuration plan only. Save the JSON file locally, then run the trusted repository materializer from v2/. It verifies original input SHA-256, validates the generated dataset and never overwrites an existing output directory. No browser-side analysis or server write occurs.'),
-        command));
-    drawGroups();
-    instructions();
   }
   if (detachedMode) {
     document.body.classList.add('detached-view');

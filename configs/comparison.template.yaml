@@ -1,0 +1,20 @@
+kind: comparison
+# Copy the full run_hash printed by `plan` for a completed sealed study.
+study_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+seed: 1
+# Choose biological source groups without changing the study's preprocessing or ordinations.
+sample_plan:
+  group_column: ATTRIBUTE_group
+  groups:
+    - {source: WT, target: WT}
+    - {source: mutant, target: mutant}
+  # For two-factor subsets, add second_column: ATTRIBUTE_part and encode each
+  # source as a JSON pair, e.g. '["WT","leaf"]' or '["mutant","leaf"]'.
+design:
+  group: analysis_group
+  contrasts:
+    - {name: mutant_vs_WT, numerator: mutant, denominator: WT}
+analyses:
+  omnibus: {enabled: true}
+  differential: {enabled: true}
+  plsda: {enabled: false}

@@ -1,0 +1,331 @@
+config_fields <- function(value, allowed, context) {
+  if (!is.list(value) || (length(value) && (is.null(names(value)) || anyNA(names(value)) || any(!nzchar(names(value))) || anyDuplicated(names(value)))))
+    stop(context, " must be a mapping with unique keys.", call. = FALSE)
+  unknown <- setdiff(names(value), allowed)
+  if (length(unknown)) stop("Unsupported ", context, " key(s): ", paste(unknown, collapse = ", "), call. = FALSE)
+}
+
+config_text <- function(value, context) {
+  if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(trimws(value)))
+    stop(context, " must be a non-empty string.", call. = FALSE)
+  invisible(value)
+}
+
+config_choice <- function(value, allowed, context) {
+  if (!is.character(value) || length(value) != 1L || is.na(value) || !value %in% allowed)
+    stop("Unsupported ", context, "; expected one of: ", paste(allowed, collapse = ", "), call. = FALSE)
+}
+
+config_boolean <- function(value, context) {
+  if (!is.logical(value) || length(value) != 1L || is.na(value))
+    stop(context, " must be true or false.", call. = FALSE)
+}
+
+config_number <- function(value, context, minimum = 0, maximum = Inf, integer = FALSE) {
+  if (!is.numeric(value) || length(value) != 1L || !is.finite(value) || value < minimum || value > maximum ||
+      (integer && value != floor(value)))
+    stop(context, " must be ", if (integer) "an integer" else "a number", " in [", minimum, ", ", maximum, "].", call. = FALSE)
+}
+
+expand_biostats_contrasts <- function(design, group_levels) {
+  contrasts <- design$contrasts
+  if (is.null(contrasts) || identical(contrasts, "all")) {
+    levels <- sort(unique(as.character(group_levels)), method = "radix")
+    if (length(levels) < 2L) return(list())
+    pairs <- utils::combn(levels, 2L)
+    contrasts <- lapply(seq_len(ncol(pairs)), function(index) {
+      numerator <- pairs[2L, index]
+      denominator <- pairs[1L, index]
+      list(name = paste(numerator, "vs", denominator, sep = "_"),
+           numerator = numerator, denominator = denominator)
+    })
+  } else {
+    if (!is.list(contrasts) || !is.null(names(contrasts)))
+      stop("design.contrasts must be 'all' or a sequence.", call. = FALSE)
+    contrasts <- lapply(contrasts, function(contrast) {
+      config_fields(contrast, c("name", "numerator", "denominator"), "contrast")
+      config_text(contrast$numerator, "contrast.numerator")
+      config_text(contrast$denominator, "contrast.denominator")
+      if (identical(contrast$numerator, contrast$denominator))
+        stop("Contrast levels must differ.", call. = FALSE)
+      name <- contrast$name %||% paste(contrast$numerator, "vs", contrast$denominator, sep = "_")
+      config_text(name, "contrast.name")
+      list(name = name, numerator = contrast$numerator, denominator = contrast$denominator)
+    })
+    if (length(group_levels)) {
+      for (contrast in contrasts) {
+        if (!all(c(contrast$numerator, contrast$denominator) %in% group_levels))
+          stop("Contrast levels are absent from biological samples: ",
+               contrast$numerator, " vs ", contrast$denominator, call. = FALSE)
+      }
+    }
+  }
+  names <- vapply(contrasts, `[[`, character(1), "name")
+  if (anyDuplicated(names) || anyDuplicated(vapply(names, safe_name, character(1))))
+    stop("Contrast names (including filesystem-safe names) must be unique.", call. = FALSE)
+  contrasts
+}
+
+default_biostats_roles <- function() {
+  list(column = "sample_type", levels = list(sample = "sample", qc = "QC", blank = "blank"))
+}
+
+dataset_roles <- function(dataset) {
+  roles <- dataset$roles %||% default_biostats_roles()
+  config_fields(roles, c("column", "levels"), "dataset.roles")
+  if (!setequal(names(roles), c("column", "levels")))
+    stop("dataset.roles requires column and levels.", call. = FALSE)
+  config_text(roles$column, "dataset.roles.column")
+  config_fields(roles$levels, c("sample", "qc", "blank"), "dataset.roles.levels")
+  if (!setequal(names(roles$levels), c("sample", "qc", "blank")))
+    stop("dataset.roles.levels requires sample, qc, and blank.", call. = FALSE)
+  for (role in c("sample", "qc", "blank"))
+    config_text(roles$levels[[role]], paste0("dataset.roles.levels.", role))
+  if (anyDuplicated(unlist(roles$levels, use.names = FALSE)))
+    stop("dataset.roles.levels must be distinct.", call. = FALSE)
+  if (identical(roles$column, dataset$metadata_columns$sample_type))
+    roles$column <- "sample_type"
+  roles
+}
+
+plan_source_key <- function(first, second) {
+  paste0(nchar(first, type = "bytes"), ":", first, nchar(second, type = "bytes"), ":", second)
+}
+
+validate_sample_plan <- function(plan) {
+  config_fields(plan, c("group_column", "second_column", "groups"), "recipe.sample_plan")
+  if (!all(c("group_column", "groups") %in% names(plan)))
+    stop("recipe.sample_plan requires group_column and groups.", call. = FALSE)
+  config_text(plan$group_column, "recipe.sample_plan.group_column")
+  if (identical(plan$group_column, "analysis_group"))
+    stop("recipe.sample_plan cannot replace its source group column.", call. = FALSE)
+  if (!is.null(plan$second_column)) {
+    config_text(plan$second_column, "recipe.sample_plan.second_column")
+    if (plan$second_column %in% c(plan$group_column, "analysis_group"))
+      stop("recipe.sample_plan.second_column must be a distinct source column.", call. = FALSE)
+  }
+  if (!is.list(plan$groups) || !length(plan$groups) || !is.null(names(plan$groups)))
+    stop("recipe.sample_plan.groups must be a nonempty sequence.", call. = FALSE)
+  for (group in plan$groups) {
+    config_fields(group, c("source", "target"), "recipe.sample_plan group")
+    if (!setequal(names(group), c("source", "target")))
+      stop("recipe.sample_plan group requires source and target.", call. = FALSE)
+    config_text(group$source, "recipe.sample_plan group source")
+    config_text(group$target, "recipe.sample_plan group target")
+    if (!grepl("^[A-Za-z][A-Za-z0-9_-]*$", group$target) || identical(group$target, "NA"))
+      stop("recipe.sample_plan group target must be a safe non-NA label.", call. = FALSE)
+  }
+  sources <- vapply(plan$groups, `[[`, character(1), "source")
+  if (!is.null(plan$second_column)) {
+    sources <- vapply(sources, function(source) {
+      pair <- tryCatch(jsonlite::fromJSON(source), error = function(error) NULL)
+      if (!is.character(pair) || length(pair) != 2L || anyNA(pair) ||
+          any(!nzchar(trimws(pair))))
+        stop("Composite sample-plan sources must be JSON pairs of nonempty strings.", call. = FALSE)
+      plan_source_key(pair[[1L]], pair[[2L]])
+    }, character(1))
+  }
+  if (anyDuplicated(sources))
+    stop("recipe.sample_plan group sources must be unique.", call. = FALSE)
+  invisible(plan)
+}
+
+validate_input_sha256 <- function(hashes) {
+  config_fields(hashes, c("metadata", "quantification"), "dataset.input_sha256")
+  if (!setequal(names(hashes), c("metadata", "quantification")))
+    stop("dataset.input_sha256 requires metadata and quantification.", call. = FALSE)
+  for (field in c("metadata", "quantification"))
+    if (!is.character(hashes[[field]]) || length(hashes[[field]]) != 1L ||
+        is.na(hashes[[field]]) || !grepl("^[0-9a-f]{64}$", hashes[[field]]))
+      stop("Invalid dataset.input_sha256.", field, call. = FALSE)
+  invisible(hashes)
+}
+
+verify_input_sha256 <- function(dataset, hashes = NULL) {
+  expected <- dataset$input_sha256
+  if (is.null(expected)) return(invisible(NULL))
+  validate_input_sha256(expected)
+  for (field in c("metadata", "quantification")) {
+    actual <- if (is.null(hashes)) sha256_file(dataset[[field]]) else hashes[[field]]
+    if (!identical(actual, expected[[field]]))
+      stop("Canonical ", field, " SHA256 mismatch.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+validate_recipe_config <- function(recipe) {
+  config_fields(recipe, c("kind", "study_hash", "display_group", "seed", "presentation", "roles",
+                          "sample_plan", "preprocessing", "design", "analyses"), "recipe")
+  config_choice(recipe$kind, c("study", "comparison"), "recipe.kind")
+  if (identical(recipe$kind, "study")) {
+    if (!is.null(recipe$study_hash) || !is.null(recipe$sample_plan))
+      stop("Study recipes cannot specify a parent or select biological subsets.", call. = FALSE)
+    if (!is.null(recipe$display_group)) config_text(recipe$display_group, "recipe.display_group")
+    if (!is.null(recipe$design) &&
+        !identical(recipe$design, list(group = recipe$display_group %||% "sample_type")))
+      stop("Study design is display-only; remove inferential design fields.", call. = FALSE)
+  } else {
+    if (!is.character(recipe$study_hash) || length(recipe$study_hash) != 1L ||
+        is.na(recipe$study_hash) || !grepl("^[0-9a-f]{64}$", recipe$study_hash))
+      stop("Comparison recipes require a sealed 64-character study_hash.", call. = FALSE)
+    if (!is.null(recipe$display_group))
+      stop("Comparison display group belongs to the shared study.", call. = FALSE)
+    if (is.null(recipe$design))
+      stop("Comparison recipes require a biological design.", call. = FALSE)
+  }
+  if (!is.null(recipe$seed)) config_number(recipe$seed, "seed", 0, .Machine$integer.max, integer = TRUE)
+  if (!is.null(recipe$presentation)) {
+    config_fields(recipe$presentation, "description", "presentation")
+    if (!identical(names(recipe$presentation), "description"))
+      stop("presentation requires a description.", call. = FALSE)
+    description <- recipe$presentation$description
+    config_text(description, "presentation.description")
+    if (!identical(description, trimws(description)) ||
+        nchar(description, type = "chars") > 160L || grepl("[[:cntrl:]]", description))
+      stop("presentation.description must be trimmed, one line of at most 160 characters without controls.", call. = FALSE)
+  }
+
+  if (!is.null(recipe$sample_plan)) {
+    validate_sample_plan(recipe$sample_plan)
+    if (!identical(recipe$design$group, "analysis_group"))
+      stop("recipe.sample_plan requires design.group: analysis_group.", call. = FALSE)
+  }
+  if (!is.null(recipe$roles)) {
+    config_fields(recipe$roles, c("column", "levels"), "resolved recipe.roles")
+    config_text(recipe$roles$column, "resolved recipe.roles.column")
+    config_fields(recipe$roles$levels, c("sample", "qc", "blank"), "resolved recipe.roles.levels")
+    if (!setequal(names(recipe$roles$levels), c("sample", "qc", "blank")))
+      stop("resolved recipe.roles.levels requires sample, qc, and blank.", call. = FALSE)
+    for (role in c("sample", "qc", "blank"))
+      config_text(recipe$roles$levels[[role]], paste0("resolved recipe.roles.levels.", role))
+    if (anyDuplicated(unlist(recipe$roles$levels, use.names = FALSE)))
+      stop("Resolved role levels must be distinct.", call. = FALSE)
+  }
+
+  preprocessing <- recipe$preprocessing %||% list()
+  config_fields(preprocessing, c("blank_filter", "qc_rsd_filter", "missing_values", "normalization", "transformation", "scaling"), "preprocessing")
+  sections <- list(blank_filter = c("enabled", "minimum_sample_to_blank_ratio", "minimum_blank_prevalence"),
+                   qc_rsd_filter = c("enabled", "threshold_percent"), missing_values = "method",
+                   normalization = "method", transformation = "method", scaling = "method")
+  for (section in names(sections)) config_fields(preprocessing[[section]] %||% list(), sections[[section]], paste0("preprocessing.", section))
+  for (section in c("blank_filter", "qc_rsd_filter")) {
+    enabled <- preprocessing[[section]]$enabled
+    if (!is.null(enabled)) config_boolean(enabled, paste0("preprocessing.", section, ".enabled"))
+  }
+  blank <- preprocessing$blank_filter
+  qc <- preprocessing$qc_rsd_filter
+  if (!is.null(blank$minimum_sample_to_blank_ratio)) config_number(blank$minimum_sample_to_blank_ratio, "blank filter ratio", 0)
+  if (!is.null(blank$minimum_blank_prevalence)) config_number(blank$minimum_blank_prevalence, "blank filter prevalence", 0, 1)
+  if (!is.null(qc$threshold_percent)) config_number(qc$threshold_percent, "QC RSD threshold", 0)
+  methods <- list(missing_values = c("none", "half_minimum"), normalization = c("none", "total_sum", "median", "pqn"),
+                  transformation = c("none", "log2", "log10", "log1p"), scaling = c("none", "pareto", "autoscale"))
+  for (section in names(methods)) {
+    method <- preprocessing[[section]]$method
+    if (!is.null(method)) config_choice(tolower(method), methods[[section]], paste0("preprocessing.", section, ".method"))
+  }
+
+  design <- recipe$design %||% list(group = recipe$display_group %||% "sample_type")
+  config_fields(design, c("group", "block", "block_verified", "contrasts"), "design")
+  config_text(design$group, "design.group")
+  if (!is.null(design$block)) {
+    config_text(design$block, "design.block")
+    if (identical(design$block, design$group)) stop("The group and block columns must differ.", call. = FALSE)
+    if (!identical(design$block_verified, TRUE)) stop("design.block requires explicit block_verified: true after experimental verification.", call. = FALSE)
+  } else if (!is.null(design$block_verified)) {
+    stop("design.block_verified requires a design.block column.", call. = FALSE)
+  }
+  contrasts <- expand_biostats_contrasts(design, character())
+
+  analyses <- recipe$analyses %||% list()
+  allowed_analyses <- if (identical(recipe$kind, "study")) c("pca", "pcoa") else
+    c("omnibus", "differential", "plsda")
+  config_fields(analyses, allowed_analyses, paste0(recipe$kind, " analyses"))
+  options <- list(pca = c("enabled", "components", "include_qc", "include_blanks"),
+                  pcoa = c("enabled", "components", "stage", "distance", "include_qc", "include_blanks"),
+                  omnibus = "enabled", differential = "enabled",
+                  plsda = c("enabled", "components", "folds", "repeats", "permutations"))
+  for (analysis in names(options)) {
+    value <- analyses[[analysis]] %||% list()
+    config_fields(value, options[[analysis]], paste0("analyses.", analysis))
+    if (!is.null(value$enabled)) config_boolean(value$enabled, paste0("analyses.", analysis, ".enabled"))
+    if (!is.null(value$components)) config_number(value$components, paste0("analyses.", analysis, ".components"), 1, integer = TRUE)
+  }
+  for (analysis in c("pca", "pcoa"))
+    for (role in c("include_qc", "include_blanks"))
+      if (!is.null(analyses[[analysis]][[role]]))
+        config_boolean(analyses[[analysis]][[role]], paste0("analyses.", analysis, ".", role))
+  pcoa <- analyses$pcoa
+  if (!is.null(pcoa$stage)) config_choice(pcoa$stage, c("imputed", "normalized", "transformed", "scaled"), "PCoA stage")
+  if (!is.null(pcoa$distance)) config_choice(pcoa$distance, c("bray", "euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski"), "PCoA distance")
+  if (isTRUE(pcoa$enabled) && identical(pcoa$distance %||% "bray", "bray") &&
+      !(pcoa$stage %||% "normalized") %in% c("imputed", "normalized"))
+    stop("Bray-Curtis PCoA requires the imputed or normalized nonnegative stage.", call. = FALSE)
+  if (isTRUE(analyses$differential$enabled) && !is.null(design$contrasts) && !length(contrasts) &&
+      !identical(design$contrasts, "all"))
+    stop("Differential analysis requires nonempty design.contrasts or 'all'.", call. = FALSE)
+  plsda <- analyses$plsda
+  if (!is.null(plsda$folds)) config_number(plsda$folds, "PLS-DA folds", 2, integer = TRUE)
+  if (!is.null(plsda$repeats)) config_number(plsda$repeats, "PLS-DA repeats", 2, integer = TRUE)
+  if (!is.null(plsda$permutations)) config_number(plsda$permutations, "PLS-DA permutations", 19, integer = TRUE)
+  if (isTRUE(plsda$enabled) && !is.null(design$block))
+    stop("PLS-DA does not model verified blocks; disable PLS-DA or remove the block design.", call. = FALSE)
+  invisible(recipe)
+}
+
+resolve_biostats_config <- function(dataset_yaml, recipe_yaml, repo_root) {
+  dataset_path <- normalize_existing_path(dataset_yaml)
+  recipe_path <- normalize_existing_path(recipe_yaml)
+  dataset <- read_yaml_file(dataset_path)
+  recipe <- read_yaml_file(recipe_path)
+  if ("sample_plan" %in% names(dataset))
+    stop("dataset.sample_plan is obsolete; move the plan to recipe.sample_plan.", call. = FALSE)
+  if ("roles" %in% names(recipe))
+    stop("recipe.roles is obsolete; define shared roles in dataset.roles instead.", call. = FALSE)
+  config_fields(dataset, c("id", "batch_dir", "metadata", "metadata_columns", "quantification", "feature_id_column", "intensity_measure", "annotations", "roles", "input_sha256"), "dataset")
+  for (field in c("id", "batch_dir", "metadata", "quantification")) config_text(dataset[[field]], paste0("dataset.", field))
+  if (!is.null(dataset$feature_id_column)) config_text(dataset$feature_id_column, "dataset.feature_id_column")
+  if (!is.null(dataset$intensity_measure)) config_choice(dataset$intensity_measure, c("height", "area"), "dataset.intensity_measure")
+  if (!is.null(dataset$input_sha256)) validate_input_sha256(dataset$input_sha256)
+  mapping <- dataset$metadata_columns %||% list()
+  config_fields(mapping, c("filename", "sample_id", "sample_type"), "dataset.metadata_columns")
+  for (field in names(mapping)) config_text(mapping[[field]], paste0("dataset.metadata_columns.", field))
+  if (anyDuplicated(unlist(mapping, use.names = FALSE))) stop("Metadata column mappings must be unique.", call. = FALSE)
+  roles <- dataset_roles(dataset)
+  annotations <- dataset$annotations %||% list()
+  if (!is.list(annotations) || (length(annotations) && (is.null(names(annotations)) || anyNA(names(annotations)) ||
+      any(!nzchar(names(annotations))) || anyDuplicated(names(annotations)))))
+    stop("dataset.annotations must map unique source names to paths.", call. = FALSE)
+  for (name in names(annotations)) if (!is.null(annotations[[name]])) config_text(annotations[[name]], paste0("dataset.annotations.", name))
+  if (identical(recipe$kind, "study") && !is.null(recipe$design))
+    stop("Study recipe must not author design; set display_group instead.", call. = FALSE)
+  if (identical(recipe$kind, "comparison") && !is.null(recipe$preprocessing))
+    stop("Comparison preprocessing is inherited from its sealed study.", call. = FALSE)
+  recipe$roles <- roles
+  if (identical(recipe$kind, "study"))
+    recipe$design <- list(group = recipe$display_group %||% "sample_type")
+  validate_recipe_config(recipe)
+
+  dataset_base <- dirname(dataset_path)
+  batch_dir <- normalize_existing_path(dataset$batch_dir, dataset_base)
+  resolve_input <- function(value) normalize_existing_path(value, batch_dir)
+  dataset$batch_dir <- batch_dir
+  dataset$metadata <- resolve_input(dataset$metadata)
+  dataset$quantification <- resolve_input(dataset$quantification)
+  if (length(annotations)) dataset$annotations <- lapply(annotations, function(value) if (is.null(value)) NULL else resolve_input(value))
+
+  output_root <- file.path(batch_dir, "results", "stats")
+
+  list(
+    dataset = dataset,
+    recipe = recipe,
+    paths = list(dataset_yaml = dataset_path, recipe_yaml = recipe_path, output_root = normalizePath(output_root, mustWork = FALSE)),
+    repo_root = repo_root
+  )
+}
+
+scientific_recipe <- function(recipe) {
+  recipe$presentation <- NULL
+  if (isTRUE(recipe$analyses$differential$enabled) && is.null(recipe$design$contrasts))
+    recipe$design$contrasts <- "all"
+  recipe
+}

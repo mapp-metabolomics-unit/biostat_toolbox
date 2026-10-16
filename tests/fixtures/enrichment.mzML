@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<indexedmzML xmlns="http://psi.hupo.org/ms/mzml">
+  <mzML id="fixture" version="1.1.0">
+    <cvList count="1"><cv id="MS" fullName="Proteomics Standards Initiative Mass Spectrometry Ontology" URI="https://raw.githubusercontent.com/HUPO-PSI/psi-ms-CV/master/psi-ms.obo"/></cvList>
+    <fileDescription>
+      <fileContent><cvParam cvRef="MS" accession="MS:1000579" name="MS1 spectrum" value=""/></fileContent>
+      <sourceFileList count="1"><sourceFile id="RAW1" name="fixture.raw" location="file:///tmp"><cvParam cvRef="MS" accession="MS:1000569" name="SHA-1" value="0123456789abcdef0123456789abcdef01234567"/></sourceFile></sourceFileList>
+    </fileDescription>
+    <softwareList count="1"><software id="pwiz" version="3.0"><cvParam cvRef="MS" accession="MS:1000615" name="ProteoWizard software" value=""/></software></softwareList>
+    <instrumentConfigurationList count="1"><instrumentConfiguration id="IC1"><componentList count="1"><source order="1"><cvParam cvRef="MS" accession="MS:1000073" name="electrospray ionization" value=""/></source></componentList></instrumentConfiguration></instrumentConfigurationList>
+    <dataProcessingList count="1"><dataProcessing id="dp"><processingMethod order="0" softwareRef="pwiz"><cvParam cvRef="MS" accession="MS:1000544" name="Conversion to mzML" value=""/></processingMethod></dataProcessing></dataProcessingList>
+    <run id="fixture" defaultInstrumentConfigurationRef="IC1" defaultSourceFileRef="RAW1" startTimeStamp="2024-01-02T03:04:05Z">
+      <spectrumList count="1" defaultDataProcessingRef="dp"><spectrum index="0" id="scan=1" defaultArrayLength="0"><cvParam cvRef="MS" accession="MS:1000511" name="ms level" value="1"/><cvParam cvRef="MS" accession="MS:1000130" name="positive scan" value=""/><scanList count="1"><scan><cvParam cvRef="MS" accession="MS:1000016" name="scan start time" value="0"/></scan></scanList><binaryDataArrayList count="0"/></spectrum></spectrumList>
+    </run>
+  </mzML>
+  <indexList count="0"/>
+  <indexListOffset>0</indexListOffset>
+  <fileChecksum>abcdef0123456789abcdef0123456789abcdef01</fileChecksum>
+</indexedmzML>

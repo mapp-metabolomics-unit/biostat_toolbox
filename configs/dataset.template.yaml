@@ -10,7 +10,6 @@ feature_id_column: row ID
 # Required when both Peak height and Peak area occur:
 # intensity_measure: height
 # Input SHA-256 values are captured automatically in every sealed run; do not type them.
-# Advanced plan materialization may add an input_sha256 guard from its sealed source.
 annotations:
   canopus: results/sirius/canopus_structure_summary.tsv
   structures: results/sirius/structure_identifications.tsv
