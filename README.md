@@ -1,24 +1,44 @@
 # Biostats
 
-## Install once (Ubuntu server)
+## Install once (Ubuntu or macOS)
 
-Install Rust **1.95+**, [rig](https://github.com/r-lib/rig/blob/main/website/_partials/install-methods.md), R **4.6.1**, and the pinned R packages on the machine holding the batch. On a fresh Ubuntu 22.04 host:
+Use the **v0.1.0 release tag** for a reproducible toolbox checkout. Install on the machine holding the batch; a Mac user can instead SSH to an Ubuntu batch server without installing XQuartz, Chrome or R on the Mac. The Rust TUI needs Rust 1.95+, the metadata helper needs Python 3.9+ and the pinned [`mzmlwatcher`](https://github.com/oolonek/mzmlwatcher), and analyses need R 4.6.1 plus `biostats/renv.lock`.
+
+### Ubuntu 22.04 or later
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y curl git build-essential gfortran pkg-config libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev libfreetype6-dev libpng-dev libjpeg-dev libtiff-dev libharfbuzz-dev libfribidi-dev
+sudo apt-get install -y curl git python3 build-essential gfortran pkg-config libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev libfreetype6-dev libpng-dev libjpeg-dev libtiff-dev libharfbuzz-dev libfribidi-dev
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 . "$HOME/.cargo/env"
 curl -LsSf https://r-lib.github.io/rig/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 sudo "$(command -v rig)" add 4.6.1
-git clone https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
+cargo install --locked --git https://github.com/oolonek/mzmlwatcher.git --rev a65011fa9489647cbdce4d9a7e84d2dcf1f2db26 mzmlwatcher
+git clone --branch v0.1.0 --depth 1 https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
 cd biostat_toolbox/biostats
 rig run -r 4.6.1 -f bootstrap.R
 cd ..
 ```
 
-If you already have a checkout, skip `git clone` and run the bootstrap command from **that checkout's** `biostats/` directory. It restores `renv.lock` from CRAN and Bioconductor; first installation may take a while. There is no root-level R environment or `params/` setup. From a Mac, SSH to the machine holding the batch; XQuartz, Chrome and local R are not required. To run with data on a Mac instead, install [Rust](https://rustup.rs/) and `brew install r-rig`, run `rig add 4.6.1`, then bootstrap from the Mac checkout's `biostats/` directory.
+### macOS (when the batch is available locally)
+
+Install the Xcode Command Line Tools if missing (`xcode-select --install`), [Homebrew](https://brew.sh/) if missing, and then:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+. "$HOME/.cargo/env"
+brew install r-rig
+rig system user-mode
+rig add 4.6.1
+cargo install --locked --git https://github.com/oolonek/mzmlwatcher.git --rev a65011fa9489647cbdce4d9a7e84d2dcf1f2db26 mzmlwatcher
+git clone --branch v0.1.0 --depth 1 https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
+cd biostat_toolbox/biostats
+rig run -r 4.6.1 -f bootstrap.R
+cd ..
+```
+
+If you already have a checkout, use the intended release tag or commit and skip `git clone`; run `bootstrap.R` from **that checkout's** `biostats/` directory. The first restore fetches pinned packages from CRAN and Bioconductor and can take a while. No root-level R environment, `params/`, web server, or browser is required.
 
 ## Run a batch
 

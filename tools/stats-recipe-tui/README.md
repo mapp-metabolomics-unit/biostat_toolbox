@@ -1,6 +1,6 @@
 # Batch recipe builder (tabiew-based Rust TUI)
 
-A menu-driven terminal recipe builder embedding [tabiew](https://github.com/shshemi/tabiew)'s navigable table alongside batch-specific menus. Run it on the machine holding the batch (including over SSH); no browser, XQuartz or HTTP server is needed. Rust 1.95+ and the pinned R environment are installed using the [toolbox quickstart](../../README.md#install-once-ubuntu-server).
+A menu-driven terminal recipe builder embedding [tabiew](https://github.com/shshemi/tabiew)'s navigable table alongside batch-specific menus. Run it on the machine holding the batch (including over SSH); no browser, XQuartz or HTTP server is needed. Rust 1.95+, the pinned mzML metadata helper and the R environment are installed using the [toolbox quickstart](../../README.md#install-once-ubuntu-or-macos).
 
 From the root of **your own toolbox checkout**:
 
