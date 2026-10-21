@@ -6,6 +6,8 @@ Use the **v0.1.0 release tag** for a reproducible toolbox checkout. Install on t
 
 ### Ubuntu 22.04 or later
 
+On a shared server, an **administrator** provisions the `apt` packages and system R 4.6.1 once. A researcher without sudo must **skip** those `sudo` lines: `rig list` should already show 4.6.1, and `rig run -r 4.6.1` uses that shared R from the researcher's own checkout. Do not use `rig system user-mode` on a shared server: it migrates and can remove shared R installations.
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y curl git python3 build-essential gfortran pkg-config libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev libfreetype6-dev libpng-dev libjpeg-dev libtiff-dev libharfbuzz-dev libfribidi-dev
@@ -29,7 +31,6 @@ Install the Xcode Command Line Tools if missing (`xcode-select --install`), [Hom
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 . "$HOME/.cargo/env"
 brew install r-rig
-rig system user-mode
 rig add 4.6.1
 cargo install --locked --git https://github.com/oolonek/mzmlwatcher.git --rev a65011fa9489647cbdce4d9a7e84d2dcf1f2db26 mzmlwatcher
 git clone --branch v0.1.0 --depth 1 https://github.com/mapp-metabolomics-unit/biostat_toolbox.git
@@ -37,6 +38,8 @@ cd biostat_toolbox/biostats
 rig run -r 4.6.1 -f bootstrap.R
 cd ..
 ```
+
+The macOS `rig add` command above uses rig's default admin mode and may request an administrator password. If a user-mode rig installation is needed, follow the [current rig user-mode instructions](https://github.com/r-lib/rig/blob/main/website/admin-vs-user-mode.qmd); older rig versions do not provide that mode.
 
 If you already have a checkout, use the intended release tag or commit and skip `git clone`; run `bootstrap.R` from **that checkout's** `biostats/` directory. The first restore fetches pinned packages from CRAN and Bioconductor and can take a while. No root-level R environment, `params/`, web server, or browser is required.
 
