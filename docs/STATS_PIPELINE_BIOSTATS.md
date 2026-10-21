@@ -8,6 +8,7 @@ The [quickstart](../README.md#run-a-batch) has the workflow: create a **study** 
 - A batch-owned `dataset.yaml` points to curated sample metadata, MZmine quantification, and optional annotation sources. `sample_type` defaults to biological `sample`, `QC`, or `blank`. Set `intensity_measure` when both height and area are available. See [dataset template](../configs/dataset.template.yaml).
 - A batch-owned **study** recipe defines shared preprocessing and PCA/PCoA across every biological sample; see the [study template](../configs/recipe.template.yaml). A batch-owned **comparison** recipe references the sealed study hash and defines group selection, contrasts and optional inferential analyses; see the [comparison template](../configs/comparison.template.yaml). The Rust TUI checks metadata against quantification filenames; verify mismatches against acquisition records before approving a corrected metadata **copy**. It does not change the original files. New comparisons never change the study's ordination, and creating a new study is necessary if its input data, preprocessing or ordination settings change.
 - Independent biological replicates are required for inferential comparisons. Do not silently pool repeated parts of the same specimen. `validate` checks alignment and design; `plan` reports study filter attrition or comparison reuse without publishing. Review both before `run`.
+- `run` requires the toolbox checkout to have a valid Git HEAD and no staged changes, modified tracked files, or untracked nonignored files; this applies even when reusing a completed result. `validate` and `plan` still work while editing. Newly sealed study and comparison manifests save the full `environment.git_commit` plus per-source checksums; if HEAD or source bytes change during a run, sealing fails. The input metadata, quantification and annotations are separately checksummed.
 - SIRIUS `structure_identifications.tsv` is read as literal tab-separated fields: quotation marks inside chemical names are data, not row delimiters. Other annotation TSVs keep their existing quoting rules.
 - Under Settings in the Rust TUI, PCA and PCoA each have separate **include QC** and **include blanks** switches (off by default). In a manually edited recipe, set `analyses.pca.include_qc`, `analyses.pca.include_blanks`, `analyses.pcoa.include_qc`, or `analyses.pcoa.include_blanks` to `true`. Selected injections enter that ordination's fit after the configured feature filters and preprocessing; they may change its axes and are labeled separately in score tables and plots. Omnibus, contrasts, and PLS-DA still use biological samples only. With PQN or log transformation, blank injections dominated by zeros can be imputed and visually misleading; inspect their raw intensities before interpreting their positions.
 - On PCA, PCoA and validated PLS-DA score plots, expand **Map metadata onto sample scores**. Add any saved sample-metadata columns as cards: categorical cards create joint legend groups; a varying numeric card can instead use a shared Viridis colour scale across groups. Only one continuous colour field is shown at a time; further numeric cards can be treated as exact-value categories. Expand **Legend groups** to move groups up or down (changing plot and legend order) or pick a colour for each discrete group; the default 12-colour palette uses saturated, contrasting colours. Repeated field names and safely distinct long values are shortened in the legend; full field names and values remain on point hover and in the group control's title. Viridis controls marker colours while a numeric field uses the continuous scale, so discrete colour pickers are unavailable in that mode. Missing numeric values stay visible in grey, and missing categories say “Not recorded” on hover. To inspect acquisition order, add `injection_order` as the Viridis card after a new run saves that column. QC diamonds and blank crosses keep their shapes. These mappings affect display only, not fitted axes, tests or recipe grouping; old sealed runs cannot acquire metadata retroactively.
@@ -15,6 +16,46 @@ The [quickstart](../README.md#run-a-batch) has the workflow: create a **study** 
 - In **Feature explorer → Browse by**, switch from **Individual features** to **Reported compounds · saved 2D key** to group filtered features by the first 14 InChIKey characters reported by structural candidates or saved horizontal annotations. Click a key to list its measured features, reporting sources and source-specific candidate records; click a feature to inspect its intensities and full evidence. A feature with several reported keys appears under each one; unkeyed features remain in the individual-feature view. Filters select features before grouping, so matching a filter on one candidate does **not** validate every other reported key for that feature. A shared 2D key is not proof of identical stereochemistry or a confirmed identification. **Show structure thumbnails** adds representative saved-SMILES depictions beside feature IDs or keys for the current table page; it is off by default and sends those SMILES and your network address to the external Natural Products API when enabled.
 - In a feature’s **Saved source SMILES and evidence**, an identical SMILES with the same named source and saved 2D key appears once even when both the source-specific candidate table and the horizontal summary contain it. Different candidate names and distinct saved taxonomic evidence remain listed with that structure; the untouched source-specific candidate records are available below. Unkeyed structures are not merged on SMILES alone, because identical text does not establish a shared source or identity.
 - In **Chemical classes**, **Compare biological groups by** and **Group A/B** also set the feature-intensity plot's grouping column, biological-only sample role, selected pair, and A/B order. Clicking a feature in the hierarchy opens it with those settings; changing A/B also updates an open feature drawer. Its group colours come from the same **Group colours · all plots** controls as the class plot. You can still change the feature plot's display options afterward. The feature plot's intensity stage remains independent: choose **raw** to compare its per-feature intensities directly with the class plot's saved raw-intensity totals. Chemical-class feature filters select *features*, not sample injections, and do not recalculate intensities or tests.
+
+## Paired 0.5 vs untreated example
+
+For `mapp_project_00084/mapp_batch_00268`, make four **separate** two-group comparisons. Select `ATTRIBUTE_cell_type_treatment_concentration` as the primary group column; include only the two source levels in each row:
+
+| Comparison | Treated source (`target: treated`) | Control source (`target: control`) |
+| --- | --- | --- |
+| A549 PET 0.5 | `A549_PET_0.5` | `A549_Untreated_0` |
+| A549 PS 0.5 | `A549_PS_0.5` | `A549_Untreated_0` |
+| MDM PET 0.5 | `MDM_PET_0.5` | `MDM_Untreated_0` |
+| MDM PS 0.5 | `MDM_PS_0.5` | `MDM_Untreated_0` |
+
+The target labels `control` and `treated` make the TUI's two-group `all` contrast `treated_vs_control`, i.e. treated minus untreated. Disable PLS-DA for the paired runs. Run two distinct recipes per row if both paired and unpaired statistics are needed. An unpaired analysis of the *same matched specimens* deliberately ignores within-unit matching; do not claim these specimens were drawn from independent donors merely to select an unpaired test.
+
+Before making paired recipes, confirm the experimental pairing with the researcher and add a complete `ATTRIBUTE_experimental_unit` column to **curated batch metadata**. Use one ID for all five treatments within each A549 passage (three passage IDs) and one ID for all five treatments within each MDM donor/experiment (three different IDs, not just the collection date). The current MDM `ATTRIBUTE_blood_donor` is missing for one experiment, and two distinct donors share 19 June. `MDM_B_120626_PS05` carries 12 June while the source document places donor B on 19 June: verify which label/date is right; do not assume a pairing or silently correct it. Each comparison must have exactly one treated and one untreated sample per verified unit. Changes to the curated metadata change its checksum; save and run a **new study** before creating these comparisons. The old study's comparison recipes cannot reuse changed metadata.
+
+In the comparison TUI, keep only the chosen treated and control sources, rename targets as above, choose `ATTRIBUTE_experimental_unit` under **Experimental unit / pairing block**, and type `PAIRED` after verification. For the second, unpaired recipe, use the same two groups but select the deliberate unpaired option; it leaves the block out. A manually authored paired recipe for A549 PET has the following essential fields (substitute the new study hash and one pair of sources from the table for the other three):
+
+```yaml
+kind: comparison
+study_hash: "<new-full-64-character-study-hash>"
+seed: 1
+sample_plan:
+  group_column: ATTRIBUTE_cell_type_treatment_concentration
+  groups:
+    - {source: "A549_PET_0.5", target: treated}
+    - {source: A549_Untreated_0, target: control}
+design:
+  group: analysis_group
+  block: ATTRIBUTE_experimental_unit
+  block_verified: true
+  contrasts:
+    - {name: treated_vs_control, numerator: treated, denominator: control}
+analyses:
+  omnibus: {enabled: false}
+  differential: {enabled: true}
+  plsda: {enabled: false}
+```
+
+For its unpaired counterpart, remove both `block` and `block_verified` (keep the rest). Run the generated `validate`, `plan`, `run` commands for each recipe. When the sealed study uses `log2` transformation, the blocked two-group model tests the three within-unit differences in **log2-transformed, normalized** intensity against zero (two residual degrees of freedom); without the block it tests group differences without matching. Report the effect's direction, p-values and per-contrast BH q-values separately for each comparison.
 
 ## What the analyses mean
 

@@ -196,6 +196,8 @@ validate_dataset <- function(dataset, recipe = list()) {
             cross <- table(blocks, groups)
             if (nrow(cross) < 2L || any(rowSums(cross > 0L) < 2L))
               issues <- c(issues, "Verified blocks require at least two blocks, each spanning at least two groups.")
+            if (length(group_counts) == 2L && any(cross != 1L))
+              issues <- c(issues, "Paired two-group comparisons require exactly one sample from each group in every verified block.")
             full <- stats::model.matrix(~ 0 + group + block, data.frame(group = factor(groups), block = factor(blocks)))
             if (qr(full)$rank < ncol(full) || nrow(full) <= ncol(full))
               issues <- c(issues, "The group-plus-block design must have full rank and positive residual degrees of freedom.")

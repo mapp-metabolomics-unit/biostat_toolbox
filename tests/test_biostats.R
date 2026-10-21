@@ -43,6 +43,66 @@ local({
   batch <- file.path(work, "research-group", "docs", "mapp_project_00085", "mapp_batch_00270")
   dir.create(batch, recursive = TRUE)
   on.exit(unlink(work, recursive = TRUE), add = TRUE)
+  # Tests can be launched from a developer's dirty worktree. Execute the
+  # behavioral runs against the exact tested sources in a disposable commit.
+  source_root <- repo_root
+  toolbox <- file.path(work, "toolbox")
+  dir.create(toolbox)
+  for (directory in c("src/biostats", "src", "biostats", "scripts", "dashboard"))
+    dir.create(file.path(toolbox, directory), recursive = TRUE, showWarnings = FALSE)
+  for (directory in c("src/biostats", "dashboard")) {
+    files <- list.files(file.path(source_root, directory), full.names = TRUE)
+    stopifnot(all(file.copy(files, file.path(toolbox, directory))))
+  }
+  for (path in c("src/mapp_stats.R", "biostats/renv.lock",
+                 "scripts/publish_stats_dashboard.R", ".gitignore"))
+    stopifnot(file.copy(file.path(source_root, path), file.path(toolbox, path)))
+  repo_root <- normalizePath(toolbox, mustWork = TRUE)
+  git <- function(...) {
+    result <- suppressWarnings(system2(Sys.which("git"),
+      c("-C", shQuote(repo_root), ...), stdout = TRUE, stderr = TRUE))
+    if (!is.null(attr(result, "status")))
+      stop("Fixture Git operation failed: ", paste(result, collapse = "\n"), call. = FALSE)
+    result
+  }
+  git("init", "-q")
+  git("add", ".")
+  git("-c", "user.name=BiostatsTest", "-c", "user.email=biostats@example.invalid",
+      "commit", "-qm", shQuote("Committed toolbox fixture"))
+  expected_commit <- git("rev-parse", "HEAD")
+  stopifnot(identical(committed_biostats_code(repo_root), expected_commit))
+  tracked <- file.path(repo_root, "src", "mapp_stats.R")
+  pristine <- readBin(tracked, "raw", n = file.info(tracked)$size)
+  writeLines("changed", tracked)
+  expect_error(committed_biostats_code(repo_root), "clean committed toolbox")
+  git("add", "src/mapp_stats.R")
+  expect_error(committed_biostats_code(repo_root), "clean committed toolbox")
+  writeBin(pristine, tracked)
+  git("add", "src/mapp_stats.R")
+  untracked <- file.path(repo_root, "uncommitted.txt")
+  file.create(untracked)
+  expect_error(committed_biostats_code(repo_root), "clean committed toolbox")
+  unlink(untracked)
+  dir.create(file.path(repo_root, "__pycache__"))
+  file.create(file.path(repo_root, "__pycache__", "ignored.pyc"))
+  stopifnot(identical(committed_biostats_code(repo_root), expected_commit))
+  changed_hashes <- biostats_code_checksums(repo_root)
+  changed_hashes[["src/mapp_stats.R"]] <- paste0(
+    if (startsWith(changed_hashes[["src/mapp_stats.R"]], "0")) "1" else "0",
+    substring(changed_hashes[["src/mapp_stats.R"]], 2))
+  expect_error(committed_biostats_code(repo_root, changed_hashes, expected_commit),
+               "differs from committed HEAD")
+  expect_error(committed_biostats_code(repo_root, commit = strrep("0", nchar(expected_commit))),
+               "HEAD changed")
+  no_git <- file.path(work, "not-a-checkout")
+  dir.create(no_git)
+  expect_error(committed_biostats_code(no_git), "Git checkout|toolbox")
+  no_head <- file.path(work, "unborn-checkout")
+  dir.create(no_head)
+  git_unborn <- suppressWarnings(system2(Sys.which("git"),
+    c("-C", shQuote(no_head), "init", "-q"), stdout = TRUE, stderr = TRUE))
+  stopifnot(is.null(attr(git_unborn, "status")))
+  expect_error(committed_biostats_code(no_head), "HEAD unavailable|HEAD")
   samples <- paste0("sample", seq_len(18))
   groups <- rep(c("WT", "mutant", "other"), each = 6)
   parts <- rep(c("leaf", "root"), times = 9)
@@ -96,11 +156,23 @@ local({
   study_manifest <- read_yaml_file(file.path(study_dir, "manifest.yaml"))
   study_scores <- sha256_file(file.path(study_dir, "tables", "pca_scores.tsv"))
   stopifnot(identical(study_manifest$kind, "study"),
+            identical(study_manifest$environment$git_commit, expected_commit),
+            identical(study_manifest$environment$code_sha256, biostats_code_checksums(repo_root)),
             identical(study_manifest$validation$role_counts$sample, 18L),
             completed_run(study_dir, study_hash),
             identical(execute_biostats_run(study_config), study_dir),
             !file.exists(file.path(study_dir, "tables", "differential.tsv")),
             nrow(utils::read.delim(file.path(study_dir, "tables", "pca_scores.tsv"))) == 18L)
+  file.create(file.path(repo_root, "before-republish.txt"))
+  expect_error(execute_biostats_run(study_config), "clean committed toolbox")
+  unlink(file.path(repo_root, "before-republish.txt"))
+  writeLines("Non-scientific fixture history", file.path(repo_root, "fixture-history.txt"))
+  git("add", "fixture-history.txt")
+  git("-c", "user.name=BiostatsTest", "-c", "user.email=biostats@example.invalid",
+      "commit", "-qm", shQuote("Record non-code fixture change"))
+  comparison_commit <- git("rev-parse", "HEAD")
+  stopifnot(!identical(comparison_commit, expected_commit),
+            identical(execute_biostats_run(study_config), study_dir))
 
   comparison <- list(kind = "comparison", study_hash = study_hash, seed = 1L,
     sample_plan = list(group_column = "group", groups = list(
@@ -122,6 +194,7 @@ local({
   selected <- utils::read.delim(file.path(child_dir, "tables", "comparison_sample_metadata.tsv"))
   effects <- utils::read.delim(file.path(child_dir, "tables", "differential.tsv"))
   stopifnot(identical(first_manifest$kind, "comparison"),
+            identical(first_manifest$environment$git_commit, comparison_commit),
             identical(first_manifest$study_hash, study_hash),
             identical(first_manifest$effective_recipe$preprocessing,
                       study_manifest$effective_recipe$preprocessing),
@@ -186,6 +259,34 @@ local({
   expect_error(completed_run(child_dir, first_child), "corrupt")
   stopifnot(completed_run(study_dir, study_hash))
 })
+local({
+  metadata <- data.frame(sample_type = rep("sample", 6),
+                         analysis_group = rep(c("untreated", "treated"), each = 3),
+                         biological_unit = rep(c("leaf_1", "leaf_2", "leaf_3"), 2),
+                         row.names = paste0("injection_", seq_len(6)))
+  baselines <- c(3, 8, 15)
+  differences <- c(1, 2, 4)
+  log2_values <- matrix(c(baselines, baselines + differences), ncol = 1L,
+                        dimnames = list(rownames(metadata), "measured_feature"))
+  dataset <- list(raw = 2^log2_values, sample_metadata = metadata)
+  design <- list(group = "analysis_group", block = "biological_unit", block_verified = TRUE,
+                 contrasts = list(list(name = "treated_vs_untreated",
+                                       numerator = "treated", denominator = "untreated")))
+  recipe <- list(kind = "comparison", design = design,
+                 analyses = list(differential = list(enabled = TRUE)))
+  stopifnot(validate_dataset(dataset, recipe)$valid)
+  fit <- run_differential(log2_values, metadata, design, "log2")
+  paired <- stats::t.test(differences, mu = 0)
+  stopifnot(nrow(fit) == 1L, identical(fit$effect_scale, "log2_fold_change"),
+            isTRUE(all.equal(fit$effect, unname(paired$estimate))),
+            isTRUE(all.equal(fit$statistic, unname(paired$statistic))),
+            isTRUE(all.equal(fit$p_value, paired$p.value)),
+            identical(fit$degrees_of_freedom, 2L))
+  mismatched <- dataset
+  mismatched$sample_metadata$biological_unit[6] <- "leaf_2"
+  expect_error(validate_dataset(mismatched, recipe), "exactly one sample from each group")
+})
+
 local({
   set.seed(42)
   values <- matrix(rexp(40) + 1, 8, 5,

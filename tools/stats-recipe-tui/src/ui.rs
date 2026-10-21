@@ -70,6 +70,8 @@ enum Action {
     GroupTarget(usize),
     Descriptive,
     Independent,
+    Unpaired,
+    Paired,
     Slug,
     Description,
     Seed,
@@ -117,6 +119,8 @@ enum ChoosePurpose {
 enum InputPurpose {
     Verify { old: String, new: String },
     Independent,
+    Unpaired,
+    Paired,
     GroupTarget(usize),
     Slug,
     Description,
@@ -415,7 +419,7 @@ impl Screen {
                         format!("Comparison secondary group: {}", m.secondary.and_then(|i| m.table.columns.get(i)).map(String::as_str).unwrap_or("none")),
                         Action::Secondary);
                     item(&mut entries,
-                        format!("Experimental unit: {}", m.unit.and_then(|i| m.table.columns.get(i)).map(String::as_str).unwrap_or("none")),
+                        format!("Experimental unit / pairing block: {}", m.unit.and_then(|i| m.table.columns.get(i)).map(String::as_str).unwrap_or("none")),
                         Action::Unit);
                     for (i, group) in m.groups.iter().enumerate() {
                         item(&mut entries,
@@ -425,6 +429,8 @@ impl Screen {
                     }
                     item(&mut entries, format!("Descriptive only: {}", if m.descriptive_only { "yes" } else { "no" }), Action::Descriptive);
                     item(&mut entries, format!("Independent units: {} (type INDEPENDENT)", if m.independent { "confirmed" } else { "not confirmed" }), Action::Independent);
+                    item(&mut entries, format!("Ignore matching / unpaired t-test (same units may appear in both groups): {} (type UNPAIRED)", if m.unpaired { "confirmed" } else { "not confirmed" }), Action::Unpaired);
+                    item(&mut entries, format!("Matched pairs: {} (type PAIRED after verifying biological identity)", if m.paired { "confirmed" } else { "not confirmed" }), Action::Paired);
                 } else {
                     item(&mut entries,
                         format!("Ordination display labels: {}", m.display_group.and_then(|i| m.table.columns.get(i)).map(String::as_str).unwrap_or("sample_type (default)")),
@@ -501,8 +507,9 @@ impl Screen {
                     item(
                         &mut entries,
                         format!(
-                            "{parent} enabled: {}",
-                            value(m, "analyses", parent, "enabled")
+                            "{parent} enabled: {}{}",
+                            value(m, "analyses", parent, "enabled"),
+                            if m.paired && *parent == "plsda" { " (unavailable for paired)" } else { "" }
                         ),
                         Action::Toggle(parent, "enabled"),
                     );
@@ -765,7 +772,7 @@ impl Screen {
                     .and_then(|i| fields.iter().position(|field| *field == i))
                     .map_or(0, |i| i + 1);
                 self.chooser(
-                    "Optional experimental-unit identifier",
+                    "Select actual biological-unit ID (same unit in both groups; different donors can share collection dates)",
                     names,
                     selected,
                     ChoosePurpose::Unit,
@@ -774,6 +781,8 @@ impl Screen {
             Action::GroupToggle(i) => {
                 self.model.groups[i].included = !self.model.groups[i].included;
                 self.model.independent = false;
+                self.model.unpaired = false;
+                self.model.paired = false;
                 self.changed();
             }
             Action::GroupTarget(i) => self.input(
@@ -784,12 +793,24 @@ impl Screen {
             Action::Descriptive => {
                 self.model.descriptive_only = !self.model.descriptive_only;
                 if self.model.descriptive_only {
+                    self.model.paired = false;
+                    self.model.unpaired = false;
                     for key in ["omnibus", "differential", "plsda"] {
                         self.model.analyses[key]["enabled"] = json!(false);
                     }
                 }
                 self.changed();
             }
+            Action::Paired => self.input(
+                "Verify same biological units in both groups; type PAIRED (dates can match unrelated donors)",
+                String::new(),
+                InputPurpose::Paired,
+            ),
+            Action::Unpaired => self.input(
+                "Ignore matching, test groups as unpaired; type UNPAIRED after checking one biological observation per group",
+                String::new(),
+                InputPurpose::Unpaired,
+            ),
             Action::Independent => self.input(
                 "Type INDEPENDENT to certify independent biological units",
                 String::new(),
@@ -818,6 +839,9 @@ impl Screen {
                     return Err(anyhow!(
                         "Switch off descriptive-only mode before enabling inferential analyses"
                     ));
+                }
+                if self.model.paired && parent == "plsda" {
+                    return Err(anyhow!("PLS-DA is unavailable for paired comparisons"));
                 }
                 root[parent][key] = json!(root[parent][key] != true);
                 self.changed();
@@ -954,6 +978,8 @@ impl Screen {
                     Some(self.model.unit_fields()[selected - 1])
                 };
                 self.model.independent = false;
+                self.model.paired = false;
+                self.model.unpaired = false;
             }
             ChoosePurpose::Method(parent, key) => {
                 let root = if [
@@ -989,6 +1015,8 @@ impl Screen {
         match purpose {
             InputPurpose::Verify { old, new } => self.model.assign_filename(&old, &new, text)?,
             InputPurpose::Independent => self.model.confirm_independence(text)?,
+            InputPurpose::Paired => self.model.confirm_paired(text)?,
+            InputPurpose::Unpaired => self.model.confirm_unpaired(text)?,
             InputPurpose::GroupTarget(i) => {
                 if text.is_empty()
                     || text == "NA"
@@ -1001,6 +1029,8 @@ impl Screen {
                 }
                 self.model.groups[i].target = text.into();
                 self.model.independent = false;
+                self.model.paired = false;
+                self.model.unpaired = false;
             }
             InputPurpose::Slug => self.model.slug = text.into(),
             InputPurpose::Description => self.model.description = text.into(),

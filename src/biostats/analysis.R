@@ -97,8 +97,10 @@ run_differential <- function(x, metadata, design_config, transformation_method) 
   residual_df <- nrow(design$matrix) - fitted$rank
   pivot_order <- order(fitted$qr$pivot)
   covariance <- chol2inv(qr.R(fitted$qr))
-  fit <- list(design = design$matrix, coefficients = fitted$coefficients,
-              sigma2 = colSums(fitted$residuals^2, na.rm = TRUE) / residual_df,
+  residual_squares <- fitted$residuals^2
+  sigma2 <- if (is.null(dim(residual_squares))) sum(residual_squares) / residual_df else
+    colSums(residual_squares) / residual_df
+  fit <- list(design = design$matrix, coefficients = fitted$coefficients, sigma2 = sigma2,
               covariance = covariance[pivot_order, pivot_order, drop = FALSE], residual_df = residual_df,
               feature_ids = colnames(x))
   effect_label <- if (tolower(transformation_method) == "log2") "log2_fold_change" else "difference_on_transformed_scale"

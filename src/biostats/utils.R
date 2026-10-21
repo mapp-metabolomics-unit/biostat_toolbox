@@ -77,6 +77,54 @@ biostats_code_checksums <- function(repo_root) {
   as.list(checksums)
 }
 
+# Runs must originate from exactly the committed toolbox, including files that
+# were sourced before the run began. Recheck against the saved hashes at sealing.
+committed_biostats_code <- function(repo_root, code_sha256 = NULL, commit = NULL) {
+  git <- Sys.which("git")
+  if (!nzchar(git)) stop("A Git checkout and committed toolbox code are required to run Biostats.", call. = FALSE)
+  repo_root <- normalizePath(repo_root, mustWork = TRUE)
+  git_args <- function(...) c("-C", shQuote(repo_root), ...)
+  command <- function(...) {
+    output <- suppressWarnings(system2(git, git_args(...), stdout = TRUE, stderr = TRUE))
+    if (!is.null(attr(output, "status")) || !length(output))
+      stop("Cannot verify committed toolbox code (Git checkout or HEAD unavailable).", call. = FALSE)
+    output
+  }
+  root <- command("rev-parse", "--show-toplevel")
+  if (length(root) != 1L || !identical(normalizePath(root, mustWork = TRUE), repo_root))
+    stop("Biostats toolbox must be the root of its Git checkout.", call. = FALSE)
+  head <- command("rev-parse", "--verify", "HEAD^{commit}")
+  if (length(head) != 1L || !grepl("^[0-9a-f]{40}([0-9a-f]{24})?$", head))
+    stop("Cannot verify committed toolbox code: no valid Git HEAD.", call. = FALSE)
+  if (!is.null(commit) && !identical(commit, head))
+    stop("Toolbox Git HEAD changed during the Biostats run.", call. = FALSE)
+  status_path <- tempfile("biostats-git-status-")
+  on.exit(unlink(status_path), add = TRUE)
+  status <- suppressWarnings(system2(git, git_args("status", "--porcelain=v1", "-z",
+    "--untracked-files=all"), stdout = status_path, stderr = FALSE))
+  if (!identical(as.integer(status), 0L))
+    stop("Cannot verify clean toolbox Git status.", call. = FALSE)
+  if (file.info(status_path)$size > 0L)
+    stop("Biostats run requires a clean committed toolbox (tracked, staged and untracked files must be committed or removed).",
+         call. = FALSE)
+  if (is.null(code_sha256)) code_sha256 <- biostats_code_checksums(repo_root)
+  if (!is.list(code_sha256) || !length(code_sha256) || is.null(names(code_sha256)) ||
+      anyDuplicated(names(code_sha256)) || !identical(names(code_sha256),
+        names(biostats_code_checksums(repo_root))))
+    stop("Cannot verify saved Biostats source checksums.", call. = FALSE)
+  snapshot <- tempfile("biostats-head-")
+  on.exit(unlink(snapshot), add = TRUE)
+  for (path in names(code_sha256)) {
+    result <- suppressWarnings(system2(git, git_args("show", shQuote(paste0("HEAD:", path))),
+                                       stdout = snapshot, stderr = FALSE))
+    if (!identical(as.integer(result), 0L) ||
+        !identical(sha256_file(snapshot), code_sha256[[path]]))
+      stop("Biostats source differs from committed HEAD or changed during the run: ", path,
+           call. = FALSE)
+  }
+  head
+}
+
 safe_name <- function(x) {
   x <- gsub("[^A-Za-z0-9._-]+", "_", x)
   gsub("^_+|_+$", "", x)

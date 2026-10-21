@@ -105,6 +105,8 @@ pub struct Model {
     pub annotations: BTreeMap<String, Option<PathBuf>>,
     pub descriptive_only: bool,
     pub independent: bool,
+    pub unpaired: bool,
+    pub paired: bool,
 }
 
 fn valid_batch_name(name: &str, prefix: &str) -> bool {
@@ -352,6 +354,8 @@ impl Model {
             annotations,
             descriptive_only: false,
             independent: false,
+            unpaired: false,
+            paired: false,
         };
         model.reset_metadata_choices();
         model.reset_quant_choices()?;
@@ -448,6 +452,8 @@ impl Model {
         self.refresh_groups();
         self.independent = false;
         self.descriptive_only = false;
+        self.paired = false;
+        self.unpaired = false;
     }
 
     fn reset_quant_choices(&mut self) -> Result<()> {
@@ -673,6 +679,8 @@ impl Model {
             })
             .collect();
         self.independent = false;
+        self.paired = false;
+        self.unpaired = false;
     }
 
     pub fn dependency_warnings(&self) -> Vec<String> {
@@ -746,10 +754,119 @@ impl Model {
         Ok(())
     }
 
+    fn verify_unblocked_units(&self, allow_shared: bool) -> Result<()> {
+        let unit = self.unit.context("Choose a verified biological-unit ID column to rule out repeated injections within groups")?;
+        if !self.unit_fields().contains(&unit) {
+            bail!("Choose a complete biological-unit ID column");
+        }
+        if unit == self.primary || self.secondary == Some(unit) {
+            bail!("Biological-unit ID column must not be a grouping column");
+        }
+        let selected = self.groups.iter().filter(|group| group.included)
+            .map(|group| (group.source.as_str(), group.target.as_str()))
+            .collect::<BTreeMap<_, _>>();
+        if allow_shared && selected.values().copied().collect::<BTreeSet<_>>().len() != 2 {
+            bail!("UNPAIRED mode requires exactly two selected target groups");
+        }
+        let mut seen = HashSet::<(&str, &str)>::new();
+        let mut first_group = BTreeMap::<&str, &str>::new();
+        for row in self.biological_rows() {
+            let source = self.source_for_row(row);
+            let Some(&target) = selected.get(source.as_str()) else { continue };
+            let id = row[unit].as_str();
+            if id.is_empty() || id == "NA" {
+                bail!("Biological-unit ID is missing in selected group {target}");
+            }
+            if !seen.insert((id, target)) {
+                bail!("Biological unit {id} has repeated injections within group {target}; use one biological observation per group");
+            }
+            if let Some(previous) = first_group.insert(id, target) {
+                if !allow_shared && previous != target {
+                    bail!("Biological unit {id} occurs in groups {previous} and {target}; choose UNPAIRED to ignore matching or PAIRED to model it, not INDEPENDENT");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn confirm_unpaired(&mut self, token: &str) -> Result<()> {
+        if token != "UNPAIRED" {
+            bail!("Type UNPAIRED to ignore matching only after verifying one biological observation per group");
+        }
+        self.verify_unblocked_units(true)?;
+        self.unpaired = true;
+        self.independent = false;
+        self.paired = false;
+        self.descriptive_only = false;
+        Ok(())
+    }
+
+    fn verify_pairs(&self) -> Result<()> {
+        let unit = self.unit.context("Paired comparison requires a verified biological-unit ID column")?;
+        if !self.unit_fields().contains(&unit) {
+            bail!("Choose a complete biological-unit ID column for pairing");
+        }
+        if unit == self.primary || self.secondary == Some(unit) {
+            bail!("Pairing column must identify biological units, not a grouping column");
+        }
+        let targets = self.groups.iter().filter(|group| group.included)
+            .map(|group| group.target.as_str()).collect::<BTreeSet<_>>();
+        if targets.len() != 2 {
+            bail!("Paired comparison requires exactly two selected target groups");
+        }
+        let labels: Vec<_> = targets.into_iter().collect();
+        let group_targets = self.groups.iter().filter(|group| group.included)
+            .map(|group| (group.source.as_str(), group.target.as_str()))
+            .collect::<BTreeMap<_, _>>();
+        let mut blocks = BTreeMap::<&str, [usize; 2]>::new();
+        for row in self.biological_rows() {
+            let source = self.source_for_row(row);
+            if let Some(target) = group_targets.get(source.as_str()) {
+                let block = row[unit].as_str();
+                if block.is_empty() || block == "NA" {
+                    bail!("Paired comparison has a missing biological-unit ID in selected group {target}");
+                }
+                let index = usize::from(*target == labels[1]);
+                let counts = blocks.entry(block).or_default();
+                counts[index] += 1;
+                if counts[index] > 1 {
+                    bail!("Paired biological unit {block} has multiple samples in group {target}; exactly one per group is required");
+                }
+            }
+        }
+        for (block, counts) in &blocks {
+            if counts != &[1, 1] {
+                bail!("Paired biological unit {block} is missing a sample in group {}; every selected unit needs one sample per group", labels[usize::from(counts[0] == 1)]);
+            }
+        }
+        if blocks.len() < 3 {
+            bail!("Paired comparison requires at least three complete matched biological units");
+        }
+        Ok(())
+    }
+
+    pub fn confirm_paired(&mut self, token: &str) -> Result<()> {
+        if token != "PAIRED" {
+            bail!("Type PAIRED only after verifying that the selected column identifies the same biological unit in both groups");
+        }
+        self.verify_pairs()?;
+        self.paired = true;
+        self.independent = false;
+        self.unpaired = false;
+        self.descriptive_only = false;
+        self.analyses["plsda"]["enabled"] = json!(false);
+        Ok(())
+    }
+
     pub fn confirm_independence(&mut self, token: &str) -> Result<()> {
         if token != "INDEPENDENT" {
             bail!("Type INDEPENDENT only after verifying independent experimental units");
         }
+        if self.unit.is_some() {
+            self.verify_unblocked_units(false)?;
+        }
+        self.paired = false;
+        self.unpaired = false;
         self.independent = true;
         self.descriptive_only = false;
         Ok(())
@@ -760,6 +877,9 @@ impl Model {
         if self.is_comparison() {
             for key in ["omnibus", "differential", "plsda"] {
                 enabled(analyses, key)?;
+            }
+            if self.paired && enabled(analyses, "plsda")? {
+                bail!("PLS-DA is not supported for paired comparisons; disable PLS-DA.");
             }
             check_integer(&analyses["plsda"]["components"], "PLS-DA components", 1)?;
             let folds = check_integer(&analyses["plsda"]["folds"], "PLS-DA folds", 2)?;
@@ -777,8 +897,8 @@ impl Model {
             {
                 bail!("Descriptive-only plans cannot enable inferential analyses.");
             }
-            if !self.independent && !self.descriptive_only {
-                bail!("Choose descriptive-only or type INDEPENDENT after verifying study design");
+            if !self.independent && !self.unpaired && !self.paired && !self.descriptive_only {
+                bail!("Choose descriptive-only, confirm UNPAIRED or PAIRED, or type INDEPENDENT after verifying study design");
             }
             return Ok(());
         }
@@ -960,6 +1080,15 @@ impl Model {
                 bail!("At least two target groups with at least three biological samples each are required.");
             }
         }
+        if self.paired {
+            if !self.is_comparison() {
+                bail!("Paired design is only available for comparisons");
+            }
+            self.verify_pairs()?;
+        }
+        if self.unpaired || (self.independent && self.unit.is_some()) {
+            self.verify_unblocked_units(self.unpaired)?;
+        }
         self.validate_settings(&target_counts)?;
         let slug = self.slug.as_bytes();
         if !(3..=51).contains(&slug.len())
@@ -1018,10 +1147,15 @@ impl Model {
             if let Some(index) = self.secondary {
                 sample_plan["second_column"] = json!(columns[index]);
             }
-            json!({"kind": "comparison", "study_hash": study.hash, "seed": self.seed,
+            let mut comparison = json!({"kind": "comparison", "study_hash": study.hash, "seed": self.seed,
                 "sample_plan": sample_plan,
                 "design": {"group": "analysis_group", "contrasts": "all"},
-                "analyses": {"omnibus": self.analyses["omnibus"], "differential": self.analyses["differential"], "plsda": self.analyses["plsda"]}})
+                "analyses": {"omnibus": self.analyses["omnibus"], "differential": self.analyses["differential"], "plsda": self.analyses["plsda"]}});
+            if self.paired {
+                comparison["design"]["block"] = json!(columns[self.unit.expect("verified by verify_pairs")]);
+                comparison["design"]["block_verified"] = json!(true);
+            }
+            comparison
         } else {
             json!({"kind": "study", "seed": self.seed, "preprocessing": self.prep,
                 "analyses": {"pca": self.analyses["pca"], "pcoa": self.analyses["pcoa"]}})
@@ -1109,11 +1243,11 @@ mod tests {
         fs::create_dir_all(batch.join("results/mzmine"))?;
         let source = batch.join("metadata/treated/metadata.tsv");
         fs::write(&source, concat!(
-            "filename\tsample_id\tsample_type\tindividual_id\tcondition\tphase\n",
-            "A1.mzML\tA1\tsample\tA1\tcase\tall\nA2.mzML\tA2\tsample\tA2\tcase\tall\nA3.mzML\tA3\tsample\tA3\tcase\tall\nA4.mzML\tA4\tsample\tA4\tcase\tall\n",
-            "B1.mzML\tB1\tsample\tB1\tcontrol\tall\nB2.mzML\tB2\tsample\tB2\tcontrol\tall\nB3.mzML\tB3\tsample\tB3\tcontrol\tall\nB4.mzML\tB4\tsample\tB4\tcontrol\tall\n",
-            "Q1.mzML\tQ1\tQC\tQ1\tNA\tNA\nQ2.mzML\tQ2\tQC\tQ2\tNA\tNA\nQ3.mzML\tQ3\tQC\tQ3\tNA\tNA\n",
-            "blank_old.mzML\tblank\tblank\tblank\tNA\tNA\n"
+            "filename\tsample_id\tsample_type\tindividual_id\tcondition\tphase\tcollection_date\n",
+            "A1.mzML\tA1\tsample\tA1\tcase\tall\t2026-01-01\nA2.mzML\tA2\tsample\tA2\tcase\tall\t2026-01-02\nA3.mzML\tA3\tsample\tA3\tcase\tall\t2026-01-03\nA4.mzML\tA4\tsample\tA4\tcase\tall\t2026-01-04\n",
+            "B1.mzML\tB1\tsample\tA1\tcontrol\tall\t2026-01-01\nB2.mzML\tB2\tsample\tA2\tcontrol\tall\t2026-01-02\nB3.mzML\tB3\tsample\tA3\tcontrol\tall\t2026-01-03\nB4.mzML\tB4\tsample\tA4\tcontrol\tall\t2026-01-04\n",
+            "Q1.mzML\tQ1\tQC\tQ1\tNA\tNA\tNA\nQ2.mzML\tQ2\tQC\tQ2\tNA\tNA\tNA\nQ3.mzML\tQ3\tQC\tQ3\tNA\tNA\tNA\n",
+            "blank_old.mzML\tblank\tblank\tblank\tNA\tNA\tNA\n"
         ))?;
         fs::write(batch.join("results/mzmine/quant.csv"), concat!(
             "row ID,A1.mzML Peak height,A2.mzML Peak height,A3.mzML Peak height,A4.mzML Peak height,",
@@ -1175,8 +1309,26 @@ mod tests {
         assert!(Model::load_comparison(&batch, "a").is_err());
         let mut comparison = Model::load_comparison(&batch, &study_hash)?;
         assert_eq!(comparison.metadata_path, metadata);
-        assert!(comparison.plan().is_err()); // Independent design requires certification.
+        assert!(comparison.plan().is_err()); // Inferential designs require explicit certification.
+        let selected_unit = comparison.unit.take();
+        assert!(comparison.confirm_unpaired("UNPAIRED").err().unwrap().to_string().contains("biological-unit ID"));
         comparison.confirm_independence("INDEPENDENT")?;
+        assert!(comparison.plan()?.recipe["design"].get("block").is_none());
+        comparison.unit = selected_unit;
+        assert!(comparison.plan().err().unwrap().to_string().contains("UNPAIRED"));
+        assert!(comparison.confirm_independence("INDEPENDENT").err().unwrap().to_string().contains("UNPAIRED"));
+        assert!(comparison.confirm_unpaired("INDEPENDENT").is_err());
+        comparison.table.rows[1][3] = "A1".into();
+        assert!(comparison.confirm_unpaired("UNPAIRED").err().unwrap().to_string().contains("repeated injections within group"));
+        comparison.table.rows[1][3] = "A2".into();
+        for index in 4..8 {
+            comparison.table.rows[index][3] = format!("B{}", index - 3);
+        }
+        comparison.confirm_independence("INDEPENDENT")?;
+        for index in 4..8 {
+            comparison.table.rows[index][3] = format!("A{}", index - 3);
+        }
+        comparison.confirm_unpaired("UNPAIRED")?;
         let first = comparison.plan()?;
         assert_eq!(first.recipe["kind"], "comparison");
         assert_eq!(first.recipe["study_hash"], study_hash);
@@ -1188,15 +1340,61 @@ mod tests {
         assert_eq!(first.dataset["metadata"], plan.dataset["metadata"]);
         assert_eq!(first.dataset["input_sha256"]["metadata"], digest(&metadata)?);
         first.save()?;
+        assert!(first.recipe["design"].get("block").is_none());
+        assert!(comparison.unpaired);
+        assert!(!comparison.independent);
+        assert!(comparison.confirm_paired("INDEPENDENT").is_err());
+        comparison.confirm_paired("PAIRED")?;
+        let matched = comparison.plan()?;
+        assert_eq!(matched.recipe["design"]["block"], "individual_id");
+        assert_eq!(matched.recipe["design"]["block_verified"], true);
+        assert_ne!(first.hash, matched.hash);
+        assert!(!comparison.independent);
+        assert_eq!(matched.recipe["analyses"]["plsda"]["enabled"], false);
+        comparison.unit = comparison.table.column("collection_date");
+        comparison.confirm_paired("PAIRED")?;
+        assert_eq!(comparison.plan()?.recipe["design"]["block"], "collection_date");
+        comparison.table.rows[4][6] = "2026-01-02".into();
+        assert!(comparison.plan().err().unwrap().to_string().contains("multiple samples"));
+        comparison.table.rows[4][6] = "2026-01-01".into();
+        comparison.unit = comparison.table.column("individual_id");
+        comparison.analyses["plsda"]["enabled"] = json!(true);
+        assert!(comparison.plan().err().unwrap().to_string().contains("PLS-DA"));
+        comparison.analyses["plsda"]["enabled"] = json!(false);
+        comparison.table.rows[4][3] = "A2".into();
+        assert!(comparison.plan().err().unwrap().to_string().contains("multiple samples"));
+        assert!(comparison.confirm_paired("PAIRED").err().unwrap().to_string().contains("multiple samples"));
+        comparison.table.rows[4][3] = "unmatched".into();
+        assert!(comparison.plan().err().unwrap().to_string().contains("missing a sample"));
+        comparison.table.rows[4][3].clear();
+        assert!(comparison.plan().err().unwrap().to_string().contains("complete experimental-unit ID"));
+        comparison.table.rows[4][3] = "A1".into();
+        comparison.unit = None;
+        assert!(comparison.plan().err().unwrap().to_string().contains("biological-unit ID"));
+        comparison.unit = comparison.table.column("individual_id");
+        comparison.primary = comparison.unit.unwrap();
+        assert!(comparison.verify_pairs().err().unwrap().to_string().contains("Pairing column must identify"));
+        comparison.primary = comparison.table.column("condition").unwrap();
+        let rows = comparison.table.rows.clone();
+        comparison.table.rows.retain(|row| !["A4", "B4"].contains(&row[1].as_str()));
+        comparison.refresh_groups();
+        comparison.confirm_paired("PAIRED")?; // Three complete units are sufficient.
+        comparison.table.rows.retain(|row| !["A3", "B3"].contains(&row[1].as_str()));
+        comparison.refresh_groups();
+        assert!(comparison.confirm_paired("PAIRED").unwrap_err().to_string().contains("at least three complete"));
+        comparison.table.rows = rows;
+        comparison.refresh_groups();
+        comparison.confirm_unpaired("UNPAIRED")?;
+        assert!(comparison.plan()?.recipe["design"].get("block").is_none());
         comparison.secondary = comparison.table.column("phase");
         comparison.refresh_groups();
-        comparison.confirm_independence("INDEPENDENT")?;
-        let paired = comparison.plan()?;
-        assert_eq!(paired.recipe["sample_plan"]["second_column"], "phase");
-        assert_eq!(paired.recipe["sample_plan"]["groups"][0]["source"], "[\"case\",\"all\"]");
-        assert!(paired.corrected.is_none());
-        assert_eq!(paired.dataset["metadata"], first.dataset["metadata"]);
-        assert_ne!(first.hash, paired.hash);
+        comparison.confirm_unpaired("UNPAIRED")?;
+        let secondary = comparison.plan()?;
+        assert_eq!(secondary.recipe["sample_plan"]["second_column"], "phase");
+        assert_eq!(secondary.recipe["sample_plan"]["groups"][0]["source"], "[\"case\",\"all\"]");
+        assert!(secondary.corrected.is_none());
+        assert_eq!(secondary.dataset["metadata"], first.dataset["metadata"]);
+        assert_ne!(first.hash, secondary.hash);
         comparison.groups[0].target = "renamed".into();
         let second = comparison.plan()?;
         assert_ne!(first.hash, second.hash);

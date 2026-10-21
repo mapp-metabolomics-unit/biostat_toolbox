@@ -36,7 +36,7 @@ sealed_study <- function(config, dataset_hash, environment) {
       length(manifest$hashes$preprocess_hash) != 1L ||
       is.na(manifest$hashes$preprocess_hash) ||
       !grepl("^[0-9a-f]{64}$", manifest$hashes$preprocess_hash) ||
-      !identical(manifest$environment, environment))
+      !identical(manifest$environment[names(manifest$environment) != "git_commit"], environment))
     stop("Comparison dataset or code/environment differs from its sealed study; create a new study.", call. = FALSE)
   list(directory = directory, manifest = manifest)
 }
@@ -115,6 +115,7 @@ completed_run <- function(directory, run_hash) {
 }
 
 execute_biostats_run <- function(config, force = FALSE) {
+  commit <- committed_biostats_code(config$repo_root)
   started <- proc.time()[["elapsed"]]
   elapsed <- function() {
     seconds <- floor(proc.time()[["elapsed"]] - started)
@@ -213,7 +214,7 @@ execute_biostats_run <- function(config, force = FALSE) {
     dataset_id = config$dataset$id,
     hashes = identity[c("dataset_hash", "preprocess_hash", "run_hash")],
     inputs = identity$inputs,
-    environment = identity$environment,
+    environment = c(identity$environment, list(git_commit = commit)),
     validation = validation$validation,
     effective_dataset = if (identical(kind, "comparison"))
       identity$study$manifest$effective_dataset else config$dataset,
@@ -227,6 +228,7 @@ execute_biostats_run <- function(config, force = FALSE) {
     export_comparison_results(validation$dataset, analyses, manifest, staging_dir)
   else
     export_results(validation$dataset, processed, analyses, manifest, staging_dir)
+  committed_biostats_code(config$repo_root, identity$environment$code_sha256, commit)
   say("Sealing and publishing the completed run")
   write_yaml_file(list(run_hash = identity$run_hash, content_sha256 = sha256_object(run_contents(staging_dir)),
                        completed_at = format(Sys.time(), tz = "UTC", usetz = TRUE)), file.path(staging_dir, "COMPLETE"))

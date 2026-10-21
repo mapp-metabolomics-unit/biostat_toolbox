@@ -12,6 +12,11 @@ sample_plan:
   # source as a JSON pair, e.g. '["WT","leaf"]' or '["mutant","leaf"]'.
 design:
   group: analysis_group
+  # For verified matched pairs, select a biological-unit ID shared by the
+  # two treatment groups (one sample per group per unit, at least three units).
+  # block: ATTRIBUTE_experimental_unit
+  # block_verified: true
+  # Omit both keys for the separate unpaired analysis of the same samples.
   contrasts:
     - {name: mutant_vs_WT, numerator: mutant, denominator: WT}
 analyses:
