@@ -73,6 +73,47 @@
       cell.classList.add('linked-value');
     } else cell.textContent = content;
   }
+  function downloadTSV(filename, headers, rows) {
+    const quote = (value) => {
+      const field = text(value);
+      return /[\t\r\n"]/.test(field) ? '"' + field.replaceAll('"','""') + '"' : field;
+    };
+    const lines = [headers.map(quote).join('\t'),
+      ...rows.map((row) => row.map(quote).join('\t'))];
+    const url = URL.createObjectURL(new Blob([lines.join('\n')+'\n'],{type:'text/tab-separated-values;charset=utf-8'}));
+    const link = el('a',{href:url,download:filename});
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url),60000);
+  }
+  function plotDataButton(ctx, container, filename) {
+    const button = el('button',{type:'button',class:'button secondary small',text:'Download plotted data (TSV)'});
+    let headers = [], data = [];
+    button.disabled = true;
+    button.addEventListener('click',() => {
+      if (valid(ctx) && !button.disabled) downloadTSV(filename,headers,data);
+    });
+    container.append(button);
+    return (columns, rows) => {
+      headers = columns;
+      data = rows;
+      button.disabled = !rows.length;
+    };
+  }
+  function savedPlotRows(data, extra, values) {
+    const columns = Object.keys(data[0]);
+    return [extra.concat(columns),values.map(({row,prefix}) =>
+      prefix.concat(columns.map((field) => row[field])))];
+  }
+  function samplePlotRows(data, bySample, groups) {
+    const metadataColumns = Object.keys(metadata[0]).filter((field) => !Object.hasOwn(data[0],field));
+    return savedPlotRows(data,['display_group',...metadataColumns.map((field) => 'metadata:'+field)],
+      groups.flatMap((group) => group.rows.map((row) => ({
+        row,prefix:[group.name,...metadataColumns.map((field) => bySample.get(row.sample)?.[field] ?? '')]
+      }))));
+  }
+
   function table(headers, rows, onFeature, filename = 'dashboard-table.tsv', options = {}) {
     const size = 100;
     const visible = new Set(headers.map((_,i) => i).filter((i) => !options.hiddenColumns?.includes(headers[i])));
@@ -138,18 +179,8 @@
     const downloadButton = el('button',{type:'button',class:'button secondary small',text:'Download displayed TSV'});
     downloadButton.addEventListener('click',() => {
       const indexes = headers.map((_,i) => i).filter((i) => visible.has(i));
-      const quote = (value) => {
-        const field = text(value);
-        return /[\t\r\n"]/.test(field) ? '"' + field.replaceAll('"','""') + '"' : field;
-      };
-      const lines = [indexes.map((i) => quote(headers[i])).join('\t'),
-        ...displayed.map((row) => indexes.map((i) => quote(label(row[i]))).join('\t'))];
-      const url = URL.createObjectURL(new Blob([lines.join('\n')+'\n'],{type:'text/tab-separated-values;charset=utf-8'}));
-      const link = el('a',{href:url,download:filename});
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url),60000);
+      downloadTSV(filename,indexes.map((i) => headers[i]),
+        displayed.map((row) => indexes.map((i) => label(row[i]))));
     });
     const headings = headers.map((heading,i) => {
       const sort = el('button',{type:'button',class:'table-sort',text:heading+' ↕',
@@ -1432,8 +1463,10 @@
     const wrapper = card('Sample scores',ui,mapping.node,note(includedRoles.length ?
       `${controls} injections participate in the fitted axes; inferential analyses remain biological-only. Diamonds are QC; crosses are blanks.` :
       'Saved biological sample scores. Enable QC / blanks separately for PCA or PCoA in the recipe.'));
+    const setScores = plotDataButton(ctx,wrapper,stem+'-scores-plotted.tsv');
     const plot = plotNode(wrapper,true);
     const loading = stem === 'pca' && available(ctx,'pca_loadings') ? card('Feature loadings',note('These points represent features, not samples. Click a point to inspect the feature.')) : null;
+    const setLoadings = loading ? plotDataButton(ctx,loading,'pca-loadings-plotted.tsv') : null;
     const loadingPlot = loading ? plotNode(loading) : null;
     const loadingColors = loading ? featureDisplayOptions(ctx,colorData,'pca',colorData.featureIds,
       loadingPlot,() => redraw().catch((error) => {
@@ -1467,6 +1500,8 @@
       const axis = (name) => ui.querySelector('#'+stem+'-axis-'+name);
       const view = axis('view')?.value === '3D';
       const x = axis('x').value, y = axis('y')?.value, z = view ? axis('z')?.value : null;
+      setScores([],[]);
+      if (setLoadings) setLoadings([],[]);
       if (new Set([x,y,z].filter(Boolean)).size !== [x,y,z].filter(Boolean).length) {
         message(plot,'Choose distinct saved components for each axis.',true);
         if (loadingPlot) message(loadingPlot,'Choose distinct saved components for each axis.',true);
@@ -1476,6 +1511,7 @@
         (row) => row.ordination_group ? label(row.ordination_group) : groupName(bySample.get(row.sample)));
       if (!mapped.included) { message(plot,'No finite saved scores for the chosen components.'); return; }
       mapping.refreshGroups(mapped.groups,mapped.continuous);
+      setScores(...samplePlotRows(scores,bySample,mapped.groups));
       plot.replaceChildren();
       if (mapped.continuous) plot.removeAttribute('data-sample-groups');
       else plot.dataset.sampleGroups = 'true';
@@ -1496,6 +1532,8 @@
             hoverIndex.features.get(row.feature_id)?.structures.size),'#257e8b',''],
           ['Not annotated (no saved structural SMILES)',matching.filter((row) =>
             !hoverIndex.features.get(row.feature_id)?.structures.size),'#a4a9af','']]);
+        setLoadings(...savedPlotRows(loadings,['display_colour_group'],
+          groups.flatMap(([name,data]) => data.map((row) => ({row,prefix:[name]})))));
         const traces = groups.filter(([,data]) => data.length)
           .map(([name,data,color,legendgroup,scale,showlegend]) => ({
           legendgroup,showlegend:showlegend !== false,
@@ -1570,9 +1608,11 @@
     const mapping = scoreMapControls(ctx,'plsda',scores,bySample,redraw);
     const scoreCard = card('Full-fit sample scores',ui,mapping.node,
       note('Illustration of the fitted model only; these points are not held-out predictions.'));
+    const setScores = plotDataButton(ctx,scoreCard,'plsda-scores-plotted.tsv');
     const scorePlot = plotNode(scoreCard,true);
     const loadingCard = card('Full-fit feature loadings',
       note('Illustrative feature contributions to the full-fit model only, not held-out predictive validation. Click a point to inspect its saved feature details.'));
+    const setLoadings = loadings?.length ? plotDataButton(ctx,loadingCard,'plsda-loadings-plotted.tsv') : null;
     const loadingPlot = loadings?.length ? plotNode(loadingCard,true) : null;
     let loadingColors, hoverIndex;
     if (loadingPlot) {
@@ -1587,6 +1627,7 @@
       note('Saved full-fit model VIP values describe fitted features; they are not held-out feature validation.'));
     const permutationCard = card('Saved label-permutation distribution',
       note('The vertical line is the saved held-out balanced accuracy. The p-value above comes from the saved validation summary.'));
+    const setPermutations = plotDataButton(ctx,permutationCard,'plsda-permutations-plotted.tsv');
     const permutationPlot = plotNode(permutationCard);
     let vipPlot, top;
     if (vip?.length) {
@@ -1594,9 +1635,11 @@
         .sort((a,b) => number(b.vip)-number(a.vip));
       if (ranked.length) {
         vipCard.append(note('Top '+Math.min(50,ranked.length)+' saved VIP values, ranked by importance. Click a bar or a feature ID below to inspect its saved details.'));
+        const setVip = plotDataButton(ctx,vipCard,'plsda-vip-plotted.tsv');
         vipPlot = plotNode(vipCard,true);
         top = ranked.slice(0,50);
         vipPlot.style.height = Math.max(420,top.length*23+120)+'px';
+        setVip(...savedPlotRows(vip,[],top.map((row) => ({row,prefix:[]}))));
       } else vipCard.append(note('No finite saved VIP values are available for this run.'));
       vipCard.append(card('All saved VIP values',table(['Feature ID','VIP'],
         vip.map((row) => [row.feature_id,row.vip]),(id) => openFeature(id),'plsda-vip.tsv')));
@@ -1623,6 +1666,9 @@
     }
     const nullValues = permutations.map((row) => number(row.balanced_accuracy))
       .filter((value) => Number.isFinite(value));
+    setPermutations(...savedPlotRows(permutations,['observed_balanced_accuracy'],
+      permutations.filter((row) => Number.isFinite(number(row.balanced_accuracy)))
+        .map((row) => ({row,prefix:[summary.balanced_accuracy]}))));
     if (!nullValues.length) message(permutationPlot,'No finite saved permutation accuracies.');
     else plotting(ctx,permutationPlot,[{type:'histogram',x:nullValues,name:'Shuffled labels',
       marker:{color:'#7999a0'},hovertemplate:'Balanced accuracy: %{x:.3f}<br>Permutations: %{y}<extra></extra>'}],
@@ -1634,6 +1680,8 @@
       const axis = (name) => ui.querySelector('#plsda-axis-'+name);
       const view = axis('view')?.value === '3D';
       const x = axis('x').value, y = axis('y')?.value, z = view ? axis('z')?.value : null;
+      setScores([],[]);
+      if (setLoadings) setLoadings([],[]);
       if (new Set([x,y,z].filter(Boolean)).size !== [x,y,z].filter(Boolean).length) {
         message(scorePlot,'Choose distinct saved components for each axis.',true);
         if (loadingPlot) message(loadingPlot,'Choose distinct saved components for each axis.',true);
@@ -1643,6 +1691,7 @@
         (row) => label(row[ctx.run.design_group]));
       if (!mapped.included) { message(scorePlot,'No finite saved scores for the chosen components.'); return; }
       mapping.refreshGroups(mapped.groups,mapped.continuous);
+      setScores(...samplePlotRows(scores,bySample,mapped.groups));
       scorePlot.replaceChildren();
       if (mapped.continuous) scorePlot.removeAttribute('data-sample-groups');
       else scorePlot.dataset.sampleGroups = 'true';
@@ -1662,6 +1711,8 @@
           hoverIndex.features.get(row.feature_id)?.structures.size),'#257e8b',''],
         ['Not annotated (no saved structural SMILES)',matching.filter((row) =>
           !hoverIndex.features.get(row.feature_id)?.structures.size),'#a4a9af','']]);
+      setLoadings(...savedPlotRows(loadings,['display_colour_group'],
+        groups.flatMap(([name,data]) => data.map((row) => ({row,prefix:[name]})))));
       const loadingTraces = groups.filter(([,data]) => data.length)
         .map(([name,data,color,legendgroup,scale,showlegend]) => ({
         legendgroup,showlegend:showlegend !== false,
@@ -1756,6 +1807,7 @@
     const description = note('');
     const cardPlot = card('Saved differential tests',instruction,chooser,description,
       note('q ≤ 0.05 marks saved adjusted significance. Filters on samples do not alter p or q.'));
+    const setVolcano = plotDataButton(ctx,cardPlot,'volcano-plotted.tsv');
     const plot = plotNode(cardPlot,true);
     const colorOptions = featureDisplayOptions(ctx,colorData,'volcano',
       [...new Set(data.map((row) => row.feature_id).filter(Boolean))],plot,update);
@@ -1793,6 +1845,7 @@
       hideFeatureHover();
       if (plot.data && window.Plotly) Plotly.purge(plot);
       plot.replaceChildren();
+      setVolcano([],[]);
       if (!match) {
         description.textContent = right+' vs '+left+' has no saved differential comparison.';
         message(plot,'No saved differential test for this group pair. Choose a pair with a saved comparison.');
@@ -1814,6 +1867,12 @@
           [true,plotted.filter((row) => number(row.q_value) <= .05),'#c35e44','']]
           .map(([significant,subset,color]) =>
             [significant?'q ≤ 0.05':'Other / q missing',subset,color,'']));
+      setVolcano(...savedPlotRows(data,
+        ['display_left','display_right','display_effect','display_minus_log10_p','display_colour_group'],
+        colorGroups.flatMap(([name,subset]) => subset.map((row) => ({
+          row,prefix:[left,right,(reversed ? -1 : 1)*number(row.effect),
+            -Math.log10(Math.max(number(row.p_value),floor)),name]
+        })))));
       const traces = colorGroups.map(([name,subset,color,legendgroup,scale,showlegend]) => ({
         type:'scattergl',mode:'markers',name:escapePlot(name),legendgroup,
         showlegend:showlegend !== false,
@@ -2115,6 +2174,7 @@
       });
       plotCard.append(displayOptions,
         note('Saved peak '+label(ctx.run.intensity_measure)+'. Boxes and points are descriptive; no test is recomputed.'));
+      const setBox = plotDataButton(ctx,plotCard,'feature-'+id+'-intensities-plotted.tsv');
       const box = plotNode(plotCard);
       const annotation = card('Chemical depictions');
       const structures = galleryStructures(mine,counts);
@@ -2220,6 +2280,7 @@
         hideFeatureHover();
         if (box.data && window.Plotly) Plotly.purge(box);
         box.replaceChildren();
+        setBox([],[]);
         split.classList.remove('faceted');
         if (!values.length) {
           message(box,'No finite intensities match the controls in this plot.');
@@ -2234,6 +2295,15 @@
         });
         const facetNames = facetField ?
           [...new Set(values.map((row) => groupName(selected.get(row.sample),facetField)))].sort() : [''];
+        const metaColumns = Object.keys(metadata[0]);
+        setBox(['feature_id','intensity_stage','intensity','display_group','display_facet',
+          ...metaColumns.map((field) => 'metadata:'+field)],
+        values.map((row) => {
+          const sample = selected.get(row.sample);
+          return [id,fallback ? 'raw' : stage,row[id],groupName(sample,groupField),
+            facetField ? groupName(sample,facetField) : '',
+            ...metaColumns.map((field) => sample[field] ?? '')];
+        }));
         const faceted = facetNames.length > 1;
         split.classList.toggle('faceted',faceted);
         const columns = faceted ? Math.min(2,facetNames.length) : 1;
@@ -2517,8 +2587,9 @@
     const summary = el('p',{class:'notice','aria-live':'polite'});
     const trail = el('nav',{class:'class-trail','aria-label':'NPC hierarchy'});
     const results = el('div');
-    const chart = plotNode(card('Raw intensity by chemical class and sample'));
-    const chartCard = chart.parentNode;
+    const chartCard = card('Raw intensity by chemical class and sample');
+    const setClasses = plotDataButton(ctx,chartCard,'npc-intensities-plotted.tsv');
+    const chart = plotNode(chartCard);
     chartCard.append(note('Boxes and points show per-sample raw intensities summed across the features in each child branch (one feature at the leaf level). Dashed lines mark group means, also listed in the table. The plot displays the 15 children with the highest combined group means; the table lists every child.'));
     target.replaceChildren(card('Compare saved chemical classes',controls,filterSet,context,summary),
       card('Explore pathway → superclass → class → feature',trail,results),chartCard);
@@ -2578,6 +2649,7 @@
         results.replaceChildren();
         if (chart.data && window.Plotly) Plotly.purge(chart);
         chart.replaceChildren();
+        setClasses([],[]);
         return;
       }
       const node = branch();
@@ -2650,12 +2722,20 @@
       function drawPlot(items) {
         if (chart.data && window.Plotly) Plotly.purge(chart);
         chart.replaceChildren();
+        setClasses([],[]);
         if (!items.length) {
           message(chart,'No features match the current feature and table filters.');
           return;
         }
         const top = [...items].sort((left,right) => right.a+right.b-left.a-left.b ||
           left.child.name.localeCompare(right.child.name)).slice(0,15).reverse();
+        const metaColumns = Object.keys(metadata[0]);
+        setClasses(['npc_level','npc_child','feature_ids','group','sample_total_raw_'+ctx.run.intensity_measure,
+          ...metaColumns.map((field) => 'metadata:'+field)],
+        top.flatMap(({child,ids,aValues,bValues}) =>
+          [[state.first,aSamples,aValues],[state.second,bSamples,bValues]].flatMap(([group,samples,values]) =>
+            samples.map((sample,i) => [level,child.name,ids.join(';'),group,values[i],
+              ...metaColumns.map((field) => sample[field] ?? '')]))));
         const labels = top.map(({child}) => escapePlot(child.name));
         const shown = new Set(), traces = [];
         for (const {child,aValues,bValues,a,b} of top) {
