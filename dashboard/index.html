@@ -19,21 +19,9 @@
   </header>
   <div id="status" class="status" role="status" aria-live="polite">Loading runs.json…</div>
   <div class="workspace">
-    <aside class="sidebar" aria-label="Settings and run provenance">
-      <div class="side-heading"><span class="eyebrow">VIEW SETTINGS</span><h2>Explore the data</h2></div>
-      <p class="muted">Settings affect display only; saved analyses and tests never change.</p>
-      <details id="hover-settings" class="hover-settings">
-        <summary>Settings · feature hover</summary>
-        <p class="hint">Choose saved fields and a SMILES source for feature points. Depictions send the SMILES and your network address to the Natural Products API.</p>
-        <fieldset id="hover-field-choices"><legend>Hover fields</legend><p class="hint">Open Settings or a feature plot to load saved fields.</p></fieldset>
-        <label for="hover-structure-source">Structure source</label><select id="hover-structure-source" disabled><option value="">Any saved source</option></select>
-      </details>
-      <details id="group-settings" class="hover-settings group-settings">
-        <summary>Group colours · all plots</summary>
-        <p class="hint">A group keeps the same colour in PCA, PCoA, PLS-DA and descriptive intensities.</p>
-        <div id="group-color-choices" class="group-color-choices"></div>
-      </details>
-      <div class="side-divider"></div><span class="eyebrow">PROVENANCE</span>
+    <aside class="sidebar" aria-label="Run provenance">
+      <div class="side-heading"><span class="eyebrow">PROVENANCE</span><h2>Saved run</h2></div>
+      <p class="muted">Display settings never change saved analyses or tests.</p>
       <dl id="run-facts" class="facts"></dl>
       <p class="hint">Only sealed, saved tables are read. No RDS is loaded and no analyses are recomputed.</p>
     </aside>
@@ -46,6 +34,7 @@
         <button type="button" class="tab" data-tab="plsda">PLS-DA</button>
         <button type="button" class="tab" data-tab="features">Feature explorer</button>
         <button type="button" class="tab" data-tab="classes">Chemical classes</button>
+        <button type="button" class="tab" data-tab="display">Display settings</button>
         <button type="button" class="tab" data-tab="downloads">Provenance & downloads</button>
       </nav>
       <div id="detached-status" class="detached-status notice" hidden>
@@ -60,7 +49,39 @@
       <section id="plsda" class="panel" aria-labelledby="plsda-title" hidden><div class="section-heading"><span class="eyebrow">05 / SUPERVISED ANALYSIS</span><h2 id="plsda-title">Validated PLS-DA</h2><p>Saved held-out predictions and label permutations assess the model; full-fit scores illustrate it.</p></div><div id="plsda-content" class="panel-content"></div></section>
       <section id="features" class="panel" aria-labelledby="features-title" hidden><div class="section-heading"><span class="eyebrow">06 / ANNOTATIONS</span><h2 id="features-title">Feature explorer</h2><p>Candidate identifications are hypotheses, not confirmed identities. Intensities are descriptive.</p></div><div id="detached-toolbar" class="detached-toolbar" hidden><label for="detached-feature">Feature ID</label><input type="search" id="detached-feature" placeholder="e.g. 467"><button type="button" id="detached-attach" class="button secondary small">Reattach to dashboard</button></div><div id="features-content" class="panel-content"></div></section>
       <section id="classes" class="panel" aria-labelledby="classes-title" hidden><div class="section-heading"><span class="eyebrow">07 / CHEMICAL CLASSES</span><h2 id="classes-title">NPC chemical classes</h2><p>Explore saved CANOPUS pathway → superclass → class → feature predictions and compare descriptive intensities between chosen biological groups.</p></div><div id="classes-content" class="panel-content"></div></section>
-      <section id="downloads" class="panel" aria-labelledby="downloads-title" hidden><div class="section-heading"><span class="eyebrow">08 / AUDIT TRAIL</span><h2 id="downloads-title">Provenance & downloads</h2><p>Shared study files and selected comparison files are SHA-256 verified before use or download.</p></div><div id="downloads-content" class="panel-content"></div></section>
+      <section id="display" class="panel" aria-labelledby="display-title" hidden>
+        <div class="section-heading"><span class="eyebrow">08 / DISPLAY</span><h2 id="display-title">Display settings</h2><p>Choose sample groups and colours for descriptive plots. Saved fits and tests do not change.</p></div>
+        <div id="display-content" class="panel-content">
+          <section class="card">
+            <h3>Sample grouping · shared plots</h3>
+            <p class="note">A single categorical score mapping becomes the shared grouping. Choose a field, sample role, and groups here or on a feature boxplot. These selections filter displayed samples, not saved fits or inference; multi-field and Viridis score mappings remain local to their plot.</p>
+            <div class="controls">
+              <div><label for="display-group-field">Group samples by</label><select id="display-group-field"></select></div>
+              <div><label for="display-sample-role">Sample role</label><select id="display-sample-role"></select></div>
+              <div><label for="display-groups">Groups to show · Ctrl/Cmd-click for multiple</label><select id="display-groups" multiple></select></div>
+            </div>
+          </section>
+          <section class="card group-settings">
+            <h3>Group colours · all sample plots</h3>
+            <p class="note">Edit a colour here or in a score plot’s legend group. Identical sample groups use the same colour in score plots, feature intensities, and chemical-class comparisons.</p>
+            <div id="group-color-choices" class="group-color-choices"></div>
+          </section>
+          <section class="card">
+            <h3>Feature display · feature-point plots</h3>
+            <label for="display-feature-colour">Colour feature points by</label>
+            <select id="display-feature-colour" disabled><option>Load saved feature fields…</option></select>
+            <p class="note">This field and its categorical colours apply to PCA and PLS-DA loadings and volcano points where saved feature fields are available. Numeric values use Viridis.</p>
+            <div id="display-feature-colors" class="group-color-choices"></div>
+            <details id="hover-settings" class="hover-settings">
+              <summary>Feature hover fields and structure source</summary>
+              <p class="hint">Choose saved fields and a SMILES source for feature points. Depictions send the SMILES and your network address to the Natural Products API.</p>
+              <fieldset id="hover-field-choices"><legend>Hover fields</legend><p class="hint">Open Display settings or a feature plot to load saved fields.</p></fieldset>
+              <label for="hover-structure-source">Structure source</label><select id="hover-structure-source" disabled><option value="">Any saved source</option></select>
+            </details>
+          </section>
+        </div>
+      </section>
+      <section id="downloads" class="panel" aria-labelledby="downloads-title" hidden><div class="section-heading"><span class="eyebrow">09 / AUDIT TRAIL</span><h2 id="downloads-title">Provenance & downloads</h2><p>Shared study files and selected comparison files are SHA-256 verified before use or download.</p></div><div id="downloads-content" class="panel-content"></div></section>
       <details id="feature-drawer" class="feature-drawer" hidden>
         <summary id="feature-drawer-title">Feature details</summary>
         <button type="button" id="feature-full" class="button secondary small">Open full Feature explorer</button>

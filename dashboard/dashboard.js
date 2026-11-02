@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'plsda', 'features', 'classes', 'downloads'];
+  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'plsda', 'features', 'classes', 'display', 'downloads'];
   const hex = /^[0-9a-f]{64}$/;
   const outputPath = /^(tables\/[A-Za-z0-9_.-]+\.tsv|plots\/[A-Za-z0-9_.-]+\.(?:png|pdf))$/;
   const palette = ['#0074e8', '#ec432d', '#05a566', '#963be1', '#db8b00', '#e32f85',
@@ -591,6 +591,38 @@
     }
     return data.maps.get(field.id);
   }
+  function refreshFeatureColors(ctx,data) {
+    const target = $('display-feature-colors');
+    const field = data.fields.find((item) => item.id === ctx.featureColorField);
+    if (!field) { target.replaceChildren(); return; }
+    ctx.featureCategoryColors ??= new Map();
+    const values = featureCategories(data,field);
+    const names = [...new Set(data.featureIds.map((id) => {
+      const found = values.get(id);
+      return !found?.size ? 'Not recorded' : found.size > 1 ?
+        'Multiple values' : found.values().next().value;
+    }).filter((name) => !field.numeric || !Number.isFinite(number(name))))].sort((a,b) =>
+      a === 'Not recorded' ? 1 : b === 'Not recorded' ? -1 : a.localeCompare(b));
+    target.replaceChildren(...names.map((name,index) => {
+      const key = field.id+'\u0000'+name;
+      if (!ctx.featureCategoryColors.has(key)) ctx.featureCategoryColors.set(key,
+        name === 'Not recorded' ? '#a4a9af' : name === 'Multiple values' ? '#967d9d' :
+          palette[index % palette.length]);
+      const picker = el('input',{type:'color','aria-label':'Feature colour for '+name});
+      picker.value = ctx.featureCategoryColors.get(key);
+      picker.addEventListener('input',() => ctx.featureCategoryColors.set(key,picker.value));
+      return el('label',{},document.createTextNode(name),picker);
+    }));
+  }
+  function showFeatureSettings(ctx,data) {
+    const select = $('display-feature-colour');
+    select.replaceChildren(el('option',{value:'',text:'Saved default'}),
+      ...data.fields.map((field) => el('option',{value:field.id,text:field.name})));
+    select.disabled = false;
+    select.value = data.fields.some((field) => field.id === ctx.featureColorField) ?
+      ctx.featureColorField : '';
+    refreshFeatureColors(ctx,data);
+  }
   function featureDisplayOptions(ctx,data,scope,ids,plot,onChange) {
     const choices = [['','Saved default'],...data.fields.map((field) => [field.id,field.name])];
     const fieldControl = control('Colour features by',scope+'-feature-colour',choices);
@@ -599,10 +631,9 @@
     const details = el('details',{class:'intensity-options'},el('summary',{text:'Display options · feature colours'}),
       el('div',{class:'intensity-options-body'},fieldControl,
         note('Numeric fields use a continuous Viridis scale; missing values stay “Not recorded” and conflicting saved values use “Multiple values”. Saved 2D-key counts come from horizontal evidence, not candidate records. Candidate record source lists SIRIUS, CANOPUS classes and met_annot_enhancer (ISDB/MS1 evidence), not GNPS agreement.'),pickerList));
-    ctx.featureColorFields ??= new Map();
     ctx.featureCategoryColors ??= new Map();
     ctx.featureColorOpen ??= new Map();
-    select.value = ctx.featureColorFields.get(scope) || '';
+    select.value = ctx.featureColorField || '';
     details.open = ctx.featureColorOpen.get(scope) || false;
     details.addEventListener('toggle',() => ctx.featureColorOpen.set(scope,details.open));
     const field = () => data.fields.find((item) => item.id === select.value);
@@ -654,15 +685,23 @@
           plot.data?.forEach((trace,index) => {
             if (trace.legendgroup === key) Plotly.restyle(plot,{'marker.color':picker.value},[index]);
           });
+          refreshFeatureColors(ctx,data);
         });
         pickerList.append(el('label',{},document.createTextNode(name),picker));
       });
     }
     select.addEventListener('change',() => {
-      ctx.featureColorFields.set(scope,select.value);
+      ctx.featureColorField = select.value;
+      showFeatureSettings(ctx,data);
       updatePickers();
       onChange();
     });
+    ctx.featureColorRefresh = () => {
+      if (!valid(ctx) || activeTab !== scope) return;
+      select.value = ctx.featureColorField || '';
+      updatePickers();
+      onChange();
+    };
     updatePickers();
     return {node:details,field,category,color,groups};
   }
@@ -709,7 +748,7 @@
       return false;
     }
     if (current) detachedWindow.postMessage({kind:'mapp-feature-sync',hash:current.run.hash,
-      feature:selectedFeature,colors:[...groupColors]},location.origin);
+      feature:selectedFeature,colors:[...groupColors],display:current.display ? sharedDisplay(current) : null},location.origin);
     return true;
   }
   function publishFeatureSelection() {
@@ -719,7 +758,8 @@
       if (selectedFeature) url.searchParams.set('feature',selectedFeature);
       else url.searchParams.delete('feature');
       history.replaceState(null,'',url);
-      window.opener?.postMessage({kind:'mapp-feature-sync',hash:current.run.hash,feature:selectedFeature},location.origin);
+      window.opener?.postMessage({kind:'mapp-feature-sync',hash:current.run.hash,
+        feature:selectedFeature,display:sharedDisplay(current)},location.origin);
     } else syncDetached();
   }
   function reattachFeature() {
@@ -761,6 +801,16 @@
   }
   function render() {
     if (!current) return;
+    if (activeTab === 'display') {
+      const ctx = current, token = Symbol('display');
+      ctx.viewToken = token;
+      featureColorData(ctx).then((data) => {
+        if (viewValid(ctx,'display',token)) showFeatureSettings(ctx,data);
+      }).catch((error) => {
+        if (viewValid(ctx,'display',token)) message($('display-feature-colors'),error.message,true);
+      });
+      return;
+    }
     const dispatch = {overview:renderOverview, pca:(ctx,target,token) => renderOrdination(ctx,target,token,'pca','PC'),
       pcoa:(ctx,target,token) => renderOrdination(ctx,target,token,'pcoa','PCoA'), volcano:renderVolcano,
       plsda:renderPlsda, features:(ctx,target,token) => renderFeatures(ctx,target,token,detachedMode),
@@ -774,10 +824,13 @@
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
     return {
       stage:stages.includes(saved.stage) ? saved.stage : stages.includes('transformed') ? 'transformed' : stages.includes('raw') ? 'raw' : stages[0],
-      group:sampleGroupColumns.includes(saved.group) ? saved.group : defaultGroup,
-      role:saved.role === '' || metadata.some((row) => row.sample_type === saved.role) ? saved.role : '',
+      group:ctx.display.explicit ? ctx.display.field :
+        sampleGroupColumns.includes(saved.group) ? saved.group : defaultGroup,
+      role:ctx.display.explicit ? ctx.display.role :
+        saved.role === '' || metadata.some((row) => row.sample_type === saved.role) ? saved.role : '',
       facet:facets.includes(saved.facet) ? saved.facet : '',
-      groups:Array.isArray(saved.groups) && saved.groups.every((name) => typeof name === 'string') ? new Set(saved.groups) : null,
+      groups:ctx.display.explicit ? ctx.display.groups :
+        Array.isArray(saved.groups) && saved.groups.every((name) => typeof name === 'string') ? new Set(saved.groups) : null,
       open:saved.open === true
     };
   }
@@ -796,19 +849,104 @@
   }
   function sampleKey(row) { return row.filename || row.sample || row.sample_id; }
   function groupName(row,field = defaultGroup) { return label(row[field]); }
+  function displaySample(ctx,row) {
+    const view = ctx.display;
+    return (!view.role || row.sample_type === view.role) &&
+      (view.groups === null || view.groups.has(groupName(row,view.field)));
+  }
+  function sharedDisplay(ctx) {
+    return {field:ctx.display.field,role:ctx.display.role,
+      groups:ctx.display.groups === null ? null : [...ctx.display.groups]};
+  }
+  function applySharedDisplay(ctx,view) {
+    if (!view || !sampleGroupColumns.includes(view.field) ||
+        !(view.role === '' || metadata.some((row) => row.sample_type === view.role)) ||
+        !(view.groups === null || Array.isArray(view.groups) && view.groups.length <= 30 &&
+          view.groups.every((name) => typeof name === 'string' && name.length <= 128))) return false;
+    const groups = view.groups === null ? null : new Set(view.groups);
+    if (ctx.display.field === view.field && ctx.display.role === view.role &&
+        (groups === null && ctx.display.groups === null ||
+          groups !== null && ctx.display.groups !== null &&
+          groups.size === ctx.display.groups.size &&
+          [...groups].every((name) => ctx.display.groups.has(name)))) return false;
+    setSampleDisplay(ctx,view.field,groups,view.role);
+    return true;
+  }
+  function setSampleDisplay(ctx,field,groups = null,role = ctx.display.role,origin = '') {
+    if (!sampleGroupColumns.includes(field)) return;
+    ctx.display = {field,groups:groups === null ? null : new Set(groups),role,explicit:true};
+    const stages = Object.keys(ctx.run.outputs).filter((path) =>
+      /^tables\/matrix_[A-Za-z0-9_.-]+\.tsv$/.test(path)).map((path) => path.slice(14,-4));
+    const facets = sampleGroupColumns.filter((name) => {
+      const count = new Set(metadata.map((row) => groupName(row,name))).size;
+      return count > 1 && count <= 12;
+    });
+    const settings = ctx.featurePlotSettings ??= savedFeaturePlotSettings(ctx,stages,facets);
+    settings.group = field;
+    settings.groups = ctx.display.groups;
+    settings.role = role;
+    saveFeaturePlotSettings(ctx);
+    for (const [stem,state] of Object.entries(ctx.scoreMaps ?? {})) {
+      if (stem === origin) continue;
+      state.cards = [{field,mode:'category'}];
+    }
+    if (ctx.classView && ctx.classView.field !== field) {
+      const biological = metadata.filter((row) => row.sample_type === 'sample');
+      if (new Set(biological.map((row) => row[field]).filter((value) =>
+        value && value !== 'NA')).size >= 2) {
+        ctx.classView.field = field;
+        ctx.classView.first = '';
+        ctx.classView.second = '';
+      }
+    }
+    if ($('display-group-field')) $('display-group-field').value = field;
+    if ($('display-sample-role')) $('display-sample-role').value = role;
+    refreshDisplayGroups(ctx);
+    const activeScore = ctx.scoreMaps?.[activeTab];
+    if (origin !== 'feature') refreshOpenFeature(ctx);
+    if (origin !== activeTab && activeScore?.syncView) activeScore.syncView();
+    if (origin !== 'classes') ctx.classView?.syncView?.();
+    if (detachedMode) publishFeatureSelection();
+    else syncDetached();
+  }
+  function refreshDisplayGroups(ctx) {
+    const select = $('display-groups');
+    if (!select || !metadata.length || !ctx.display) return;
+    const names = [...new Set(metadata.map((row) => groupName(row,ctx.display.field)))].sort();
+    selector(select,names);
+    select.size = Math.min(7,Math.max(2,names.length));
+    for (const option of select.options)
+      option.selected = ctx.display.groups === null || ctx.display.groups.has(option.value);
+    refreshGroupColors();
+  }
   function groupColor(name) {
     if (!groupColors.has(name)) groupColors.set(name,palette[groupColors.size % palette.length]);
     return groupColors.get(name);
   }
+  function refreshGroupColors() {
+    const choices = $('group-color-choices');
+    if (!current?.display || !metadata.length) { choices.replaceChildren(); return; }
+    const names = [...new Set(metadata.map((row) => groupName(row,current.display.field)))].sort();
+    choices.replaceChildren(...names.map((name) => {
+      const picker = el('input',{type:'color','aria-label':'Colour for '+name});
+      picker.value = groupColor(name);
+      picker.addEventListener('input',() => updateGroupColor(name,picker.value));
+      return el('label',{},document.createTextNode(name),picker);
+    }));
+  }
   function updateGroupColor(name, color) {
     groupColors.set(name,color);
-    for (const container of [panel(activeTab),$('feature-drawer-content')]) container.querySelectorAll('.plot[data-sample-groups]').forEach((plot) => {
-      plot.data?.forEach((trace,index) => {
-        if (trace.legendgroup !== name) return;
-        Plotly.restyle(plot,trace.type === 'box' ?
-          {'marker.color':color,'line.color':color} : {'marker.color':color},[index]);
+    for (const picker of document.querySelectorAll('#group-color-choices input, .score-map-group input[data-group-name]'))
+      if (picker.getAttribute('data-group-name') === name ||
+          picker.getAttribute('aria-label') === 'Colour for '+name) picker.value = color;
+    for (const container of [panel(activeTab),$('feature-drawer-content')])
+      container.querySelectorAll('.plot[data-sample-groups]').forEach((plot) => {
+        plot.data?.forEach((trace,index) => {
+          if ((trace.meta?.sampleColorGroup ?? trace.legendgroup) !== name) return;
+          Plotly.restyle(plot,trace.type === 'box' ?
+            {'marker.color':color,'line.color':color} : {'marker.color':color},[index]);
+        });
       });
-    });
     if (!detachedMode) syncDetached();
   }
   function comparisonMetadata(shared, selected) {
@@ -851,16 +989,20 @@
       catalogue.find((run) => run.hash === current.run.study_hash)?.design_group : current.run.design_group;
     defaultGroup = sampleGroupColumns.includes(studyGroup) ? studyGroup :
       sampleGroupColumns.includes('sample_type') ? 'sample_type' : sampleGroupColumns[0];
-    groupColors = new Map();
-    const primary = [...new Set(metadata.map((row) => groupName(row,defaultGroup)))].sort();
-    const allNames = [...new Set(metadata.flatMap((row) => sampleGroupColumns.map((field) => groupName(row,field))))].sort();
-    const choices = [...primary,...allNames.filter((name) => !primary.includes(name))];
-    $('group-color-choices').replaceChildren(...choices.map((name) => {
-      const picker = el('input',{type:'color','aria-label':'Colour for '+name});
-      picker.value = groupColor(name);
-      picker.addEventListener('input',() => updateGroupColor(name,picker.value));
-      return el('label',{},document.createTextNode(name),picker);
-    }));
+    groupColors = current.groupColors;
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(featurePlotKey(current.run.hash))); } catch {}
+    const previous = current.display;
+    current.display = previous && sampleGroupColumns.includes(previous.field) ? previous :
+      {field:sampleGroupColumns.includes(saved?.group) ? saved.group : defaultGroup,
+        groups:Array.isArray(saved?.groups) ? new Set(saved.groups) : null,
+        role:metadata.some((row) => row.sample_type === saved?.role) ? saved.role : '',
+        explicit:sampleGroupColumns.includes(saved?.group)};
+    selector($('display-group-field'),sampleGroupColumns);
+    $('display-group-field').value = current.display.field;
+    selector($('display-sample-role'),[...new Set(metadata.map((row) => row.sample_type).filter(Boolean))].sort(),'All roles');
+    $('display-sample-role').value = current.display.role;
+    refreshDisplayGroups(current);
   }
   function infoFacts(run) {
     const facts = [['Dataset',run.dataset_id], ['Study hash',run.study_hash], ['Run hash',run.hash],
@@ -888,7 +1030,7 @@
     hideFeatureHover();
     hoverFields = new Set(['row m/z','row retention time']);
     hoverSource = '';
-    $('hover-field-choices').replaceChildren(el('legend',{text:'Hover fields'}),note('Open Settings or a feature plot to load saved fields.'));
+    $('hover-field-choices').replaceChildren(el('legend',{text:'Hover fields'}),note('Open Display settings or a feature plot to load saved fields.'));
     selector($('hover-structure-source'),[],'Any saved source');
     $('hover-structure-source').disabled = true;
     generation++;
@@ -899,9 +1041,12 @@
     if (detachedMode) $('detached-feature').value = selectedFeature;
     featureCandidate = 0;
     $('group-color-choices').replaceChildren();
+    $('display-feature-colour').replaceChildren(el('option',{text:'Load saved feature fields…'}));
+    $('display-feature-colour').disabled = true;
+    $('display-feature-colors').replaceChildren();
     for (const tab of tabs) {
       if (window.Plotly) panel(tab).querySelectorAll('.plot').forEach((node) => Plotly.purge(node));
-      panel(tab).replaceChildren();
+      if (tab !== 'display') panel(tab).replaceChildren();
     }
     $('run-facts').replaceChildren();
     const comparisonPicker = $('comparison-picker');
@@ -909,7 +1054,7 @@
       $('run-select').value = '';
       comparisonPicker.hidden = true;
       status('Unknown run hash in URL: ' + hash + '. Select an available run.', true);
-      message(panel(activeTab), 'This run is not in the published catalogue. Choose an available run above.', true);
+      if (activeTab !== 'display') message(panel(activeTab), 'This run is not in the published catalogue. Choose an available run above.', true);
       return;
     }
     const study = run.kind === 'comparison' ? catalogue.find((item) => item.hash === run.study_hash) : run;
@@ -923,7 +1068,11 @@
     const sameStudy = previous && (previous.run.study_hash ?? previous.run.hash) ===
       (run.study_hash ?? run.hash);
     const ctx = {run, cache:new Map(), controller:new AbortController(), version:generation,
-      scoreMaps:sameStudy ? {pca:previous.scoreMaps?.pca, pcoa:previous.scoreMaps?.pcoa} : undefined};
+      display:sameStudy ? previous.display : undefined,
+      groupColors:sameStudy ? previous.groupColors : new Map(),
+      scoreMaps:sameStudy ? {...previous.scoreMaps} : undefined,
+      featureColorField:sameStudy ? previous.featureColorField : '',
+      featureCategoryColors:sameStudy ? previous.featureCategoryColors : new Map()};
     current = ctx;
     if (!detachedMode) syncDetached();
     $('run-select').value = study.hash;
@@ -944,7 +1093,10 @@
         if (valid(ctx)) message($('hover-field-choices'),error.message,true);
       });
     } catch (error) {
-      if (valid(ctx)) { status(error.message, true); message(panel(activeTab), error.message, true); }
+      if (valid(ctx)) {
+        status(error.message,true);
+        if (activeTab !== 'display') message(panel(activeTab),error.message,true);
+      }
     }
   }
   async function boot() {
@@ -1036,6 +1188,27 @@
     hoverSource = event.target.value;
     hideFeatureHover();
   });
+  $('display-feature-colour').addEventListener('change',(event) => {
+    const ctx = current;
+    if (!ctx) return;
+    ctx.featureColorField = event.target.value;
+    featureColorData(ctx).then((data) => {
+      if (valid(ctx)) {
+        refreshFeatureColors(ctx,data);
+        ctx.featureColorRefresh?.();
+      }
+    }).catch((error) => { if (valid(ctx)) message($('display-feature-colors'),error.message,true); });
+  });
+  $('display-group-field').addEventListener('change',(event) => {
+    if (current) setSampleDisplay(current,event.target.value);
+  });
+  $('display-sample-role').addEventListener('change',(event) => {
+    if (current) setSampleDisplay(current,current.display.field,current.display.groups,event.target.value);
+  });
+  $('display-groups').addEventListener('change',(event) => {
+    if (current) setSampleDisplay(current,current.display.field,
+      [...event.target.selectedOptions].map((option) => option.value));
+  });
   $('run-select').addEventListener('change', (event) => chooseRun(event.target.value, true));
   $('comparison-select').addEventListener('change', (event) =>
     chooseRun(event.target.value || $('run-select').value, true));
@@ -1103,13 +1276,16 @@
               groupColors.get(entry[0]) !== entry[1]) updateGroupColor(entry[0],entry[1]);
         }
       };
+      const applyDisplay = () => {
+        if (applySharedDisplay(current,data.display) && selectedFeature) render();
+      };
       if (current?.run.hash !== data.hash) {
         if (!catalogue.some((run) => run.hash === data.hash)) {
           status('Selected run is absent from this window’s catalogue. Republish and reload the detached window.',true);
           return;
         }
         chooseRun(data.hash,false,data.feature).then(() => {
-          if (current?.run.hash === data.hash) applyColors();
+          if (current?.run.hash === data.hash) { applyDisplay(); applyColors(); }
         });
       } else {
         if (selectedFeature !== data.feature) {
@@ -1118,6 +1294,7 @@
           $('detached-feature').value = selectedFeature;
           if (metadata.length) render();
         }
+        applyDisplay();
         applyColors();
       }
     } else if (event.source === detachedWindow) {
@@ -1125,9 +1302,11 @@
       else if (data.kind === 'mapp-feature-attach') reattachFeature();
       else if (data.kind === 'mapp-feature-sync' && data.hash === current?.run.hash &&
                typeof data.feature === 'string' && data.feature.length <= 256) {
+        const changed = selectedFeature !== data.feature;
         selectedFeature = data.feature;
         featureCandidate = 0;
-        if (activeTab === 'features') render();
+        const displayChanged = applySharedDisplay(current,data.display);
+        if (activeTab === 'features' && (changed || displayChanged)) render();
       }
     }
   });
@@ -1247,7 +1426,8 @@
     const fields = Object.keys(metadata[0]);
     const numeric = new Set(numericSampleColumns(scores,bySample));
     const saved = ctx.scoreMaps ??= {};
-    const state = saved[stem] ??= {cards:[],open:false,order:[],colors:new Map()};
+    const state = saved[stem] ??= {cards:ctx.display.explicit ?
+      [{field:ctx.display.field,mode:'category'}] : [],open:false,order:[]};
     state.cards = state.cards.filter((card) => fields.includes(card.field));
     const details = el('details',{class:'score-map-options'},
       el('summary',{text:'Map metadata onto sample scores'}));
@@ -1272,6 +1452,12 @@
       if (available.includes(previous)) chooser.value = previous;
       add.disabled = !chooser.value;
     }
+    function syncGrouping() {
+      const only = state.cards.length === 1 ? state.cards[0] : null;
+      if (only?.mode === 'category' && sampleGroupColumns.includes(only.field))
+        setSampleDisplay(ctx,only.field,null,ctx.display.role,stem);
+      else if (!state.cards.length) setSampleDisplay(ctx,defaultGroup,null,ctx.display.role,stem);
+    }
     function refreshCards() {
       cards.replaceChildren(...state.cards.map((card) => {
         const row = el('div',{class:'score-map-card'});
@@ -1286,6 +1472,7 @@
               for (const other of state.cards) if (other !== card) other.mode = 'category';
             card.mode = mode.value;
             refreshCards();
+            syncGrouping();
             redraw();
           });
           row.append(mode);
@@ -1296,6 +1483,7 @@
           state.cards.splice(state.cards.indexOf(card),1);
           refreshCards();
           refreshPicker();
+          syncGrouping();
           redraw();
         });
         row.append(remove);
@@ -1310,6 +1498,7 @@
         'continuous' : 'category'});
       refreshCards();
       refreshPicker();
+      syncGrouping();
       redraw();
     });
     function refreshGroups(groups,continuous) {
@@ -1331,30 +1520,30 @@
         });
         row.append(name,up,down);
         if (!continuous) {
-          const color = el('input',{type:'color','aria-label':'Colour for '+group.name});
-          color.value = state.colors.get(group.key) || groupColor(group.name);
-          color.addEventListener('change',() => {
-            if (state.cards.length) state.colors.set(group.key,color.value);
-            else {
-              updateGroupColor(group.name,color.value);
-              const sidebar = [...$('group-color-choices').querySelectorAll('input[type="color"]')]
-                .find((picker) => picker.getAttribute('aria-label') === 'Colour for '+group.name);
-              if (sidebar) sidebar.value = color.value;
-            }
-            redraw();
-          });
+          const colorName = state.cards.length === 1 ? group.values[0] : group.name;
+          const color = el('input',{type:'color','aria-label':'Colour for '+group.name,
+            'data-group-name':colorName});
+          color.value = groupColor(colorName);
+          color.addEventListener('change',() => updateGroupColor(colorName,color.value));
           row.append(color);
         }
         return row;
       }));
       if (continuous) groupList.append(note('Viridis controls marker colours. Change the numeric card to categorical to pick group colours.'));
     }
+    state.syncView = () => {
+      if (!valid(ctx) || activeTab !== stem) return;
+      refreshCards();
+      refreshPicker();
+      redraw();
+    };
     refreshCards();
     refreshPicker();
     return {node:details,state,refreshGroups};
   }
-  function scorePlotTraces(scores, bySample, state, x, y, z, view, fallback) {
+  function scorePlotTraces(scores, bySample, state, x, y, z, view, fallback, includedSample) {
     const included = scores.filter((row) => bySample.has(row.sample) &&
+      includedSample(bySample.get(row.sample)) &&
       [x,y,z].filter(Boolean).every((axis) => Number.isFinite(number(row[axis]))));
     const continuous = state.cards.find((card) => card.mode === 'continuous')?.field;
     const categories = state.cards.filter((card) => card.field !== continuous).map((card) => card.field);
@@ -1411,7 +1600,7 @@
     });
     let showscale = true;
     const traces = [];
-    for (const {key,name,short,role,rows:groupRows} of sorted) {
+    for (const {key,name,short,role,values,rows:groupRows} of sorted) {
       const parts = continuous ?
         [groupRows.filter((row) => Number.isFinite(number(bySample.get(row.sample)[continuous]))),
           groupRows.filter((row) => !Number.isFinite(number(bySample.get(row.sample)[continuous])))] :
@@ -1420,11 +1609,12 @@
         if (!part.length) return;
         const missing = Boolean(continuous && index);
         const title = missing ? `${short} · no value` : short;
+        const colorName = categories.length === 1 ? values[0] : name;
         const marker = continuous && !missing ?
           {color:part.map((row) => number(bySample.get(row.sample)[continuous])),
             colorscale:'Viridis',cmin:range[0],cmax:range[1],showscale,
             colorbar:{title:{text:escapePlot(continuous)}}} :
-          {color:missing ? '#9daab0' : state.colors.get(key) || groupColor(name)};
+          {color:missing ? '#9daab0' : groupColor(colorName)};
         if (continuous && !missing) showscale = false;
         traces.push({type:view?'scatter3d':'scatter',mode:'markers',name:escapePlot(title),
           x:part.map((row) => number(row[x])),
@@ -1441,7 +1631,7 @@
             (view ? '<br>'+z+': %{z:.3f}' : '')+'<extra></extra>',
           marker:{size:view?5:9,...marker,
             symbol:role === 'qc' ? 'diamond' : role === 'blank' ? 'x' : 'circle',opacity:.82},
-          legendgroup:title});
+          legendgroup:title,meta:{sampleColorGroup:colorName}});
       });
     }
     return {traces,continuous,included:included.length,groups:sorted};
@@ -1524,7 +1714,8 @@
         return;
       }
       const mapped = scorePlotTraces(scores,bySample,mapping.state,x,y,z,view,
-        (row) => row.ordination_group ? label(row.ordination_group) : groupName(bySample.get(row.sample)));
+        (row) => row.ordination_group ? label(row.ordination_group) : groupName(bySample.get(row.sample)),
+        (sample) => displaySample(ctx,sample));
       if (!mapped.included) { message(plot,'No finite saved scores for the chosen components.'); return; }
       mapping.refreshGroups(mapped.groups,mapped.continuous);
       setScores(...samplePlotRows(scores,bySample,mapped.groups));
@@ -1704,7 +1895,7 @@
         return;
       }
       const mapped = scorePlotTraces(scores,bySample,mapping.state,x,y,z,view,
-        (row) => label(row[ctx.run.design_group]));
+        (row) => label(row[ctx.run.design_group]),(sample) => displaySample(ctx,sample));
       if (!mapped.included) { message(scorePlot,'No finite saved scores for the chosen components.'); return; }
       mapping.refreshGroups(mapped.groups,mapped.continuous);
       setScores(...samplePlotRows(scores,bySample,mapped.groups));
@@ -1949,6 +2140,17 @@
       if (viewValid(ctx,activeTab,token) && version === drawerVersion) message(content,error.message || text(error),true);
     });
   }
+  function refreshOpenFeature(ctx) {
+    const drawer = $('feature-drawer');
+    if (detachedMode || !drawer.open || drawer.hidden || !selectedFeature) return;
+    const content = $('feature-drawer-content'), token = ctx.viewToken, version = ++drawerVersion;
+    if (window.Plotly) content.querySelectorAll('.plot.js-plotly-plot').forEach((plot) => Plotly.purge(plot));
+    message(content,'Updating feature plot for shared sample grouping…');
+    renderFeatures(ctx,content,token,true,version).catch((error) => {
+      if (viewValid(ctx,activeTab,token) && version === drawerVersion)
+        message(content,error.message || text(error),true);
+    });
+  }
   function registerFeatureFields(groups,definitions,source,title,records,fields) {
     if (!records?.length) return;
     const available = fields.map((field) => {
@@ -2182,7 +2384,7 @@
       const displayOptions = el('details',{class:'intensity-options'},el('summary',{text:'Display options'}),
         el('div',{class:'intensity-options-body'},
           el('div',{class:'controls'},stageSelect,groupControl,roleControl,facetControl),
-          groupsControl,note('Ctrl/Cmd-click to show multiple groups. These controls affect only this descriptive plot. Group colours are shared in the sidebar.')));
+          groupsControl,note('Ctrl/Cmd-click to show multiple groups. Group, sample role, and groups to show are shared with sample score plots and Display settings; intensity stage and facets affect this feature only.')));
       displayOptions.open = settings.open;
       displayOptions.addEventListener('toggle',() => {
         settings.open = displayOptions.open;
@@ -2378,15 +2580,12 @@
         refresh();
       });
       groupControl.addEventListener('change',() => {
-        settings.group = groupSelect.value;
-        settings.groups = null;
+        setSampleDisplay(ctx,groupSelect.value,null,ctx.display.role,'feature');
         resetGroups();
-        saveFeaturePlotSettings(ctx);
         refresh();
       });
       roleControl.addEventListener('change',() => {
-        settings.role = roleSelect.value;
-        saveFeaturePlotSettings(ctx);
+        setSampleDisplay(ctx,groupSelect.value,settings.groups,roleSelect.value,'feature');
         refresh();
       });
       facetControl.addEventListener('change',() => {
@@ -2395,8 +2594,8 @@
         refresh();
       });
       groupsControl.addEventListener('change',() => {
-        settings.groups = new Set([...groupsSelect.selectedOptions].map((option) => option.value));
-        saveFeaturePlotSettings(ctx);
+        setSampleDisplay(ctx,groupSelect.value,[...groupsSelect.selectedOptions].map((option) => option.value),
+          ctx.display.role,'feature');
         refresh();
       });
       await drawBox();
@@ -2579,7 +2778,8 @@
       }
       node.children.set(id,{name:id,level:4,ids:[id],children:new Map()});
     }
-    const state = ctx.classView ??= {field:groupFields.includes(defaultGroup) ? defaultGroup : groupFields[0],
+    const state = ctx.classView ??= {field:groupFields.includes(ctx.display.field) ?
+      ctx.display.field : groupFields[0],
       first:'',second:'',path:[],filters:[]};
     if (!groupFields.includes(state.field)) state.field = groupFields[0];
     const field = control('Compare biological groups by','class-group-field',groupFields.map((value) => [value,value]),state.field);
@@ -2599,7 +2799,7 @@
     addFilter.disabled = !defaultFilter;
     const filterSet = el('fieldset',{class:'class-filter-set'},
       el('legend',{text:'Feature filters · match all'}),filterRows,addFilter,filterFeedback);
-    const context = note('CANOPUS class assignments are predictions, not confirmed chemical identities. Each measured feature contributes once to one saved pathway → superclass → class branch. At each level, raw peak heights are summed within each biological sample; boxes show those sample totals, and group means average the totals without normalization or new statistical tests. Group A/B, their order, and shared sidebar colours carry into a feature’s intensity plot; select its raw stage for direct comparison to these raw totals.');
+    const context = note('CANOPUS class assignments are predictions, not confirmed chemical identities. Each measured feature contributes once to one saved pathway → superclass → class branch. At each level, raw peak heights are summed within each biological sample; boxes show those sample totals, and group means average the totals without normalization or new statistical tests. Group A/B, their order, and colours from Display settings carry into feature intensity and sample-score plots; select raw intensity to compare with class totals.');
     const summary = el('p',{class:'notice','aria-live':'polite'});
     const trail = el('nav',{class:'class-trail','aria-label':'NPC hierarchy'});
     const results = el('div');
@@ -2618,21 +2818,8 @@
         .filter((path) => /^tables\/matrix_[A-Za-z0-9_.-]+\.tsv$/.test(path))
         .map((path) => path.slice(14,-4));
       const settings = ctx.featurePlotSettings ??= savedFeaturePlotSettings(ctx,stages,[]);
-      settings.group = state.field;
-      settings.role = 'sample';
       settings.facet = '';
-      settings.groups = new Set([state.first,state.second]);
-      saveFeaturePlotSettings(ctx);
-      const drawer = $('feature-drawer');
-      if (!detachedMode && activeTab === 'classes' && drawer.open && !drawer.hidden && selectedFeature) {
-        const content = $('feature-drawer-content'), version = ++drawerVersion;
-        if (window.Plotly) content.querySelectorAll('.plot.js-plotly-plot').forEach((plot) => Plotly.purge(plot));
-        message(content,'Updating feature plot for '+state.first+' vs '+state.second+'…');
-        renderFeatures(ctx,content,ctx.viewToken,true,version).catch((error) => {
-          if (viewValid(ctx,'classes',ctx.viewToken) && version === drawerVersion)
-            message(content,error.message || text(error),true);
-        });
-      }
+      setSampleDisplay(ctx,state.field,[state.first,state.second],'sample','classes');
     }
     function groupOptions() {
       const values = [...new Set(biological.map((row) => row[state.field]).filter((value) =>
@@ -2643,7 +2830,6 @@
       selector(bSelect,values);
       aSelect.value = state.first;
       bSelect.value = state.second;
-      followClassGroups();
     }
     function branch() {
       let node = root;
@@ -2726,7 +2912,7 @@
           ...candidateFields.map((name) => predicted.get(child.name)?.[name] ?? ''),
           ...variableFields.map((name) => variableById.get(child.name)?.[name] ?? '')] : [])]),
       (name) => {
-        if (node.level === 3) openFeature(name);
+        if (node.level === 3) { followClassGroups(); openFeature(name); }
         else { state.path.push(name); update(); }
       },'npc-'+node.level+'-'+ctx.run.hash.slice(0,12)+'.tsv',{
         hiddenColumns:extraHeaders,
@@ -2779,13 +2965,21 @@
         chart.on('plotly_click',(event) => {
           const name = event.points?.[0]?.data?.meta?.child;
           if (!name) return;
-          if (node.level === 3) openFeature(name);
+          if (node.level === 3) { followClassGroups(); openFeature(name); }
           else { state.path.push(name); update(); }
         });
       }
       drawPlot(children);
     }
-    fieldSelect.addEventListener('change',() => { state.field = fieldSelect.value; groupOptions(); update(); });
+    state.syncView = () => {
+      if (!viewValid(ctx,'classes',token) || !groupFields.includes(state.field)) return;
+      fieldSelect.value = state.field;
+      groupOptions();
+      update();
+    };
+    fieldSelect.addEventListener('change',() => {
+      state.field = fieldSelect.value; groupOptions(); followClassGroups(); update();
+    });
     aSelect.addEventListener('change',() => { state.first = aSelect.value; followClassGroups(); update(); });
     bSelect.addEventListener('change',() => { state.second = bSelect.value; followClassGroups(); update(); });
     renderFilterRows();
