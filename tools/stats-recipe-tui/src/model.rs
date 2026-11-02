@@ -316,9 +316,14 @@ impl Model {
         }
         let metadata_paths = files(&batch.join("metadata/treated"), "tsv")?;
         let quant_paths = files(&batch.join("results/mzmine"), "csv")?;
-        let metadata_path = metadata_source.map(Path::to_path_buf)
-            .or_else(|| metadata_paths.first().cloned())
-            .context("No treated metadata TSV files found")?;
+        let default_metadata = batch.join("metadata/treated").join(format!(
+            "{}_metadata.tsv",
+            batch.file_name().unwrap().to_string_lossy()
+        ));
+        let metadata_path = metadata_source.map(Path::to_path_buf).unwrap_or(default_metadata);
+        if metadata_source.is_none() && !metadata_path.is_file() {
+            bail!("Default treated metadata TSV not found: {}", metadata_path.display());
+        }
         let quant_path = quant_source.map(Path::to_path_buf)
             .or_else(|| quant_paths.first().cloned())
             .context("No MZmine quantification CSV files found")?;
@@ -1236,12 +1241,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn study_defaults_to_batch_metadata_not_alphabetical_first_tsv() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let batch = temp.path().join("mapp_project_00057/mapp_batch_00196");
+        let treated = batch.join("metadata/treated");
+        fs::create_dir_all(&treated)?;
+        fs::create_dir_all(batch.join("results/mzmine"))?;
+        let cleaned = treated.join("cleaned-metadata.tsv");
+        fs::write(&cleaned, "filename\tsample_id\tsample_type\nA.mzML\tA\tsample\n")?;
+        fs::write(batch.join("results/mzmine/quant.csv"), "row ID,A.mzML Peak height\n")?;
+
+        let error = Model::load(&batch).err().expect("Missing batch metadata must not select cleaned TSV");
+        assert!(error.to_string().contains("mapp_batch_00196_metadata.tsv"));
+
+        let enriched = treated.join("mapp_batch_00196_metadata.tsv");
+        fs::write(&enriched, "injection_order\tfilename\tsample_id\tsample_type\n1\tA.mzML\tA\tsample\n")?;
+        let mut model = Model::load(&batch)?;
+        assert_eq!(model.metadata_path, enriched);
+        assert_eq!(model.table.columns[0], "injection_order");
+
+        let cleaned_index = model.metadata_paths.iter().position(|path| path == &cleaned).unwrap();
+        model.set_metadata(cleaned_index)?;
+        assert_eq!(model.metadata_path, cleaned);
+        assert!(!model.table.columns.contains(&"injection_order".to_owned()));
+        Ok(())
+    }
+
+    #[test]
     fn study_and_incremental_comparisons_reuse_corrected_shared_metadata() -> Result<()> {
         let temp = tempfile::tempdir()?;
         let batch = temp.path().join("mapp_project_test/mapp_batch_test");
         fs::create_dir_all(batch.join("metadata/treated"))?;
         fs::create_dir_all(batch.join("results/mzmine"))?;
-        let source = batch.join("metadata/treated/metadata.tsv");
+        let source = batch.join("metadata/treated/mapp_batch_test_metadata.tsv");
         fs::write(&source, concat!(
             "filename\tsample_id\tsample_type\tindividual_id\tcondition\tphase\tcollection_date\n",
             "A1.mzML\tA1\tsample\tA1\tcase\tall\t2026-01-01\nA2.mzML\tA2\tsample\tA2\tcase\tall\t2026-01-02\nA3.mzML\tA3\tsample\tA3\tcase\tall\t2026-01-03\nA4.mzML\tA4\tsample\tA4\tcase\tall\t2026-01-04\n",

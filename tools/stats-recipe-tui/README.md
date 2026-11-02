@@ -10,6 +10,8 @@ cargo run --locked --manifest-path tools/stats-recipe-tui/Cargo.toml -- --batch 
 ```
 This command builds a **study recipe**. The first build compiles tabiew's data engine; subsequent launches reuse the binary. Quantification is read **only through its header** and metadata appears in the interactive table. Use Inputs, Metadata, Alignment, Groups, Settings, and Review to inspect every metadata row, verify any filename correction against acquisition records (`VERIFY`), choose an optional **ordination display label** and configure shared preprocessing and PCA/PCoA. The study always includes every biological sample; its Groups page does **not** subset them.
 
+For a new study, the default metadata is `<batch>/metadata/treated/<batch-name>_metadata.tsv` (for example, `mapp_batch_00196_metadata.tsv`), regardless of other TSVs in that folder. The builder stops if that file is absent rather than silently choosing another. When it exists, you can explicitly select a different treated TSV on **Inputs**; check the displayed path before saving. Comparisons inherit the metadata sealed by their study.
+
 After running the study's printed `validate`, `plan`, `run` commands from `biostats/`, copy the **full** study `run_hash` shown by `plan`. From the toolbox root, open its comparison builder:
 
 ```bash
