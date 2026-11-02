@@ -116,7 +116,14 @@ readme_facts <- function(manifest) {
                                   collapse = ", ")),
     analyses = if (length(enabled)) paste(analysis_labels[enabled], collapse = ", ") else
       "none enabled",
-    selected = sum(group_sizes)
+    selected = sum(group_sizes),
+    study_filters = if (identical(manifest$kind, "study") &&
+                        length(manifest$effective_recipe$study_filters))
+      paste(vapply(manifest$effective_recipe$study_filters, function(filter)
+        paste0(markdown_text(filter$column, "study filter column"), " = ",
+               paste(vapply(filter$values, markdown_text, character(1),
+                            label = "study filter value"), collapse = " or ")),
+        character(1)), collapse = "; ") else NULL
   )
 }
 
@@ -170,7 +177,9 @@ derived_description <- function(manifest) {
 
 study_description <- function(manifest) {
   count <- validated_count(manifest$validation$role_counts$sample, "biological sample count", 1)
-  valid_description(paste0("Shared study (", count, " biological samples); ",
+  valid_description(paste0(if (length(manifest$effective_recipe$study_filters))
+                             "Shared filtered study (" else "Shared study (",
+                           count, " biological samples); ",
                            manifest$effective_recipe$display_group %||% "sample_type",
                            " display groups"), "study description")
 }
@@ -344,6 +353,9 @@ read_run <- function(run_dir, hash, child = FALSE) {
   recipe <- scientific_fields(manifest$effective_recipe)
   list(hash = hash, kind = if (identical(kind, "legacy")) NULL else kind,
        study_hash = if (identical(kind, "study")) hash else if (child) manifest$study_hash else NULL,
+       study_filters = if (identical(kind, "study") && length(recipe$study_filters))
+         lapply(recipe$study_filters, function(filter)
+           list(column = filter$column, values = as.list(filter$values))) else NULL,
        hashes = manifest$hashes, effective_dataset = manifest$effective_dataset,
        preprocessing = manifest$effective_recipe$preprocessing,
        dataset_id = dataset_id, created_at = created_at,
@@ -424,6 +436,7 @@ if (dir.exists(comparison_root)) {
       }
       child$sources <- as.list(stats::setNames(
         rep(paste("comparisons", study_hash, child_hash, sep = "/"), length(child_paths)), child_paths))
+      child$study_filters <- parent$study_filters
       child$outputs <- c(parent$outputs, child$outputs)
       runs[[length(runs) + 1L]] <- child
     }
@@ -509,6 +522,7 @@ local({
       run$hashes <- NULL
     }
     if (is.null(run$study_hash)) run$study_hash <- NULL
+    if (is.null(run$study_filters)) run$study_filters <- NULL
     run
   })
   catalogue <- list(schema_version = 1L, runs = runs)
@@ -539,6 +553,8 @@ if (length(runs)) {
     facts <- run$readme
     lines <- c(lines, paste0("- ", facts$counts),
                paste0("- Biological groups (", facts$groups, ")."),
+               if (!is.null(facts$study_filters))
+                 paste0("- Study biological filters: ", facts$study_filters, "."),
                if (identical(run$kind, "comparison"))
                  paste0("- Selected biological samples: ", facts$selected, "."),
                paste0("- Enabled analyses: ", facts$analyses, "."))

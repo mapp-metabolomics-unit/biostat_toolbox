@@ -68,8 +68,11 @@ build_run_identity <- function(config) {
     return(list(dataset_hash = dataset_hash, preprocess_hash = preprocess_hash,
       run_hash = run_hash, inputs = checksums, environment = environment, study = parent))
   }
-  preprocess_hash <- sha256_object(list(dataset_hash = dataset_hash, preprocessing = scientific$preprocessing,
-                                        roles = mapping$roles, environment = environment))
+  preprocess_identity <- list(dataset_hash = dataset_hash, preprocessing = scientific$preprocessing,
+                              roles = mapping$roles, environment = environment)
+  if (!is.null(scientific$study_filters))
+    preprocess_identity$study_filters <- scientific$study_filters
+  preprocess_hash <- sha256_object(preprocess_identity)
   run_hash <- sha256_object(list(preprocess_hash = preprocess_hash, kind = "study",
                                 analysis = scientific$analyses, display_group = scientific$design$group,
                                 seed = scientific$seed %||% 1, environment = environment))
@@ -92,6 +95,8 @@ validate_biostats_run <- function(config) {
     validate_recipe_config(recipe)
   } else {
     dataset <- read_mzmine_dataset(config$dataset)
+    if (!is.null(recipe$study_filters))
+      dataset <- filter_study_dataset(dataset, recipe$study_filters)
   }
   report <- validate_dataset(dataset, recipe)
   list(dataset = dataset, validation = report, identity = identity, effective_recipe = recipe)

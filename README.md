@@ -64,7 +64,7 @@ Review and commit the enriched metadata in the group repository before creating 
    cargo run --locked --manifest-path tools/stats-recipe-tui/Cargo.toml -- --batch "$BATCH"
    ```
 
-   The Inputs page defaults to `metadata/treated/<batch-name>_metadata.tsv` and stops if that file is absent; when present, you may choose another treated TSV explicitly. Inspect the selected path and table, then verify filename discrepancies against acquisition records. Save the study recipe: its preprocessing and PCA/PCoA use **all biological samples** in the batch, regardless of later comparison targets. Its QC/blank ordination switches affect the shared axes.
+   The Inputs page defaults to `metadata/treated/<batch-name>_metadata.tsv` and stops if that file is absent; when present, you may choose another treated TSV explicitly. Inspect the selected path and table, then verify filename discrepancies against acquisition records. On **Groups**, optionally restrict the study's biological samples by metadata values (for example, extraction phase `I1` or the `Greenpatch` and `Yellowpatch` parts). Values within a field combine with OR; multiple fields combine with AND. QC and blank injections remain available for preprocessing and can enter PCA/PCoA if enabled in Settings. Without filters, all biological samples enter the study. Save the recipe and inspect its `study_filters` and `plan` sample counts before running; later comparisons can only select from that study's biological samples. Changing these filters creates a new study and new ordination axes.
 
 2. **Validate, preview, run the study.** From the same toolbox checkout, enter `biostats/` and run the **three commands printed by the TUI**, using its actual saved paths:
 

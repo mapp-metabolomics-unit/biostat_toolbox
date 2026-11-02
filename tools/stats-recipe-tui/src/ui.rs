@@ -66,6 +66,9 @@ enum Action {
     Secondary,
     DisplayGroup,
     Unit,
+    AddStudyFilter,
+    RemoveStudyFilter(usize),
+    StudyFilterValue(usize, String),
     GroupToggle(usize),
     GroupTarget(usize),
     Descriptive,
@@ -111,6 +114,7 @@ enum ChoosePurpose {
     Primary,
     Secondary,
     Unit,
+    StudyFilterField(Vec<usize>),
     Method(&'static str, &'static str),
     Annotation(String),
 }
@@ -435,6 +439,20 @@ impl Screen {
                     item(&mut entries,
                         format!("Ordination display labels: {}", m.display_group.and_then(|i| m.table.columns.get(i)).map(String::as_str).unwrap_or("sample_type (default)")),
                         Action::DisplayGroup);
+                    item(&mut entries,
+                        format!("Study sample filter: {} of {} biological samples match (QC / blanks retained)",
+                            m.matched_biological_count(), m.table.rows.iter().filter(|row| row.get(m.aliases[2]) == Some(&m.roles[0])).count()),
+                        Action::Info("Filters apply only to biological samples; QC and blanks remain available"));
+                    for (index, filter) in m.study_filters.iter().enumerate() {
+                        item(&mut entries, format!("Remove filter field: {}", m.table.columns[filter.column]),
+                            Action::RemoveStudyFilter(index));
+                        for value in m.filter_values(filter.column) {
+                            item(&mut entries, format!("    [{}] {} = {}", if filter.values.contains(&value) { "x" } else { " " },
+                                m.table.columns[filter.column], value), Action::StudyFilterValue(index, value));
+                        }
+                    }
+                    item(&mut entries, "Add study sample filter field (AND across fields; OR within field)",
+                        Action::AddStudyFilter);
                 }
             }
             4 => {
@@ -735,6 +753,22 @@ impl Screen {
                     .map_or(0, |i| i + 1);
                 self.chooser("Study ordination labels only; all biological rows remain", choices, selected, ChoosePurpose::DisplayGroup);
             }
+            Action::AddStudyFilter => {
+                let fields: Vec<_> = self.model.filter_fields().into_iter()
+                    .filter(|index| !self.model.study_filters.iter().any(|filter| filter.column == *index))
+                    .collect();
+                let choices = fields.iter().map(|index| self.model.table.columns[*index].clone()).collect();
+                self.chooser("Select categorical biological metadata field", choices, 0,
+                    ChoosePurpose::StudyFilterField(fields));
+            }
+            Action::RemoveStudyFilter(index) => {
+                self.model.study_filters.remove(index);
+                self.changed();
+            }
+            Action::StudyFilterValue(index, value) => {
+                self.model.toggle_study_filter_value(index, &value)?;
+                self.changed();
+            }
             Action::Primary => {
                 let fields = self.model.group_fields();
                 let selected = fields
@@ -935,10 +969,12 @@ impl Screen {
                     self.model.replacements.clear();
                 }
                 self.model.refresh_groups();
+                self.model.study_filters.clear();
             }
             ChoosePurpose::Role(i) => {
                 self.model.roles[i] = choices[selected].clone();
                 self.model.refresh_groups();
+                self.model.study_filters.clear();
             }
             ChoosePurpose::Map(old) => {
                 let new = choices[selected].clone();
@@ -955,6 +991,9 @@ impl Screen {
                 } else {
                     Some(self.model.group_fields()[selected - 1])
                 };
+            }
+            ChoosePurpose::StudyFilterField(fields) => {
+                self.model.add_study_filter(fields[selected])?;
             }
             ChoosePurpose::Primary => {
                 self.model.primary = self.model.group_fields()[selected];

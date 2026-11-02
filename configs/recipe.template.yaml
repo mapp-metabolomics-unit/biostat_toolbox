@@ -1,6 +1,11 @@
 kind: study
 seed: 1
 # Optional presentation: {description: "Batch-wide untargeted exploration"}
+# Optional: retain biological samples matching any listed value in each column.
+# Multiple columns combine with AND; QC and blanks remain available for preprocessing.
+# study_filters:
+#   - {column: ATTRIBUTE_extraction_phase, values: [I1]}
+#   - {column: ATTRIBUTE_part, values: [Greenpatch, Yellowpatch]}
 preprocessing:
   blank_filter: {enabled: true, minimum_sample_to_blank_ratio: 5, minimum_blank_prevalence: 0.5}
   qc_rsd_filter: {enabled: true, threshold_percent: 30}

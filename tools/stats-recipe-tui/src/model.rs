@@ -18,6 +18,11 @@ pub struct Group {
     pub target: String,
 }
 
+pub struct StudyFilter {
+    pub column: usize,
+    pub values: BTreeSet<String>,
+}
+
 pub struct Plan {
     pub folder: PathBuf,
     pub hash: String,
@@ -96,6 +101,7 @@ pub struct Model {
     pub display_group: Option<usize>,
     pub unit: Option<usize>,
     pub groups: Vec<Group>,
+    pub study_filters: Vec<StudyFilter>,
     pub slug: String,
     pub description: String,
     pub seed: u32,
@@ -349,6 +355,7 @@ impl Model {
             display_group: None,
             unit: None,
             groups: Vec::new(),
+            study_filters: Vec::new(),
             study: None,
             slug: "batch-study".into(),
             description: String::new(),
@@ -430,6 +437,7 @@ impl Model {
             assigned.insert(self.roles[index].clone());
         }
         self.replacements.clear();
+        self.study_filters.clear();
         self.secondary = None;
         self.display_group = None;
         let named_units: Vec<_> = self
@@ -561,6 +569,55 @@ impl Model {
             row.get(self.aliases[2])
                 .is_some_and(|role| role == &self.roles[0])
         })
+    }
+
+    pub fn filter_fields(&self) -> Vec<usize> {
+        (0..self.table.columns.len())
+            .filter(|index| {
+                !self.aliases.contains(index)
+                    && !["filename", "sample_id", "sample_type", "analysis_group"]
+                        .contains(&self.table.columns[*index].as_str())
+                    && (2..=30).contains(&self.filter_values(*index).len())
+            })
+            .collect()
+    }
+
+    pub fn filter_values(&self, index: usize) -> BTreeSet<String> {
+        self.biological_rows()
+            .filter_map(|row| row.get(index))
+            .filter(|value| !value.is_empty() && *value != "NA")
+            .cloned()
+            .collect()
+    }
+
+    pub fn matched_biological_count(&self) -> usize {
+        self.biological_rows()
+            .filter(|row| self.study_filters.iter().all(|filter| {
+                row.get(filter.column).is_some_and(|value| filter.values.contains(value))
+            }))
+            .count()
+    }
+
+    pub fn add_study_filter(&mut self, column: usize) -> Result<()> {
+        if self.is_comparison() || !self.filter_fields().contains(&column)
+            || self.study_filters.iter().any(|filter| filter.column == column)
+        {
+            bail!("Choose an unused categorical biological metadata field for a study filter");
+        }
+        self.study_filters.push(StudyFilter { column, values: self.filter_values(column) });
+        Ok(())
+    }
+
+    pub fn toggle_study_filter_value(&mut self, filter: usize, value: &str) -> Result<()> {
+        let column = self.study_filters.get(filter).context("Unknown study filter")?.column;
+        if !self.filter_values(column).contains(value) {
+            bail!("Value is no longer observed in biological metadata");
+        }
+        let values = &mut self.study_filters[filter].values;
+        if !values.remove(value) {
+            values.insert(value.to_owned());
+        }
+        Ok(())
     }
 
     fn complete_field(&self, index: usize) -> bool {
@@ -1054,6 +1111,29 @@ impl Model {
         if self.biological_role_count(0) == 0 {
             bail!("A study requires at least one biological sample");
         }
+        if self.is_comparison() && !self.study_filters.is_empty() {
+            bail!("Study filters belong to the saved study, not a comparison");
+        }
+        if !self.study_filters.is_empty() {
+            let eligible = self.filter_fields();
+            let mut seen = HashSet::new();
+            for filter in &self.study_filters {
+                if !seen.insert(filter.column) || !eligible.contains(&filter.column)
+                    || filter.values.is_empty()
+                    || !filter.values.is_subset(&self.filter_values(filter.column))
+                {
+                    bail!("Study filters require distinct eligible fields and observed nonempty values");
+                }
+            }
+            let matched = self.matched_biological_count();
+            if matched == 0 {
+                bail!("Study filters match no biological samples");
+            }
+            if matched < 2 && (self.analyses["pca"]["enabled"] == true ||
+                               self.analyses["pcoa"]["enabled"] == true) {
+                bail!("Ordination requires at least two selected biological samples");
+            }
+        }
         let mut selected = Vec::new();
         let mut target_counts = BTreeMap::<&str, usize>::new();
         if self.is_comparison() {
@@ -1173,6 +1253,11 @@ impl Model {
                 recipe["display_group"] = json!(columns[index]);
             }
         }
+        if !self.study_filters.is_empty() {
+            recipe["study_filters"] = json!(self.study_filters.iter().map(|filter| {
+                json!({"column": columns[filter.column], "values": filter.values})
+            }).collect::<Vec<_>>());
+        }
         if !self.description.is_empty() {
             recipe["presentation"] = json!({"description": self.description});
         }
@@ -1239,6 +1324,66 @@ impl Model {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn study_filters_select_values_across_fields_and_leave_comparisons_unchanged() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let batch = temp.path().join("mapp_project_filters/mapp_batch_filters");
+        fs::create_dir_all(batch.join("metadata/treated"))?;
+        fs::create_dir_all(batch.join("results/mzmine"))?;
+        let rows = [
+            ("A", "sample", "I1", "Green"),
+            ("B", "sample", "I1", "Yellow"),
+            ("C", "sample", "I2", "Green"),
+            ("D", "sample", "I2", "Yellow"),
+            ("E", "sample", "I2", "Red"),
+            ("Q", "QC", "NA", "NA"),
+            ("Z", "blank", "NA", "NA"),
+        ];
+        let mut metadata = String::from("filename\tsample_id\tsample_type\textraction\tpatch\n");
+        let mut quant = String::from("row ID");
+        for (id, role, extraction, patch) in rows {
+            metadata.push_str(&format!("{id}.mzML\t{id}\t{role}\t{extraction}\t{patch}\n"));
+            quant.push_str(&format!(",{id}.mzML Peak height"));
+        }
+        quant.push('\n');
+        fs::write(batch.join("metadata/treated/mapp_batch_filters_metadata.tsv"), metadata)?;
+        fs::write(batch.join("results/mzmine/quant.csv"), quant)?;
+        let mut model = Model::load(&batch)?;
+        model.prep["qc_rsd_filter"]["enabled"] = json!(false);
+        assert!(model.plan()?.recipe.get("study_filters").is_none());
+        let extraction = model.table.column("extraction").unwrap();
+        let patch = model.table.column("patch").unwrap();
+        assert_eq!(model.filter_fields(), vec![extraction, patch]);
+        model.add_study_filter(extraction)?;
+        assert!(model.add_study_filter(extraction).is_err());
+        model.toggle_study_filter_value(0, "I2")?;
+        assert_eq!(model.matched_biological_count(), 2);
+        assert_eq!(model.plan()?.recipe["study_filters"], json!([
+            {"column": "extraction", "values": ["I1"]}
+        ]));
+        model.add_study_filter(patch)?;
+        model.toggle_study_filter_value(1, "Red")?;
+        assert_eq!(model.study_filters[1].values, BTreeSet::from(["Green".into(), "Yellow".into()]));
+        assert_eq!(model.matched_biological_count(), 2);
+        assert_eq!(model.plan()?.recipe["study_filters"], json!([
+            {"column": "extraction", "values": ["I1"]},
+            {"column": "patch", "values": ["Green", "Yellow"]}
+        ]));
+        model.toggle_study_filter_value(1, "Green")?;
+        assert_eq!(model.matched_biological_count(), 1);
+        assert!(model.plan().err().unwrap().to_string().contains("at least two selected"));
+        model.toggle_study_filter_value(0, "I1")?;
+        assert!(model.plan().is_err());
+        model.toggle_study_filter_value(0, "I1")?;
+        model.toggle_study_filter_value(1, "Yellow")?;
+        model.toggle_study_filter_value(1, "Red")?;
+        assert_eq!(model.matched_biological_count(), 0);
+        assert!(model.plan().err().unwrap().to_string().contains("no biological samples"));
+        model.study_filters.clear();
+        assert!(model.plan()?.recipe.get("study_filters").is_none());
+        Ok(())
+    }
 
     #[test]
     fn study_defaults_to_batch_metadata_not_alphabetical_first_tsv() -> Result<()> {
@@ -1365,6 +1510,13 @@ mod tests {
         assert_eq!(first.recipe["kind"], "comparison");
         assert_eq!(first.recipe["study_hash"], study_hash);
         assert_eq!(first.recipe["sample_plan"]["groups"].as_array().unwrap().len(), 2);
+        assert!(first.recipe.get("study_filters").is_none());
+        comparison.study_filters.push(StudyFilter {
+            column: comparison.table.column("condition").unwrap(),
+            values: BTreeSet::from(["case".into()]),
+        });
+        assert!(comparison.plan().err().unwrap().to_string().contains("not a comparison"));
+        comparison.study_filters.clear();
         assert!(first.recipe.get("preprocessing").is_none());
         assert!(first.recipe["analyses"].get("pca").is_none());
         assert!(first.recipe["analyses"].get("pcoa").is_none());

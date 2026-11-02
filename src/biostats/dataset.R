@@ -101,6 +101,34 @@ read_mzmine_dataset <- function(dataset_config, sample_plan = NULL) {
   )
   if (is.null(sample_plan)) dataset else subset_biostats_dataset(dataset, sample_plan)
 }
+filter_study_dataset <- function(dataset, filters) {
+  validate_study_filters(filters)
+  metadata <- dataset$sample_metadata
+  roles <- dataset_roles(dataset$source)
+  if (!roles$column %in% names(metadata))
+    stop("Sample-role column not found: ", roles$column, call. = FALSE)
+  biological <- !is.na(metadata[[roles$column]]) &
+    metadata[[roles$column]] == roles$levels$sample
+  keep <- rep(TRUE, nrow(metadata))
+  for (filter in filters) {
+    column <- filter$column
+    if (!column %in% names(metadata))
+      stop("Study filter metadata column not found: ", column, call. = FALSE)
+    values <- unlist(filter$values, use.names = FALSE)
+    available <- unique(as.character(metadata[[column]][biological]))
+    unknown <- setdiff(values, available)
+    if (length(unknown))
+      stop("Study filter column ", column, " has unknown biological value(s): ",
+           paste(unknown, collapse = ", "), call. = FALSE)
+    keep <- keep & (!biological | (!is.na(metadata[[column]]) & metadata[[column]] %in% values))
+  }
+  if (!any(keep & biological))
+    stop("Study filters match no biological samples.", call. = FALSE)
+  dataset$sample_metadata <- metadata[keep, , drop = FALSE]
+  dataset$raw <- dataset$raw[rownames(dataset$sample_metadata), , drop = FALSE]
+  dataset
+}
+
 subset_biostats_dataset <- function(dataset, sample_plan) {
   validate_sample_plan(sample_plan)
   metadata <- dataset$sample_metadata

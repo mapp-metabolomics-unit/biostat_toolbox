@@ -866,6 +866,9 @@
     const facts = [['Dataset',run.dataset_id], ['Study hash',run.study_hash], ['Run hash',run.hash],
       ['Selection',run.kind === 'comparison' ? 'Sealed comparison · shared ordinations' :
         run.kind === 'study' ? 'Shared study · no comparison selected' : 'Historical standalone run'],
+      ...(run.kind === 'study' || run.kind === 'comparison' ?
+        [['Study biological filters',run.study_filters?.map(({column,values}) =>
+          `${column} = ${values.join(' or ')}`).join('; ') || 'All biological samples']] : []),
       ['Description',run.description ?? 'Not in this catalogue'],
       ['Recipe SHA-256',run.recipe_sha256 ?? 'Not in this catalogue'],
       ['Changes vs previous dataset run',run.changes_vs_previous_dataset_run ?? 'Not in this catalogue'],
@@ -962,6 +965,10 @@
             (run.kind !== undefined && (!run.hashes || !hex.test(run.hashes.dataset_hash) ||
               !hex.test(run.hashes.preprocess_hash))) ||
             (run.kind === undefined && (run.study_hash !== undefined || run.sources !== undefined)) ||
+            (run.study_filters !== undefined && (!Array.isArray(run.study_filters) || !run.study_filters.length ||
+              run.study_filters.some((filter) => !filter || typeof filter !== 'object' ||
+                typeof filter.column !== 'string' || !Array.isArray(filter.values) || !filter.values.length ||
+                filter.values.some((value) => typeof value !== 'string')))) ||
             (run.description !== undefined && (typeof run.description !== 'string' || !run.description ||
               run.description.trim() !== run.description || [...run.description].length > 160 ||
               /[\x00-\x1f\x7f-\x9f]/u.test(run.description))) ||
@@ -991,6 +998,7 @@
         const childSource = 'comparisons/' + run.study_hash + '/' + run.hash;
         if (!study || run.dataset_id !== study.dataset_id ||
             run.hashes?.dataset_hash !== study.hashes?.dataset_hash ||
+            JSON.stringify(run.study_filters ?? null) !== JSON.stringify(study.study_filters ?? null) ||
             run.hashes?.preprocess_hash !== study.hashes?.preprocess_hash ||
             !Object.hasOwn(run.outputs,'tables/comparison_sample_metadata.tsv') ||
             Object.keys(sources).some((path) => !Object.hasOwn(run.outputs,path) || sources[path] !== childSource) ||

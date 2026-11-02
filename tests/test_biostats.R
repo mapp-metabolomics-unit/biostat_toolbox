@@ -234,6 +234,107 @@ local({
   write_yaml_file(bad_dataset, bad_dataset_path)
   expect_error(validate_biostats_run(resolve_biostats_config(bad_dataset_path, comparison_path, repo_root)),
                "differs from its sealed study")
+  filtered_recipe <- study_recipe
+  filtered_recipe$study_filters <- list(
+    list(column = "group", values = list("WT", "mutant", "other")),
+    list(column = "part", values = list("leaf")))
+  filtered_recipe$analyses$pca$include_qc <- TRUE
+  filtered_recipe$analyses$pca$include_blanks <- TRUE
+  filtered_recipe$analyses$pcoa$include_qc <- TRUE
+  filtered_recipe$analyses$pcoa$include_blanks <- TRUE
+  filtered_study_path <- file.path(batch, "filtered_study.yaml")
+  write_yaml_file(filtered_recipe, filtered_study_path)
+  filtered_config <- resolve_biostats_config(dataset_path, filtered_study_path, repo_root)
+  unfiltered_variant <- filtered_config
+  unfiltered_variant$recipe$study_filters <- NULL
+  filtered_validation <- validate_biostats_run(filtered_config)
+  biological <- filtered_validation$dataset$sample_metadata$sample_type == "sample"
+  stopifnot(identical(filtered_validation$validation$role_counts$sample, 9L),
+            nrow(filtered_validation$dataset$sample_metadata) == 14L,
+            all(filtered_validation$dataset$sample_metadata$part[biological] == "leaf"),
+            setequal(filtered_validation$dataset$sample_metadata$group[biological],
+                     c("WT", "mutant", "other")),
+            setequal(rownames(filtered_validation$dataset$raw),
+                     rownames(filtered_validation$dataset$sample_metadata)),
+            !identical(filtered_validation$identity$preprocess_hash,
+                       build_run_identity(unfiltered_variant)$preprocess_hash),
+            !identical(filtered_validation$identity$preprocess_hash,
+                       study_manifest$hashes$preprocess_hash))
+  two_groups <- filtered_config
+  two_groups$recipe$study_filters[[1L]]$values <- list("WT", "mutant")
+  two_group_validation <- validate_biostats_run(two_groups)
+  stopifnot(identical(two_group_validation$validation$role_counts$sample, 6L),
+            setequal(two_group_validation$dataset$sample_metadata$group[
+              two_group_validation$dataset$sample_metadata$sample_type == "sample"],
+              c("WT", "mutant")),
+            !identical(two_group_validation$identity$preprocess_hash,
+                       filtered_validation$identity$preprocess_hash))
+  filtered_dir <- execute_biostats_run(filtered_config)
+  filtered_hash <- basename(filtered_dir)
+  filtered_manifest <- read_yaml_file(file.path(filtered_dir, "manifest.yaml"))
+  filtered_metadata <- utils::read.delim(file.path(filtered_dir, "tables", "sample_metadata.tsv"))
+  filtered_scores <- utils::read.delim(file.path(filtered_dir, "tables", "pca_scores.tsv"))
+  filtered_pcoa <- utils::read.delim(file.path(filtered_dir, "tables", "pcoa_scores.tsv"))
+  stopifnot(!identical(filtered_hash, study_hash),
+            identical(filtered_manifest$hashes$preprocess_hash,
+                      filtered_validation$identity$preprocess_hash),
+            identical(filtered_manifest$effective_recipe$study_filters,
+                      filtered_config$recipe$study_filters),
+            nrow(filtered_metadata) == 14L,
+            identical(as.integer(table(filtered_metadata$sample_type)[c("sample", "QC", "blank")]),
+                      c(9L, 3L, 2L)),
+            all(filtered_metadata$part[filtered_metadata$sample_type == "sample"] == "leaf"),
+            setequal(filtered_scores$sample, filtered_metadata$filename),
+            setequal(filtered_pcoa$sample, filtered_metadata$filename),
+            identical(sha256_file(file.path(study_dir, "tables", "pca_scores.tsv")), study_scores),
+            completed_run(study_dir, study_hash), completed_run(filtered_dir, filtered_hash))
+  filtered_comparison <- comparison
+  filtered_comparison$study_hash <- filtered_hash
+  filtered_comparison$sample_plan <- list(group_column = "group", groups = list(
+    list(source = "WT", target = "WT"), list(source = "mutant", target = "mutant")))
+  filtered_comparison_path <- file.path(batch, "filtered_comparison.yaml")
+  write_yaml_file(filtered_comparison, filtered_comparison_path)
+  filtered_child_config <- resolve_biostats_config(dataset_path, filtered_comparison_path, repo_root)
+  filtered_child_validation <- validate_biostats_run(filtered_child_config)
+  stopifnot(identical(filtered_child_validation$identity$preprocess_hash,
+                      filtered_manifest$hashes$preprocess_hash),
+            identical(as.integer(unlist(filtered_child_validation$validation$group_counts)),
+                      c(3L, 3L)),
+            all(filtered_child_validation$dataset$sample_metadata$part[
+              filtered_child_validation$dataset$sample_metadata$sample_type == "sample"] == "leaf"))
+  filtered_child_dir <- execute_biostats_run(filtered_child_config)
+  filtered_child_metadata <- utils::read.delim(file.path(filtered_child_dir, "tables",
+                                                         "comparison_sample_metadata.tsv"))
+  stopifnot(nrow(filtered_child_metadata) == 6L, all(filtered_child_metadata$part == "leaf"),
+            setequal(filtered_child_metadata$group, c("WT", "mutant")))
+  broadened <- filtered_child_config
+  broadened$recipe$sample_plan <- list(group_column = "part", groups = list(
+    list(source = "leaf", target = "leaf"), list(source = "root", target = "root")))
+  expect_error(validate_biostats_run(broadened), "unknown biological group source")
+  comparison_with_filters <- filtered_child_config
+  comparison_with_filters$recipe$study_filters <- filtered_recipe$study_filters
+  expect_error(validate_biostats_run(comparison_with_filters), "Comparison recipes cannot specify study_filters")
+  for (bad_filters in list(
+    list(), list(list(column = "part", values = list())),
+    list(list(column = "part", values = list(NA_character_))),
+    list(list(column = "part", values = list(""))),
+    list(list(column = "part", values = list("leaf", "leaf"))),
+    list(list(column = "part", values = list("leaf")),
+         list(column = "part", values = list("root"))),
+    list(list(column = "part", values = list("leaf"), extra = "unexpected")))) {
+    bad_config <- filtered_config
+    bad_config$recipe$study_filters <- bad_filters
+    expect_error(validate_biostats_run(bad_config), "study_filters")
+  }
+  for (bad_filters in list(
+    list(list(column = "not_a_column", values = list("leaf"))),
+    list(list(column = "part", values = list("flower"))),
+    list(list(column = "part", values = list("leaf")),
+         list(column = "sample_id", values = list("sample8"))))) {
+    bad_config <- filtered_config
+    bad_config$recipe$study_filters <- bad_filters
+    expect_error(validate_biostats_run(bad_config), "Study filter|Study filters")
+  }
   published <- suppressWarnings(system2(file.path(R.home("bin"), "Rscript"),
     c(shQuote(file.path(repo_root, "scripts", "publish_stats_dashboard.R")),
       "--batch", shQuote(batch)), stdout = TRUE, stderr = TRUE))
@@ -241,11 +342,19 @@ local({
   catalogue <- jsonlite::read_json(file.path(batch, "results", "stats", "dashboard", "runs.json"),
                                    simplifyVector = FALSE)
   entries <- catalogue$runs
-  stopifnot(length(entries) == 3L,
-            sum(vapply(entries, function(item) identical(item$kind, "study"), logical(1))) == 1L,
-            sum(vapply(entries, function(item) identical(item$kind, "comparison"), logical(1))) == 2L)
+  stopifnot(length(entries) == 5L,
+            sum(vapply(entries, function(item) identical(item$kind, "study"), logical(1))) == 2L,
+            sum(vapply(entries, function(item) identical(item$kind, "comparison"), logical(1))) == 3L)
   child <- Filter(function(item) identical(item$hash, first_child), entries)[[1L]]
   parent <- Filter(function(item) identical(item$hash, study_hash), entries)[[1L]]
+  filtered_entry <- Filter(function(item) identical(item$hash, filtered_hash), entries)[[1L]]
+  filtered_child_entry <- Filter(function(item) identical(item$hash, basename(filtered_child_dir)),
+                                 entries)[[1L]]
+  expected_filters <- lapply(filtered_config$recipe$study_filters, function(filter)
+    list(column = filter$column, values = as.list(filter$values)))
+  stopifnot(is.null(parent$study_filters),
+            identical(filtered_entry$study_filters, expected_filters),
+            identical(filtered_child_entry$study_filters, expected_filters))
   stopifnot(identical(parent$hashes$dataset_hash, study_manifest$hashes$dataset_hash),
             identical(parent$hashes$preprocess_hash, study_manifest$hashes$preprocess_hash),
             identical(child$hashes$dataset_hash, parent$hashes$dataset_hash),

@@ -130,6 +130,26 @@ validate_sample_plan <- function(plan) {
   invisible(plan)
 }
 
+validate_study_filters <- function(filters) {
+  if (!is.list(filters) || !length(filters) || !is.null(names(filters)))
+    stop("recipe.study_filters must be a nonempty sequence.", call. = FALSE)
+  for (filter in filters) {
+    config_fields(filter, c("column", "values"), "recipe.study_filters filter")
+    if (!setequal(names(filter), c("column", "values")))
+      stop("recipe.study_filters filters require column and values.", call. = FALSE)
+    config_text(filter$column, "recipe.study_filters column")
+    values <- filter$values
+    if (!(is.list(values) || is.character(values)) || !length(values) || !is.null(names(values)))
+      stop("recipe.study_filters values must contain at least one value.", call. = FALSE)
+    for (value in values) config_text(value, "recipe.study_filters value")
+    if (anyDuplicated(unlist(values, use.names = FALSE)))
+      stop("recipe.study_filters values must be unique within each column.", call. = FALSE)
+  }
+  if (anyDuplicated(vapply(filters, `[[`, character(1), "column")))
+    stop("recipe.study_filters columns must be unique.", call. = FALSE)
+  invisible(filters)
+}
+
 validate_input_sha256 <- function(hashes) {
   config_fields(hashes, c("metadata", "quantification"), "dataset.input_sha256")
   if (!setequal(names(hashes), c("metadata", "quantification")))
@@ -155,16 +175,19 @@ verify_input_sha256 <- function(dataset, hashes = NULL) {
 
 validate_recipe_config <- function(recipe) {
   config_fields(recipe, c("kind", "study_hash", "display_group", "seed", "presentation", "roles",
-                          "sample_plan", "preprocessing", "design", "analyses"), "recipe")
+                          "sample_plan", "study_filters", "preprocessing", "design", "analyses"), "recipe")
   config_choice(recipe$kind, c("study", "comparison"), "recipe.kind")
   if (identical(recipe$kind, "study")) {
     if (!is.null(recipe$study_hash) || !is.null(recipe$sample_plan))
       stop("Study recipes cannot specify a parent or select biological subsets.", call. = FALSE)
+    if ("study_filters" %in% names(recipe)) validate_study_filters(recipe$study_filters)
     if (!is.null(recipe$display_group)) config_text(recipe$display_group, "recipe.display_group")
     if (!is.null(recipe$design) &&
         !identical(recipe$design, list(group = recipe$display_group %||% "sample_type")))
       stop("Study design is display-only; remove inferential design fields.", call. = FALSE)
   } else {
+    if ("study_filters" %in% names(recipe))
+      stop("Comparison recipes cannot specify study_filters; filters belong to the sealed study.", call. = FALSE)
     if (!is.character(recipe$study_hash) || length(recipe$study_hash) != 1L ||
         is.na(recipe$study_hash) || !grepl("^[0-9a-f]{64}$", recipe$study_hash))
       stop("Comparison recipes require a sealed 64-character study_hash.", call. = FALSE)
