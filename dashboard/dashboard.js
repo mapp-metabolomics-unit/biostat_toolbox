@@ -144,26 +144,53 @@
     url.searchParams.set('tab',tab);
     url.searchParams.set('plot',plot);
     if (tab === 'features') url.searchParams.set('feature',selectedFeature);
+    url.searchParams.set('group_by',ctx.display.field);
+    url.searchParams.set('role',ctx.display.role);
+    if (ctx.display.groups !== null) {
+      if (!ctx.display.groups.size) url.searchParams.append('groups','');
+      else for (const name of ctx.display.groups) url.searchParams.append('groups',name);
+    }
+    for (const [name,color] of ctx.groupColors)
+      url.searchParams.set('color.'+name,color);
+    if (tab === 'features' && ctx.featurePlotSettings) {
+      url.searchParams.set('stage',ctx.featurePlotSettings.stage);
+      url.searchParams.set('facet',ctx.featurePlotSettings.facet);
+      url.searchParams.set('significance',ctx.featurePlotSettings.significance);
+    }
     url.hash = 'view='+encoded;
     return url.href;
   }
   function linkedPlot() {
     if (detachedMode) return null;
     const url = new URL(location.href);
+    const params = url.searchParams;
+    const run = params.get('run'), tab = params.get('tab'), plot = params.get('plot');
+    if (!hex.test(run) || !plotTabs.has(tab) || !plot || plot.length > 80 ||
+        !/^[a-z0-9-]+$/.test(plot) ||
+        (tab === 'features' ? plot !== 'feature-intensities' :
+          tab === 'classes' ? plot !== 'npc-intensities' : !plot.startsWith(tab+'-'))) return null;
     const encoded = new URLSearchParams(url.hash.slice(1)).get('view');
-    if (!encoded || encoded.length > 16000 || !/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
+    if (!encoded) return {v:1,run,tab,plot,
+      ...(tab === 'features' ? {feature:params.get('feature') ?? ''} : {}),manual:true};
+    if (encoded.length > 16000 || !/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
     try {
       const bytes = Uint8Array.from(atob(encoded.replaceAll('-','+').replaceAll('_','/')),
         (char) => char.charCodeAt(0));
       const state = JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
-      if (state?.v !== 1 || !hex.test(state.run) || state.run !== url.searchParams.get('run') ||
-          !plotTabs.has(state.tab) || state.tab !== url.searchParams.get('tab') ||
-          typeof state.plot !== 'string' || state.plot !== url.searchParams.get('plot')) return null;
+      if (state?.v !== 1 || state.run !== run || state.tab !== tab || state.plot !== plot) return null;
       return state;
     } catch { return null; }
   }
   function restoreSharedPlot(ctx,state) {
     if (!state || state.run !== ctx.run.hash) return;
+    if (state.manual) {
+      ctx.groupColors = new Map();
+      groupColors = ctx.groupColors;
+      ctx.featureColorField = '';
+      ctx.featureCategoryColors = new Map();
+      ctx.scoreMaps = undefined;
+      refreshGroupColors();
+    }
     applySharedDisplay(ctx,state.display);
     if (Array.isArray(state.groupColors)) {
       const colors = state.groupColors.filter((entry) => Array.isArray(entry) &&
@@ -225,6 +252,53 @@
           typeof rule.value === 'string' && rule.value.length <= 256).slice(0,20) : [],
         tableFilters:classes.tableFilters && typeof classes.tableFilters === 'object' &&
           !Array.isArray(classes.tableFilters) ? classes.tableFilters : {}};
+    const params = new URL(location.href).searchParams;
+    if (state.manual || ['group_by','role','groups'].some((key) => params.has(key))) {
+      const field = params.get('group_by') ?? (state.manual ? defaultGroup : ctx.display.field);
+      const role = params.get('role') ?? (state.manual ? '' : ctx.display.role);
+      const levels = params.getAll('groups');
+      const groups = !params.has('groups') ? (state.manual ? null : ctx.display.groups) :
+        levels.length === 1 && levels[0] === '*' ? null :
+          levels.length === 1 && levels[0] === '' ? new Set() : new Set(levels);
+      const available = new Set(metadata.map((row) => groupName(row,field)));
+      if (!sampleGroupColumns.includes(field) ||
+          !(role === '' || metadata.some((row) => row.sample_type === role)) ||
+          levels.length > 30 || levels.some((name) => name.length > 128) ||
+          (groups !== null && [...groups].some((name) => !available.has(name))))
+        throw new Error('Invalid group_by, role, or groups in plot link; use saved metadata field and group names.');
+      setSampleDisplay(ctx,field,groups,role);
+    }
+    const colorOverrides = [...params].filter(([key]) => key.startsWith('color.'));
+    if (colorOverrides.length > 200 || colorOverrides.some(([key,value]) =>
+        key.length <= 6 || key.length > 134 || !colorCode.test(value)))
+      throw new Error('Invalid color.<group> override in plot link; use a six-digit #RRGGBB colour.');
+    for (const [key,value] of colorOverrides) ctx.groupColors.set(key.slice(6),value);
+    if (colorOverrides.length) refreshGroupColors();
+    if (state.tab === 'features') {
+      const feature = params.get('feature');
+      if (feature !== null) {
+        if (feature.length > 256) throw new Error('Feature ID in plot link exceeds 256 characters.');
+        selectedFeature = feature;
+      }
+      if (state.manual || ['stage','facet','significance'].some((key) => params.has(key))) {
+        const stages = Object.keys(ctx.run.outputs).filter((path) =>
+          /^tables\/matrix_[A-Za-z0-9_.-]+\.tsv$/.test(path)).map((path) => path.slice(14,-4));
+        const facets = sampleGroupColumns.filter((field) => {
+          const count = new Set(metadata.map((row) => groupName(row,field))).size;
+          return count > 1 && count <= 12;
+        });
+        const stage = params.get('stage') ?? (state.manual ? undefined : ctx.featurePlotSettings?.stage);
+        const facet = params.get('facet') ?? (state.manual ? '' : ctx.featurePlotSettings?.facet);
+        const significance = params.get('significance') ?? (state.manual ? 'off' : ctx.featurePlotSettings?.significance);
+        if ((stage !== undefined && !stages.includes(stage)) ||
+            !['off','p','q','stars'].includes(significance) ||
+            (facet && !facets.includes(facet)))
+          throw new Error('Invalid stage, facet, or significance in feature plot link.');
+        ctx.featurePlotSettings = savedFeaturePlotSettings(ctx,stages,facets,{
+          ...(state.manual ? {open:true} : ctx.featurePlotSettings),
+          stage,facet,significance});
+      }
+    }
     ctx.shareTarget = state.plot;
   }
   function plotShareButton(ctx,container,filename) {
@@ -1191,7 +1265,9 @@
     if (updateHistory) {
       const url = new URL(location.href);
       url.searchParams.set('run', hash);
-      for (const key of ['tab','plot','feature']) url.searchParams.delete(key);
+      for (const key of [...url.searchParams.keys()])
+        if (['tab','plot','feature','group_by','role','groups','stage','facet','significance'].includes(key) ||
+            key.startsWith('color.')) url.searchParams.delete(key);
       url.hash = '';
       history.pushState(null, '', url);
     }
