@@ -1448,17 +1448,25 @@
   }
 
   async function renderOrdination(ctx, target, token, stem, prefix) {
-    const [scores,colorData] = await Promise.all([
+    const [scores,colorData,variance] = await Promise.all([
       rows(ctx,stem + '_scores',true),
-      stem === 'pca' && available(ctx,'pca_loadings') ? featureColorData(ctx) : null
+      stem === 'pca' && available(ctx,'pca_loadings') ? featureColorData(ctx) : null,
+      stem === 'pca' ? rows(ctx,'pca_variance',true) : null
     ]);
     if (!viewValid(ctx,stem,token)) return;
     if (!scores?.length) { message(target,'No saved ' + stem.toUpperCase() + ' scores for this run.'); return; }
     const axes = numericAxes(scores,prefix);
     if (!axes.length) { message(target,'No saved components found in ' + stem + '_scores.tsv.',true); return; }
+    const varianceByAxis = new Map((variance ?? []).map((row) =>
+      [row.component,number(row.variance_percent)]));
+    const axisTitle = (axis) => {
+      const percent = varianceByAxis.get(axis);
+      return stem === 'pca' && Number.isFinite(percent) && percent >= 0 && percent <= 100 ?
+        `${axis} (${percent.toFixed(1)}%)` : axis;
+    };
     const bySample = new Map(metadata.map((row) => [sampleKey(row),row]));
     const ui = el('div', {class:'controls'});
-    const choices = axes.map((axis) => [axis,axis]);
+    const choices = axes.map((axis) => [axis,axisTitle(axis)]);
     if (axes.length >= 3) ui.append(control('View',stem+'-axis-view',[['2D','2D'],['3D','3D']]));
     ui.append(control('X axis',stem+'-axis-x',choices,axes[0]));
     if (axes.length >= 2) ui.append(control('Y axis',stem+'-axis-y',choices,axes[1]));
@@ -1524,8 +1532,8 @@
       if (mapped.continuous) plot.removeAttribute('data-sample-groups');
       else plot.dataset.sampleGroups = 'true';
       plotting(ctx,plot,mapped.traces,view ?
-        {scene:{xaxis:{title:x},yaxis:{title:y},zaxis:{title:z}},...(mapped.continuous ? {margin:{r:120}} : {})} :
-        {xaxis:{title:x},yaxis:{title:y || '1D jitter (display only)'},hovermode:'closest',
+        {scene:{xaxis:{title:axisTitle(x)},yaxis:{title:axisTitle(y)},zaxis:{title:axisTitle(z)}},...(mapped.continuous ? {margin:{r:120}} : {})} :
+        {xaxis:{title:axisTitle(x)},yaxis:{title:y ? axisTitle(y) : '1D jitter (display only)'},hovermode:'closest',
           ...(mapped.continuous ? {margin:{r:120}} : {})});
       if (!loadingPlot) return;
       try {
@@ -1555,8 +1563,8 @@
         }));
         loadingPlot.replaceChildren();
         plotting(ctx,loadingPlot,traces.map(({sourceRows,...trace}) => trace),view ?
-          {scene:{xaxis:{title:x+' loading'},yaxis:{title:y+' loading'},zaxis:{title:z+' loading'}}} :
-          {xaxis:{title:x+' loading'},yaxis:{title:y ? y+' loading' : '1D jitter (display only)'}});
+          {scene:{xaxis:{title:axisTitle(x)+' loading'},yaxis:{title:axisTitle(y)+' loading'},zaxis:{title:axisTitle(z)+' loading'}}} :
+          {xaxis:{title:axisTitle(x)+' loading'},yaxis:{title:y ? axisTitle(y)+' loading' : '1D jitter (display only)'}});
         const featureId = (point) => traces[point.curveNumber]?.sourceRows[point.pointNumber]?.feature_id;
         loadingPlot.on('plotly_click',(event) => {
           const point = event.points[0];
