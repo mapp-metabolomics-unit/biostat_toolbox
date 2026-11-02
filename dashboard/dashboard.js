@@ -17,6 +17,8 @@
   let defaultGroup = '';
   let selectedFeature = '';
   let featureCandidate = 0;
+  const plotTabs = new Set(['pca','pcoa','volcano','plsda','features','classes']);
+  const colorCode = /^#[0-9a-f]{6}$/i;
 
   let groupColors = new Map();
   let drawerVersion = 0;
@@ -95,11 +97,168 @@
       if (valid(ctx) && !button.disabled) downloadTSV(filename,headers,data);
     });
     container.append(button);
+    plotShareButton(ctx,container,filename);
     return (columns, rows) => {
       headers = columns;
       data = rows;
       button.disabled = !rows.length;
     };
+  }
+  function plotShareTarget(filename) {
+    if (filename.startsWith('feature-')) return ['features','feature-intensities'];
+    if (filename.startsWith('npc-')) return ['classes','npc-intensities'];
+    const key = filename.replace(/-plotted\.tsv$/,'');
+    const tab = key.split('-')[0];
+    return plotTabs.has(tab) ? [tab,key] : null;
+  }
+  function shareState(ctx,tab,plot) {
+    const settings = ctx.featurePlotSettings;
+    const score = ctx.scoreMaps?.[tab];
+    const axes = ['view','x','y','z'].map((axis) =>
+      panel(tab).querySelector('#'+tab+'-axis-'+axis)?.value ?? '');
+    return {v:1,run:ctx.run.hash,tab,plot,
+      display:sharedDisplay(ctx),
+      groupColors:[...ctx.groupColors],
+      featureColorField:ctx.featureColorField || '',
+      featureColors:[...(ctx.featureCategoryColors ?? [])],
+      hover:{fields:[...hoverFields],source:hoverSource},
+      ...(tab === 'features' ? {feature:selectedFeature,
+        featurePlot:settings ? {...settings,groups:settings.groups === null ? null : [...settings.groups]} : null} : {}),
+      ...(['pca','pcoa','plsda'].includes(tab) ? {axes,score:score ?
+        {cards:score.cards.map(({field,mode}) => ({field,mode})),order:score.order,open:score.open} : null} : {}),
+      ...(tab === 'volcano' ? {volcano:ctx.volcanoView ?? null} : {}),
+      ...(tab === 'classes' ? {classes:ctx.classView ?
+        {field:ctx.classView.field,first:ctx.classView.first,second:ctx.classView.second,
+          path:ctx.classView.path,filters:ctx.classView.filters,
+          tableFilters:ctx.classView.tableFilters ?? {}} : null} : {})};
+  }
+  function shareUrl(ctx,tab,plot) {
+    const data = new TextEncoder().encode(JSON.stringify(shareState(ctx,tab,plot)));
+    let binary = '';
+    for (const byte of data) binary += String.fromCharCode(byte);
+    const encoded = btoa(binary).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+    if (encoded.length > 16000) throw new Error('Plot configuration exceeds share-link size; reduce the number of filters or colour overrides.');
+    const url = new URL(location.href);
+    url.search = '';
+    url.searchParams.set('run',ctx.run.hash);
+    url.searchParams.set('tab',tab);
+    url.searchParams.set('plot',plot);
+    if (tab === 'features') url.searchParams.set('feature',selectedFeature);
+    url.hash = 'view='+encoded;
+    return url.href;
+  }
+  function linkedPlot() {
+    if (detachedMode) return null;
+    const url = new URL(location.href);
+    const encoded = new URLSearchParams(url.hash.slice(1)).get('view');
+    if (!encoded || encoded.length > 16000 || !/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
+    try {
+      const bytes = Uint8Array.from(atob(encoded.replaceAll('-','+').replaceAll('_','/')),
+        (char) => char.charCodeAt(0));
+      const state = JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+      if (state?.v !== 1 || !hex.test(state.run) || state.run !== url.searchParams.get('run') ||
+          !plotTabs.has(state.tab) || state.tab !== url.searchParams.get('tab') ||
+          typeof state.plot !== 'string' || state.plot !== url.searchParams.get('plot')) return null;
+      return state;
+    } catch { return null; }
+  }
+  function restoreSharedPlot(ctx,state) {
+    if (!state || state.run !== ctx.run.hash) return;
+    applySharedDisplay(ctx,state.display);
+    if (Array.isArray(state.groupColors)) {
+      const colors = state.groupColors.filter((entry) => Array.isArray(entry) &&
+        typeof entry[0] === 'string' && entry[0].length <= 128 && colorCode.test(entry[1])).slice(0,200);
+      ctx.groupColors = new Map(colors);
+      groupColors = ctx.groupColors;
+      refreshGroupColors();
+    }
+    if (typeof state.featureColorField === 'string' && state.featureColorField.length <= 128)
+      ctx.featureColorField = state.featureColorField;
+    if (Array.isArray(state.featureColors))
+      ctx.featureCategoryColors = new Map(state.featureColors.filter((entry) =>
+        Array.isArray(entry) && typeof entry[0] === 'string' && entry[0].length <= 256 &&
+        colorCode.test(entry[1])).slice(0,500));
+    if (state.hover && Array.isArray(state.hover.fields))
+      hoverFields = new Set(state.hover.fields.filter((field) =>
+        typeof field === 'string' && field.length <= 128).slice(0,30));
+    if (typeof state.hover?.source === 'string' && state.hover.source.length <= 128)
+      hoverSource = state.hover.source;
+    if (['pca','pcoa','plsda'].includes(state.tab)) {
+      if (Array.isArray(state.axes) && state.axes.length === 4)
+        ctx.plotAxes = {[state.tab]:state.axes};
+      const score = state.score;
+      if (score && Array.isArray(score.cards) && score.cards.length <= 12 &&
+          Array.isArray(score.order) && score.order.length <= 200)
+        ctx.scoreMaps = {...ctx.scoreMaps,[state.tab]:{
+          cards:score.cards.filter((card) => card && typeof card.field === 'string' &&
+            card.field.length <= 128 && ['category','continuous'].includes(card.mode)),
+          order:score.order.filter((key) => typeof key === 'string' && key.length <= 1024),
+          open:score.open === true}};
+    }
+    if (state.tab === 'features' && typeof state.feature === 'string' && state.feature.length <= 256) {
+      selectedFeature = state.feature;
+      if (state.featurePlot && typeof state.featurePlot === 'object' &&
+          !Array.isArray(state.featurePlot)) {
+        const stages = Object.keys(ctx.run.outputs).filter((path) =>
+          /^tables\/matrix_[A-Za-z0-9_.-]+\.tsv$/.test(path)).map((path) => path.slice(14,-4));
+        const facets = sampleGroupColumns.filter((field) => {
+          const count = new Set(metadata.map((row) => groupName(row,field))).size;
+          return count > 1 && count <= 12;
+        });
+        ctx.featurePlotSettings = savedFeaturePlotSettings(ctx,stages,facets,state.featurePlot);
+      }
+    }
+    if (state.tab === 'volcano' && state.volcano &&
+        typeof state.volcano.left === 'string' && typeof state.volcano.right === 'string')
+      ctx.volcanoView = {left:state.volcano.left,right:state.volcano.right};
+    const classes = state.classes;
+    if (state.tab === 'classes' && classes && typeof classes === 'object' &&
+        sampleGroupColumns.includes(classes.field))
+      ctx.classView = {field:classes.field,
+        first:typeof classes.first === 'string' ? classes.first : '',
+        second:typeof classes.second === 'string' ? classes.second : '',
+        path:Array.isArray(classes.path) ? classes.path.filter((part) =>
+          typeof part === 'string' && part.length <= 256).slice(0,4) : [],
+        filters:Array.isArray(classes.filters) ? classes.filters.filter((rule) =>
+          rule && typeof rule.key === 'string' && rule.key.length <= 128 &&
+          typeof rule.operator === 'string' && rule.operator.length <= 16 &&
+          typeof rule.value === 'string' && rule.value.length <= 256).slice(0,20) : [],
+        tableFilters:classes.tableFilters && typeof classes.tableFilters === 'object' &&
+          !Array.isArray(classes.tableFilters) ? classes.tableFilters : {}};
+    ctx.shareTarget = state.plot;
+  }
+  function plotShareButton(ctx,container,filename) {
+    const target = plotShareTarget(filename);
+    if (!target) return;
+    const [tab,plot] = target;
+    container.dataset.sharePlot = plot;
+    const button = el('button',{type:'button',class:'button secondary small',text:'Copy plot link',
+      'aria-label':'Copy link to '+plot.replaceAll('-',' ')+' plot'});
+    const fallback = el('input',{type:'text','aria-label':'Shareable plot URL',readonly:'',hidden:''});
+    const feedback = el('span',{class:'note','aria-live':'polite'});
+    button.addEventListener('click',async () => {
+      if (!valid(ctx)) return;
+      try {
+        const url = shareUrl(ctx,tab,plot);
+        fallback.value = url;
+        try {
+          await navigator.clipboard.writeText(url);
+          if (valid(ctx)) feedback.textContent = 'Link copied.';
+        } catch {
+          if (valid(ctx)) {
+            fallback.hidden = false;
+            fallback.focus();
+            fallback.select();
+            feedback.textContent = 'Clipboard unavailable; copy the selected URL.';
+          }
+        }
+      } catch (error) { if (valid(ctx)) feedback.textContent = error.message; }
+    });
+    container.append(el('div',{class:'plot-share'},button,feedback,fallback));
+    if (ctx.shareTarget === plot) {
+      ctx.shareTarget = '';
+      requestAnimationFrame(() => { if (valid(ctx) && activeTab === tab) container.scrollIntoView({block:'start'}); });
+    }
   }
   function savedPlotRows(data, extra, values) {
     const columns = Object.keys(data[0]);
@@ -117,7 +276,9 @@
   function table(headers, rows, onFeature, filename = 'dashboard-table.tsv', options = {}) {
     const size = 100;
     const visible = new Set(headers.map((_,i) => i).filter((i) => !options.hiddenColumns?.includes(headers[i])));
-    const filters = headers.map(() => '');
+    const filters = headers.map((heading) => Object.hasOwn(options.filters ?? {},heading) &&
+      typeof options.filters[heading] === 'string' && options.filters[heading].length <= 128 ?
+      options.filters[heading] : '');
     const numericColumns = headers.map((_,i) => {
       let found = false;
       for (const row of rows) {
@@ -195,8 +356,14 @@
         placeholder:numericColumns[i] ? 'Filter… >2 or 1..3' : 'Filter…',
         title:numericColumns[i] ? 'Numeric: >2, >=2, <2, <=2, =2, or inclusive 1..3; otherwise match text' : 'Match text',
         'aria-label':'Filter '+heading});
+      filter.value = filters[i];
       filter.addEventListener('input',() => {
-        filters[i] = filter.value; page = 0; update();
+        filters[i] = filter.value;
+        if (options.filters) {
+          if (filter.value) options.filters[heading] = filter.value;
+          else delete options.filters[heading];
+        }
+        page = 0; update();
         options.onFilter?.(displayed);
       });
       return el('th',{scope:'col'},sort,filter);
@@ -244,6 +411,7 @@
       render();
     }
     update();
+    if (options.onFilter && filters.some(Boolean)) options.onFilter(displayed);
     return el('div',{class:'data-table'},
       el('div',{class:'table-tools'},columns,downloadButton),wrap,pager);
   }
@@ -786,7 +954,7 @@
     popup.focus();
   }
 
-  function selectTab(name) {
+  function selectTab(name,shouldRender = true) {
     if (!tabs.includes(name)) return;
     if (name !== activeTab) closeFeatureDrawer();
     hideFeatureHover();
@@ -797,7 +965,7 @@
       button.classList.toggle('active', tab === name);
       if (tab === name) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     }
-    render();
+    if (shouldRender) render();
   }
   function render() {
     if (!current) return;
@@ -818,12 +986,13 @@
     safeRender(activeTab, dispatch[activeTab]);
   }
   function featurePlotKey(hash) { return 'mapp:feature-plot:' + hash; }
-  function savedFeaturePlotSettings(ctx, stages, facets) {
-    let saved;
-    try { saved = JSON.parse(localStorage.getItem(featurePlotKey(ctx.run.hash))); } catch {}
+  function savedFeaturePlotSettings(ctx, stages, facets, override) {
+    let saved = override;
+    if (!saved) try { saved = JSON.parse(localStorage.getItem(featurePlotKey(ctx.run.hash))); } catch {}
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
     return {
       stage:stages.includes(saved.stage) ? saved.stage : stages.includes('transformed') ? 'transformed' : stages.includes('raw') ? 'raw' : stages[0],
+      significance:['off','p','q','stars'].includes(saved.significance) ? saved.significance : 'off',
       group:ctx.display.explicit ? ctx.display.field :
         sampleGroupColumns.includes(saved.group) ? saved.group : defaultGroup,
       role:ctx.display.explicit ? ctx.display.role :
@@ -1018,10 +1187,12 @@
       ['Method','Biostats saved analyses'], ['Design group',run.design_group], ['Intensity',run.intensity_measure], ['Transformation',run.transformation]];
     $('run-facts').replaceChildren(...facts.map(([key, value]) => el('div', {}, el('dt', {text:key}), el('dd', {text:label(value), class:key === 'Run hash' ? 'mono' : ''}))));
   }
-  async function chooseRun(hash, updateHistory = false, feature = '') {
+  async function chooseRun(hash, updateHistory = false, feature = '', share = null) {
     if (updateHistory) {
       const url = new URL(location.href);
       url.searchParams.set('run', hash);
+      for (const key of ['tab','plot','feature']) url.searchParams.delete(key);
+      url.hash = '';
       history.pushState(null, '', url);
     }
     const previous = current;
@@ -1037,7 +1208,7 @@
     const run = catalogue.find((item) => item.hash === hash);
     current = null;
     metadata = [];
-    selectedFeature = detachedMode ? feature : '';
+    selectedFeature = detachedMode || share?.tab === 'features' ? feature : '';
     if (detachedMode) $('detached-feature').value = selectedFeature;
     featureCandidate = 0;
     $('group-color-choices').replaceChildren();
@@ -1084,6 +1255,7 @@
       if (!valid(ctx)) return;
       setupMetadata(selected ? comparisonMetadata(samples, selected) : samples);
       if (selected) ctx.comparisonSamples = new Set(selected.map((row) => sampleKey(row)));
+      restoreSharedPlot(ctx,share);
       if (!detachedMode) syncDetached();
       status('Viewing ' + run.dataset_id + ' / ' + hash.slice(0,12) +
         (run.kind === 'comparison' ? ' · shared PCA/PCoA; selected comparison changes inference only' :
@@ -1170,8 +1342,10 @@
           ' · ' + label(run.created_at) + (i === 0 ? ' · latest' : '')})));
       select.disabled = false;
       const requested = new URL(location.href).searchParams.get('run');
+      const share = linkedPlot();
+      if (share) selectTab(share.tab,false);
       await chooseRun(requested === null ? parents[0].hash : requested,false,
-        detachedMode ? new URL(location.href).searchParams.get('feature') || '' : '');
+        detachedMode ? new URL(location.href).searchParams.get('feature') || '' : share?.feature ?? '',share);
       if (detachedMode) window.opener?.postMessage({kind:'mapp-feature-ready'},location.origin);
     } catch (error) {
       status(error.message, true);
@@ -1212,11 +1386,17 @@
   $('run-select').addEventListener('change', (event) => chooseRun(event.target.value, true));
   $('comparison-select').addEventListener('change', (event) =>
     chooseRun(event.target.value || $('run-select').value, true));
-  window.addEventListener('popstate', () => {
-    const url = new URL(location.href);
+  let restoredLocation = '';
+  function restoreLocation() {
+    if (location.href === restoredLocation) return;
+    restoredLocation = location.href;
+    const url = new URL(location.href), share = linkedPlot();
+    if (share) selectTab(share.tab,false);
     chooseRun(url.searchParams.get('run') ?? catalogue.find((run) => run.kind !== 'comparison')?.hash,false,
-      detachedMode ? url.searchParams.get('feature') || '' : '');
-  });
+      detachedMode ? url.searchParams.get('feature') || '' : share?.feature ?? '',share);
+  }
+  window.addEventListener('popstate',restoreLocation);
+  window.addEventListener('hashchange',() => { if (linkedPlot()) restoreLocation(); });
   window.addEventListener('storage',(event) => {
     if (!current || event.key !== featurePlotKey(current.run.hash)) return;
     current.featurePlotSettings = undefined;
@@ -1428,7 +1608,18 @@
     const saved = ctx.scoreMaps ??= {};
     const state = saved[stem] ??= {cards:ctx.display.explicit ?
       [{field:ctx.display.field,mode:'category'}] : [],open:false,order:[]};
-    state.cards = state.cards.filter((card) => fields.includes(card.field));
+    const seen = new Set();
+    let continuous = false;
+    state.cards = state.cards.filter((card) => {
+      if (!fields.includes(card.field) || seen.has(card.field)) return false;
+      seen.add(card.field);
+      return true;
+    }).map((card) => {
+      const mode = card.mode === 'continuous' && numeric.has(card.field) && !continuous ?
+        'continuous' : 'category';
+      if (mode === 'continuous') continuous = true;
+      return {field:card.field,mode};
+    });
     const details = el('details',{class:'score-map-options'},
       el('summary',{text:'Map metadata onto sample scores'}));
     details.open = state.open;
@@ -1636,6 +1827,20 @@
     }
     return {traces,continuous,included:included.length,groups:sorted};
   }
+  function restorePlotAxes(ctx,ui,stem) {
+    const values = ctx.plotAxes?.[stem];
+    if (!Array.isArray(values)) return;
+    for (const [index,axis] of ['view','x','y','z'].entries()) {
+      const select = ui.querySelector('#'+stem+'-axis-'+axis);
+      if (select && [...select.options].some((option) => option.value === values[index]))
+        select.value = values[index];
+    }
+  }
+  function rememberPlotAxes(ctx,ui,stem) {
+    ctx.plotAxes ??= {};
+    ctx.plotAxes[stem] = ['view','x','y','z'].map((axis) =>
+      ui.querySelector('#'+stem+'-axis-'+axis)?.value ?? '');
+  }
 
   async function renderOrdination(ctx, target, token, stem, prefix) {
     const [scores,colorData,variance] = await Promise.all([
@@ -1661,6 +1866,7 @@
     ui.append(control('X axis',stem+'-axis-x',choices,axes[0]));
     if (axes.length >= 2) ui.append(control('Y axis',stem+'-axis-y',choices,axes[1]));
     if (axes.length >= 3) ui.append(control('Z axis',stem+'-axis-z',choices,axes[2]));
+    restorePlotAxes(ctx,ui,stem);
     const includedRoles = ['qc','blank'].filter((role) => scores.some((row) => row.ordination_role === role));
     const controls = includedRoles.map((role) => role === 'qc' ? 'QC' : 'blank').join(' and ');
     const mapping = scoreMapControls(ctx,stem,scores,bySample,() => redraw().catch((error) => {
@@ -1765,9 +1971,12 @@
         if (view) connectCameras();
       } catch (error) { if (valid(ctx)) message(loadingPlot,error.message,true); }
     }
-    ui.addEventListener('change',() => redraw().catch((error) => {
-      if (viewValid(ctx,stem,token)) message(plot,error.message,true);
-    }));
+    ui.addEventListener('change',() => {
+      rememberPlotAxes(ctx,ui,stem);
+      redraw().catch((error) => {
+        if (viewValid(ctx,stem,token)) message(plot,error.message,true);
+      });
+    });
     await redraw();
   }
 
@@ -1812,6 +2021,7 @@
     ui.append(control('X axis','plsda-axis-x',choices,axes[0]));
     if (axes.length >= 2) ui.append(control('Y axis','plsda-axis-y',choices,axes[1]));
     if (axes.length >= 3) ui.append(control('Z axis','plsda-axis-z',choices,axes[2]));
+    restorePlotAxes(ctx,ui,'plsda');
     const mapping = scoreMapControls(ctx,'plsda',scores,bySample,redraw);
     const scoreCard = card('Full-fit sample scores',ui,mapping.node,
       note('Illustration of the fitted model only; these points are not held-out predictions.'));
@@ -1945,7 +2155,7 @@
       });
       bindFeatureHover(ctx,loadingPlot,hoverIndex,featureId);
     }
-    ui.addEventListener('change',redraw);
+    ui.addEventListener('change',() => { rememberPlotAxes(ctx,ui,'plsda'); redraw(); });
     redraw();
   }
 
@@ -1975,6 +2185,11 @@
       ...all.flatMap((item) => [item.numerator,item.denominator])].filter((name) => name && name !== 'NA'))].sort();
     const validGroups = new Set(groups);
     let left = all[0].denominator, right = all[0].numerator, selectedGroup = '';
+    if (validGroups.has(ctx.volcanoView?.left) && validGroups.has(ctx.volcanoView?.right) &&
+        ctx.volcanoView.left !== ctx.volcanoView.right) {
+      left = ctx.volcanoView.left;
+      right = ctx.volcanoView.right;
+    }
     const pool = el('div',{class:'volcano-groups'});
     const instruction = note('Drag a group card to Left or Right, or select a card then activate a target. The horizontal effect is Right relative to Left.');
     const chooser = el('div',{class:'volcano-chooser'},pool);
@@ -2037,6 +2252,7 @@
       return button;
     });
     function update() {
+      ctx.volcanoView = {left,right};
       for (const [side,group] of [['left',left],['right',right]]) {
         sides[side].textContent = group;
         sides[side].setAttribute('aria-label',(side === 'left' ? 'Left reference' : 'Right numerator') +
@@ -2363,6 +2579,17 @@
       const settings = ctx.featurePlotSettings ??= savedFeaturePlotSettings(ctx,stageNames,facetFields);
       const plotCard = card('Descriptive sample intensities');
       const stageSelect = control('Saved intensity stage','feature-stage',stageNames.map((name) => [name,name]),settings.stage);
+      const significanceControl = control('Saved significance','feature-significance',
+        [['off','Off'],['p','Saved p-value'],['q','Saved BH q-value'],['stars','Stars · saved BH q-value']],
+        settings.significance);
+      const significanceSelect = significanceControl.querySelector('select');
+      const hasDifferential = Object.hasOwn(ctx.run.outputs,'tables/differential.tsv');
+      significanceSelect.disabled = !hasDifferential;
+      const normalization = ctx.run.preprocessing_filters?.normalization?.method ?? 'unknown';
+      const imputation = ctx.run.preprocessing_filters?.missing_values?.method ?? 'unknown';
+      stageSelect.querySelector('select').title =
+        'Raw: measured peak; normalized: imputed then sample-normalized ('+normalization+
+        '); transformed: '+label(ctx.run.transformation)+' of normalized values. See Intensity stage guide.';
       const groupControl = control('Group by','intensity-group',sampleGroupColumns.map((name) => [name,name]),settings.group);
       const roleControl = control('Sample role','intensity-role',
         [['','All roles'],...[...new Set(metadata.map((row) => row.sample_type).filter(Boolean))].sort().map((name) => [name,name])],settings.role);
@@ -2383,15 +2610,23 @@
       resetGroups();
       const displayOptions = el('details',{class:'intensity-options'},el('summary',{text:'Display options'}),
         el('div',{class:'intensity-options-body'},
-          el('div',{class:'controls'},stageSelect,groupControl,roleControl,facetControl),
-          groupsControl,note('Ctrl/Cmd-click to show multiple groups. Group, sample role, and groups to show are shared with sample score plots and Display settings; intensity stage and facets affect this feature only.')));
+          el('div',{class:'controls'},stageSelect,groupControl,roleControl,facetControl,significanceControl),
+          groupsControl,note('Ctrl/Cmd-click to show multiple groups. Group, sample role, and groups to show are shared with sample score plots and Display settings; intensity stage, facets, and significance affect this feature only.')));
       displayOptions.open = settings.open;
       displayOptions.addEventListener('toggle',() => {
         settings.open = displayOptions.open;
         saveFeaturePlotSettings(ctx);
       });
-      plotCard.append(displayOptions,
-        note('Saved peak '+label(ctx.run.intensity_measure)+'. Boxes and points are descriptive; no test is recomputed.'));
+      const stageGuide = el('details',{class:'intensity-options'},el('summary',{text:'What do intensity stages mean?'}),
+        note('Raw: original measured peak '+label(ctx.run.intensity_measure)+' for all saved injections, including zeros, QC, and blanks.'),
+        note('Blank filtered: raw values after excluding blank-dominated features; retained injections still include QC and blanks.'),
+        note('Imputed: retained biological samples; missing and nonpositive values handled with '+imputation+'.'),
+        note('Normalized: imputed biological samples after '+normalization+' normalization across samples. A normalization factor of 1 or the none method can leave values unchanged.'),
+        note('Transformed: '+label(ctx.run.transformation)+' applied to normalized values. Scaled: transformed features centered/scaled for ordination; values are not peak units and can be negative.'));
+      const stageStatus = el('p',{class:'notice','aria-live':'polite'});
+      const significanceStatus = el('p',{class:'note','aria-live':'polite'});
+      plotCard.append(displayOptions,stageGuide,stageStatus,significanceStatus,
+        note('Saved peak '+label(ctx.run.intensity_measure)+'. Boxes and points are descriptive; significance, if shown, comes only from a matching saved model contrast and is not recomputed for a display filter or intensity stage.'));
       const setBox = plotDataButton(ctx,plotCard,'feature-'+id+'-intensities-plotted.tsv');
       const box = plotNode(plotCard);
       const annotation = card('Chemical depictions');
@@ -2480,30 +2715,57 @@
         table(['Saved field','Value'],Object.entries(vm).filter(([key,value]) => key && value).map(([key,value]) => [key,value]),null,'feature-metadata.tsv'));
       const split = el('div',{class:'split'},annotation,plotCard);
       focus.append(split,evidence);
+      let boxGeneration = 0;
       async function drawBox() {
         const stage = stageSelect.querySelector('select').value;
+        const drawGeneration = ++boxGeneration;
+        significanceStatus.textContent = !hasDifferential ?
+          'No saved differential comparison is available in this run.' :
+          significanceSelect.value === 'off' ? '' : 'Checking the saved model contrast against the plotted samples…';
         const matrix = stage === 'raw' ? raw : await rows(ctx,'matrix_'+stage);
-        if (!viewValid(ctx,hostTab,token) ||
+        if (!viewValid(ctx,hostTab,token) || drawGeneration !== boxGeneration ||
             (drawer && !detachedMode && (version !== drawerVersion || !$('feature-drawer').open)) ||
             selectedFeature !== id || stageSelect.querySelector('select').value !== stage) return;
-        const fallback = !matrix?.length || !Object.hasOwn(matrix[0],id);
-        if (fallback && (!raw?.length || !Object.hasOwn(raw[0],id))) { message(box,'Feature absent from selected stage and raw matrix.',true); return; }
-        const actual = fallback ? raw : matrix;
+        hideFeatureHover();
+        if (box.data && window.Plotly) Plotly.purge(box);
+        box.replaceChildren();
+        box.style.height = '';
+        setBox([],[]);
+        split.classList.remove('faceted');
+        if (!matrix?.length || !Object.hasOwn(matrix[0],id)) {
+          const hasRaw = raw?.length && Object.hasOwn(raw[0],id);
+          stageStatus.textContent = 'Selected '+stage+' · no saved '+stage+' values for feature '+id+'.';
+          message(box,hasRaw ?
+            'This feature is absent from the saved '+stage+' matrix after preprocessing. Select raw or an earlier available stage to see measured values.' :
+            'No saved intensity values for this feature in the selected stage.',true);
+          return;
+        }
         const groupField = groupSelect.value, facetField = facetSelect.value;
         const allowed = new Set([...groupsSelect.selectedOptions].map((option) => option.value));
         const selected = new Map(metadata.filter((row) =>
           (!roleSelect.value || row.sample_type === roleSelect.value) &&
           allowed.has(groupName(row,groupField))).map((row) => [sampleKey(row),row]));
-        const values = actual.filter((row) => selected.has(row.sample) && Number.isFinite(number(row[id])));
-        hideFeatureHover();
-        if (box.data && window.Plotly) Plotly.purge(box);
-        box.replaceChildren();
-        setBox([],[]);
-        split.classList.remove('faceted');
+        const values = matrix.filter((row) => selected.has(row.sample) && Number.isFinite(number(row[id])));
         if (!values.length) {
-          message(box,'No finite intensities match the controls in this plot.');
+          stageStatus.textContent = 'Selected '+stage+' · no finite values match the selected samples.';
+          message(box,'No finite '+stage+' values match the controls in this plot.');
           return;
         }
+        let min = Infinity, max = -Infinity;
+        for (const row of values) {
+          const value = number(row[id]);
+          min = Math.min(min,value);
+          max = Math.max(max,value);
+        }
+        const outputs = ctx.run.outputs;
+        const unchanged = stage === 'normalized' &&
+          outputs['tables/matrix_normalized.tsv'] === outputs['tables/matrix_imputed.tsv'] ?
+          ' The saved normalized and imputed matrices are identical in this run.' :
+          stage === 'transformed' &&
+          outputs['tables/matrix_transformed.tsv'] === outputs['tables/matrix_normalized.tsv'] ?
+            ' The saved transformed and normalized matrices are identical in this run.' : '';
+        stageStatus.textContent = 'Showing saved '+stage+' values for '+values.length+
+          ' injections · range '+min.toPrecision(3)+' to '+max.toPrecision(3)+'.'+unchanged;
         const groupOrder = ctx.classView?.field === groupField ?
           [ctx.classView.first,ctx.classView.second] : [];
         const names = [...new Set(values.map((row) => groupName(selected.get(row.sample),groupField)))].sort((a,b) => {
@@ -2518,7 +2780,7 @@
           ...metaColumns.map((field) => 'metadata:'+field)],
         values.map((row) => {
           const sample = selected.get(row.sample);
-          return [id,fallback ? 'raw' : stage,row[id],groupName(sample,groupField),
+          return [id,stage,row[id],groupName(sample,groupField),
             facetField ? groupName(sample,facetField) : '',
             ...metaColumns.map((field) => sample[field] ?? '')];
         }));
@@ -2528,6 +2790,44 @@
         const rowsCount = Math.ceil(facetNames.length / columns);
         box.style.height = faceted ? (rowsCount*290+90)+'px' : '';
         const layout = {hovermode:'closest'};
+        if (hasDifferential && significanceSelect.value !== 'off') {
+          const roleColumn = ctx.run.effective_dataset?.roles?.column ?? 'sample_type';
+          const biologicalRole = ctx.run.effective_dataset?.roles?.levels?.sample ?? 'sample';
+          const expected = ctx.comparisonSamples ?? new Set(metadata
+            .filter((row) => row[roleColumn] === biologicalRole).map(sampleKey));
+          const eligible = groupField === ctx.run.design_group && names.length === 2 &&
+            facetNames.length === 1 && values.length === expected.size &&
+            values.every((row) => expected.has(row.sample) &&
+              selected.get(row.sample)[roleColumn] === biologicalRole);
+          if (eligible) {
+            const differential = await rows(ctx,'differential');
+            if (!viewValid(ctx,hostTab,token) || drawGeneration !== boxGeneration ||
+                selectedFeature !== id) return;
+            const matches = differential.filter((row) => row.feature_id === id &&
+              names.includes(row.numerator) && names.includes(row.denominator) &&
+              row.numerator !== row.denominator);
+            if (matches.length === 1) {
+              const contrast = matches[0];
+              const mode = significanceSelect.value;
+              const value = number(contrast[mode === 'p' ? 'p_value' : 'q_value']);
+              if (Number.isFinite(value) && value >= 0 && value <= 1) {
+                const title = mode === 'p' ? 'Saved model p-value' : 'Saved model BH q-value';
+                const result = mode === 'stars' ?
+                  value < .001 ? '***' : value < .01 ? '**' : value < .05 ? '*' : 'ns' :
+                  value.toPrecision(3);
+                layout.annotations = [{xref:'paper',yref:'paper',x:.5,y:1.11,showarrow:false,
+                  text:escapePlot(title+': '+result),font:{size:14}}];
+                layout.margin = {t:85};
+                significanceStatus.textContent = title+' for '+contrast.contrast+
+                  ' ('+contrast.numerator+' vs '+contrast.denominator+'): '+value.toPrecision(3)+
+                  '. Saved model uses transformed, normalized study data; this is not a test of the displayed '+stage+' values.'+
+                  (mode === 'stars' ? ' Stars: * q < 0.05, ** q < 0.01, *** q < 0.001; ns otherwise.' : '');
+              }
+            }
+          }
+          if (significanceStatus.textContent.startsWith('Checking'))
+            significanceStatus.textContent = 'No matching saved contrast for this feature, grouping, and exact plotted biological sample set. Display filters are not retested.';
+        }
         if (faceted) layout.annotations = [];
         const traces = [], shown = new Set();
         for (const [index,facet] of facetNames.entries()) {
@@ -2541,7 +2841,7 @@
             layout['xaxis'+suffix] = {domain:[left,left+width],anchor:'y'+suffix,
               categoryorder:'array',categoryarray:names,title:row === rowsCount-1 ? 'Descriptive group' : ''};
             layout['yaxis'+suffix] = {domain:[top-height,top],anchor:'x'+suffix,
-              ...(index ? {matches:'y'} : {}),title:col === 0 ? 'Saved '+(fallback?'raw':stage)+' intensity' : ''};
+              ...(index ? {matches:'y'} : {}),title:col === 0 ? 'Saved '+stage+' value' : ''};
             layout.annotations.push({x:left+width/2,y:Math.min(1.04,top+.025),xref:'paper',yref:'paper',
               text:escapePlot(facetField+': '+facet),showarrow:false,font:{size:12,color:'#244d56'}});
           }
@@ -2562,20 +2862,22 @@
         }
         if (!faceted) {
           layout.xaxis = {title:'Descriptive group'};
-          layout.yaxis = {title:'Saved '+(fallback?'raw':stage)+' intensity'};
+          layout.yaxis = {title:'Saved '+stage+' value'};
         }
         box.dataset.sampleGroups = 'true';
         plotting(ctx,box,traces,layout);
         bindFeatureHover(ctx,box,hoverIndex,() => id);
-        const old = plotCard.querySelector('.fallback');
-        if (old) old.remove();
-        if (fallback) { const warning = note('Feature is absent from '+stage+' matrix; showing saved raw intensities instead.'); warning.classList.add('fallback'); plotCard.append(warning); }
       }
       const refresh = () => drawBox().catch((error) => {
         if (viewValid(ctx,hostTab,token) && (!drawer || version === drawerVersion)) message(box,error.message,true);
       });
       stageSelect.addEventListener('change',() => {
         settings.stage = stageSelect.querySelector('select').value;
+        saveFeaturePlotSettings(ctx);
+        refresh();
+      });
+      significanceControl.addEventListener('change',() => {
+        settings.significance = significanceSelect.value;
         saveFeaturePlotSettings(ctx);
         refresh();
       });
@@ -2782,6 +3084,7 @@
       ctx.display.field : groupFields[0],
       first:'',second:'',path:[],filters:[]};
     if (!groupFields.includes(state.field)) state.field = groupFields[0];
+    state.filters = state.filters.filter((rule) => filterFields.has(rule.key));
     const field = control('Compare biological groups by','class-group-field',groupFields.map((value) => [value,value]),state.field);
     const first = control('Group A','class-group-a',[]);
     const second = control('Group B','class-group-b',[]);
@@ -2906,6 +3209,7 @@
         ...variableFields.map((name) => 'MZmine '+name)] : [];
       const headers = [level,'Features',state.first+' mean raw '+ctx.run.intensity_measure,
         state.second+' mean raw '+ctx.run.intensity_measure,state.second+' / '+state.first,...extraHeaders];
+      let displayedChildren = children, renderReady = false;
       const view = table(headers,children.map(({child,ids,a,b}) => [
         child.name,ids.length,precision(a),precision(b),a > 0 ? precision(b/a) : 'Not defined',
         ...(node.level === 3 ? [
@@ -2916,11 +3220,14 @@
         else { state.path.push(name); update(); }
       },'npc-'+node.level+'-'+ctx.run.hash.slice(0,12)+'.tsv',{
         hiddenColumns:extraHeaders,
+        filters:state.tableFilters ??= {},
         onFilter:(displayed) => {
           const names = new Set(displayed.map((row) => row[0]));
-          drawPlot(children.filter(({child}) => names.has(child.name)));
+          displayedChildren = children.filter(({child}) => names.has(child.name));
+          if (renderReady) drawPlot(displayedChildren);
         }});
       results.replaceChildren(note('Choose a row to drill down. Click a feature ID for saved evidence. Table filters also update the plot; all saved CANOPUS and MZmine feature columns are available under Columns at the feature level.'),view);
+      renderReady = true;
       function drawPlot(items) {
         if (chart.data && window.Plotly) Plotly.purge(chart);
         chart.replaceChildren();
@@ -2969,7 +3276,7 @@
           else { state.path.push(name); update(); }
         });
       }
-      drawPlot(children);
+      drawPlot(displayedChildren);
     }
     state.syncView = () => {
       if (!viewValid(ctx,'classes',token) || !groupFields.includes(state.field)) return;
