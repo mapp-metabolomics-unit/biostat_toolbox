@@ -2617,15 +2617,17 @@
         settings.open = displayOptions.open;
         saveFeaturePlotSettings(ctx);
       });
-      const stageGuide = el('details',{class:'intensity-options'},el('summary',{text:'What do intensity stages mean?'}),
-        note('Raw: original measured peak '+label(ctx.run.intensity_measure)+' for all saved injections, including zeros, QC, and blanks.'),
-        note('Blank filtered: raw values after excluding blank-dominated features; retained injections still include QC and blanks.'),
-        note('Imputed: retained biological samples; missing and nonpositive values handled with '+imputation+'.'),
-        note('Normalized: imputed biological samples after '+normalization+' normalization across samples. A normalization factor of 1 or the none method can leave values unchanged.'),
-        note('Transformed: '+label(ctx.run.transformation)+' applied to normalized values. Scaled: transformed features centered/scaled for ordination; values are not peak units and can be negative.'));
+      const stageGuide = el('details',{class:'stage-help'},
+        el('summary',{'aria-label':'What do intensity stages mean?',title:'What do intensity stages mean?',text:'?'}),
+        el('div',{class:'stage-help-content'},
+          note('Raw: original measured peak '+label(ctx.run.intensity_measure)+' for all saved injections, including zeros, QC, and blanks.'),
+          note('Blank filtered: raw values after excluding blank-dominated features; retained injections still include QC and blanks.'),
+          note('Imputed: retained biological samples; missing and nonpositive values handled with '+imputation+'.'),
+          note('Normalized: imputed biological samples after '+normalization+' normalization across samples. A normalization factor of 1 or the none method can leave values unchanged.'),
+          note('Transformed: '+label(ctx.run.transformation)+' applied to normalized values. Scaled: transformed features centered/scaled for ordination; values are not peak units and can be negative.')));
       const stageStatus = el('p',{class:'notice','aria-live':'polite'});
       const significanceStatus = el('p',{class:'note','aria-live':'polite'});
-      plotCard.append(displayOptions,stageGuide,stageStatus,significanceStatus,
+      plotCard.append(displayOptions,el('div',{class:'stage-status-row'},stageStatus,stageGuide),significanceStatus,
         note('Saved peak '+label(ctx.run.intensity_measure)+'. Boxes and points are descriptive; significance, if shown, comes only from a matching saved model contrast and is not recomputed for a display filter or intensity stage.'));
       const setBox = plotDataButton(ctx,plotCard,'feature-'+id+'-intensities-plotted.tsv');
       const box = plotNode(plotCard);

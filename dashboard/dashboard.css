@@ -195,6 +195,16 @@ tr:hover td { background: #f2f7f5; }
 .intensity-options summary:hover { background: #ecf5f4; }
 .intensity-options[open] summary { border-bottom: 1px solid #dfe7e7; }
 .intensity-options-body { padding: .8rem .85rem; }
+.stage-status-row { display: flex; align-items: center; gap: .45rem; margin: .7rem 0; }
+.stage-status-row .notice { flex: 1; min-width: 0; margin: 0; }
+.stage-help { position: relative; flex: 0 0 auto; }
+.stage-help summary { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border: 1px solid #bad1d2; border-radius: 50%; background: #fff; color: #155f66; font-weight: 800; cursor: pointer; list-style: none; }
+.stage-help summary::-webkit-details-marker { display: none; }
+.stage-help summary:hover,.stage-help[open] summary { background: #ecf5f4; }
+.stage-help:not([open]) .stage-help-content { display: none; }
+.stage-help-content { position: absolute; z-index: 5; right: 0; top: calc(100% + .35rem); width: min(340px,calc(100vw - 2rem)); max-height: 60vh; overflow: auto; padding: .8rem; border: 1px solid #d5e1df; border-radius: .5rem; background: #fff; box-shadow: 0 6px 20px #15263830; }
+.stage-help-content .note { font-size: .8rem; margin: 0 0 .55rem; }
+.stage-help-content .note:last-child { margin: 0; }
 .group-color-choices { display: grid; gap: .45rem; max-height: 280px; overflow: auto; }
 .group-color-choices label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin: 0; overflow-wrap: anywhere; }
 .group-color-choices input[type="color"] { flex: 0 0 2.7rem; width: 2.7rem; height: 1.8rem; padding: 0; border: 1px solid #c8d5d8; border-radius: .3rem; cursor: pointer; }
