@@ -7,6 +7,8 @@
   const outputPath = /^(tables\/[A-Za-z0-9_.-]+\.tsv|plots\/[A-Za-z0-9_.-]+\.(?:png|pdf))$/;
   const palette = ['#0074e8', '#ec432d', '#05a566', '#963be1', '#db8b00', '#e32f85',
     '#008da9', '#7e9d00', '#3e55cc', '#b64e0f', '#009c87', '#b039a9'];
+  const missingColorLabels = new Set(['','na','nd','nna','notrecorded','notdetected',
+    'notavailable','notannotated','noannotation','missing','unknown','unassigned','null']);
   let catalogue = [];
   let current = null;
   let generation = 0;
@@ -38,6 +40,17 @@
   const text = (value) => String(value ?? '');
   const label = (value) => value === '' || value === null || value === undefined || value === 'NA' ? 'Not recorded' : text(value);
   const number = (value) => value === '' || value === 'NA' ? NaN : Number(value);
+  function neutralGroupColor(name) {
+    const parts = text(name).trim().toLowerCase().split(' · ');
+    if (['qc','quality control'].includes(parts[0])) return '#77858d';
+    if (['blank','blanks'].includes(parts[0])) return '#aeb8bd';
+    if (parts.some((part) => {
+      const separator = part.indexOf(': ');
+      const value = separator < 0 ? part : part.slice(separator+2);
+      return missingColorLabels.has(value.replace(/[\s._/-]/g,''));
+    })) return '#949fa6';
+    return null;
+  }
   const escapePlot = (value) => text(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
   function message(container, value, error = false) {
     container.replaceChildren(el('p', {class: error ? 'notice error' : 'notice', text: value}));
@@ -848,8 +861,8 @@
     target.replaceChildren(...names.map((name,index) => {
       const key = field.id+'\u0000'+name;
       if (!ctx.featureCategoryColors.has(key)) ctx.featureCategoryColors.set(key,
-        name === 'Not recorded' ? '#a4a9af' : name === 'Multiple values' ? '#967d9d' :
-          palette[index % palette.length]);
+        name === 'Multiple values' ? '#967d9d' :
+          neutralGroupColor(name) ?? palette[index % palette.length]);
       const picker = el('input',{type:'color','aria-label':'Feature colour for '+name});
       picker.value = ctx.featureCategoryColors.get(key);
       picker.addEventListener('input',() => ctx.featureCategoryColors.set(key,picker.value));
@@ -919,7 +932,8 @@
       categories.forEach((name,i) => {
         const key = select.value+'\u0000'+name;
         if (!ctx.featureCategoryColors.has(key)) ctx.featureCategoryColors.set(key,
-          name === 'Not recorded' ? '#a4a9af' : name === 'Multiple values' ? '#967d9d' : palette[i % palette.length]);
+          name === 'Multiple values' ? '#967d9d' :
+            neutralGroupColor(name) ?? palette[i % palette.length]);
         const picker = el('input',{type:'color','aria-label':'Colour for '+name});
         picker.value = ctx.featureCategoryColors.get(key);
         picker.addEventListener('input',() => {
@@ -1163,8 +1177,14 @@
     refreshGroupColors();
   }
   function groupColor(name) {
-    if (!groupColors.has(name)) groupColors.set(name,palette[groupColors.size % palette.length]);
+    if (!groupColors.has(name))
+      groupColors.set(name,neutralGroupColor(name) ?? palette[groupColors.size % palette.length]);
     return groupColors.get(name);
+  }
+  function scoreColorGroup(role,name,values,categories) {
+    if (role === 'qc' || role === 'blank')
+      return groupColors.has(name) ? name : role === 'qc' ? 'QC' : 'blank';
+    return categories === 1 ? values[0] : name;
   }
   function refreshGroupColors() {
     const choices = $('group-color-choices');
@@ -1787,7 +1807,7 @@
         });
         row.append(name,up,down);
         if (!continuous) {
-          const colorName = state.cards.length === 1 ? group.values[0] : group.name;
+          const colorName = scoreColorGroup(group.role,group.name,group.values,state.cards.length);
           const color = el('input',{type:'color','aria-label':'Colour for '+group.name,
             'data-group-name':colorName});
           color.value = groupColor(colorName);
@@ -1876,7 +1896,7 @@
         if (!part.length) return;
         const missing = Boolean(continuous && index);
         const title = missing ? `${short} · no value` : short;
-        const colorName = categories.length === 1 ? values[0] : name;
+        const colorName = scoreColorGroup(role,name,values,categories.length);
         const marker = continuous && !missing ?
           {color:part.map((row) => number(bySample.get(row.sample)[continuous])),
             colorscale:'Viridis',cmin:range[0],cmax:range[1],showscale,
