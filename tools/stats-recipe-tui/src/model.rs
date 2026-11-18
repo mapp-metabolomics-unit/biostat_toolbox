@@ -298,6 +298,19 @@ fn include_role(analyses: &Value, analysis: &str, option: &str) -> Result<bool> 
     }
 }
 
+fn quant_measure(path: &Path) -> Result<&'static str> {
+    let header = data::quant_header(path)?;
+    for (measure, suffix) in [("height", " Peak height"), ("area", " Peak area")] {
+        if header.iter().any(|name| {
+            name.strip_suffix(suffix)
+                .is_some_and(|sample| !sample.is_empty())
+        }) {
+            return Ok(measure);
+        }
+    }
+    bail!("Quantification has no Peak height or Peak area columns")
+}
+
 impl Model {
     pub fn load(batch: &Path) -> Result<Self> {
         Self::load_with_sources(batch, None, None)
@@ -331,6 +344,8 @@ impl Model {
             bail!("Default treated metadata TSV not found: {}", metadata_path.display());
         }
         let quant_path = quant_source.map(Path::to_path_buf)
+            .or_else(|| quant_paths.iter().find(|path| quant_measure(path).is_ok()).cloned())
+            // If none are compatible, retain the first file's specific format error.
             .or_else(|| quant_paths.first().cloned())
             .context("No MZmine quantification CSV files found")?;
         let table = Table::read_tsv(&metadata_path)?;
@@ -470,16 +485,7 @@ impl Model {
     }
 
     fn reset_quant_choices(&mut self) -> Result<()> {
-        let header = data::quant_header(&self.quant_path)?;
-        self.measure = ["height", "area"]
-            .iter()
-            .find(|measure| {
-                header
-                    .iter()
-                    .any(|name| name.ends_with(&format!(" Peak {measure}")))
-            })
-            .context("Quantification has no Peak height or Peak area columns")?
-            .to_string();
+        self.measure = quant_measure(&self.quant_path)?.to_owned();
         self.replacements.clear();
         Ok(())
     }
@@ -501,18 +507,9 @@ impl Model {
             .quant_paths
             .get(index)
             .context("Invalid quantification selection")?;
-        let header = data::quant_header(path)?;
-        let measure = ["height", "area"]
-            .iter()
-            .find(|measure| {
-                header
-                    .iter()
-                    .any(|name| name.ends_with(&format!(" Peak {measure}")))
-            })
-            .context("Quantification has no Peak height or Peak area columns")?
-            .to_string();
+        let measure = quant_measure(path)?;
         self.quant_path = path.clone();
-        self.measure = measure;
+        self.measure = measure.to_owned();
         self.replacements.clear();
         Ok(())
     }
@@ -1324,6 +1321,33 @@ impl Model {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn study_defaults_to_compatible_mzmine_quantification() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let batch = temp.path().join("mapp_project_00050/mapp_batch_00285");
+        fs::create_dir_all(batch.join("metadata/treated"))?;
+        fs::create_dir_all(batch.join("results/mzmine"))?;
+        fs::write(
+            batch.join("metadata/treated/mapp_batch_00285_metadata.tsv"),
+            "filename\tsample_id\tsample_type\nA.mzML\tA\tsample\nB.mzML\tB\tsample\n",
+        )?;
+        fs::write(
+            batch.join("results/mzmine/mapp_batch_00285_full_feature_table.csv"),
+            "id,mz,datafile:A.mzML:height,datafile:B.mzML:height\n1,257,10,20\n",
+        )?;
+        let quant = batch.join("results/mzmine/mapp_batch_00285_iimn_gnps_quant.csv");
+        fs::write(
+            &quant,
+            "row ID,row m/z,A.mzML Peak area,B.mzML Peak area\n1,257,10,20\n",
+        )?;
+
+        let model = Model::load(&batch)?;
+        assert_eq!(model.quant_path, quant);
+        assert_eq!(model.measure, "area");
+        assert_eq!(model.alignment(), (vec![], vec![]));
+        Ok(())
+    }
 
     #[test]
     fn study_filters_select_values_across_fields_and_leave_comparisons_unchanged() -> Result<()> {

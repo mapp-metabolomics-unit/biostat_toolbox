@@ -12,6 +12,8 @@ This command builds a **study recipe**. The first build compiles tabiew's data e
 
 For a new study, the default metadata is `<batch>/metadata/treated/<batch-name>_metadata.tsv` (for example, `mapp_batch_00196_metadata.tsv`), regardless of other TSVs in that folder. The builder stops if that file is absent rather than silently choosing another. When it exists, you can explicitly select a different treated TSV on **Inputs**; check the displayed path before saving. Comparisons inherit the metadata sealed by their study.
 
+The default quantification is the first CSV in `results/mzmine` whose header contains `row ID` and at least one `<filename> Peak height` or `<filename> Peak area` column. If a batch also contains a newer MZmine `_full_feature_table.csv` (with `id` and `datafile:<filename>:height` columns), the builder skips it and selects a compatible quantification export such as `_iimn_gnps_quant.csv`. Confirm the selected CSV under **Inputs**. The full feature table is not accepted by the current Biostats reader; when no compatible CSV exists, export one from MZmine rather than renaming columns.
+
 After running the study's printed `validate`, `plan`, `run` commands from `biostats/`, copy the **full** study `run_hash` shown by `plan`. From the toolbox root, open its comparison builder:
 
 ```bash
