@@ -488,4 +488,22 @@ local({
             identical(progress_phases[length(progress_phases)], "PLS-DA complete"))
 })
 
+local({
+  values <- matrix(c(10, 100, 0, 20, 200, 0, 0, 0, 0,
+                     30, 300, 0, 0, 1, 500), nrow = 5L, byrow = TRUE,
+                   dimnames = list(paste0("s", seq_len(5L)), c("f1", "f2", "only_holdout")))
+  samples <- data.frame(sample_type = rep("sample", 5L), row.names = rownames(values))
+  recipe <- list(preprocessing = list(
+    blank_filter = list(enabled = FALSE), qc_rsd_filter = list(enabled = FALSE),
+    missing_values = list(method = "half_minimum"),
+    normalization = list(method = "none"), transformation = list(method = "log2"),
+    scaling = list(method = "none")))
+  processed <- supervised_preprocess(
+    list(raw = values, sample_metadata = samples), recipe, seq_len(5L), seq_len(4L), 5L)
+  stopifnot(identical(colnames(processed$train), c("f1", "f2")),
+            identical(colnames(processed$test), c("f1", "f2")),
+            isTRUE(all.equal(unname(processed$train[3L, ]), log2(c(5, 50)))),
+            isTRUE(all.equal(unname(processed$test[1L, ]), log2(c(5, 1)))))
+})
+
 cat("MAPP pipeline contract checks passed.\n")

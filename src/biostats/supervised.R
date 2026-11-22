@@ -45,26 +45,28 @@ supervised_preprocess <- function(dataset, recipe, sample_rows, train, holdout =
   if (!any(keep)) stop("PLS-DA training fold has no features after blank filtering.", call. = FALSE)
   train_x <- raw[sample_rows[train], keep, drop = FALSE]
   test_x <- raw[sample_rows[holdout], keep, drop = FALSE]
+  detected_in_training <- colSums(is.finite(train_x) & train_x > 0) > 0L
+  if (!any(detected_in_training))
+    stop("PLS-DA training fold has no biologically detected features.", call. = FALSE)
+  train_x <- train_x[, detected_in_training, drop = FALSE]
+  test_x <- test_x[, detected_in_training, drop = FALSE]
   imputation <- tolower(settings$missing_values$method %||% "half_minimum")
   if (imputation == "half_minimum") {
-    positive <- train_x[is.finite(train_x) & train_x > 0]
-    if (!length(positive)) stop("PLS-DA training fold has no positive intensities.", call. = FALSE)
-    replacement <- min(positive) / 2
-    train_x[is.na(train_x) | train_x <= 0] <- replacement
-    test_x[is.na(test_x) | test_x <= 0] <- replacement
+    training_minimum <- apply(train_x, 2, function(values) min(values[is.finite(values) & values > 0]))
+    train_x <- impute_matrix(train_x, imputation, training_minimum)
+    test_x <- impute_matrix(test_x, imputation, training_minimum)
   } else if (imputation != "none") stop("Unknown imputation method: ", imputation, call. = FALSE)
-  if (any(!is.finite(train_x)) || any(!is.finite(test_x))) stop("PLS-DA requires finite intensities after training-fold imputation.", call. = FALSE)
+  if (any(!is.finite(train_x)) || any(!is.finite(test_x)))
+    stop("PLS-DA requires finite intensities after training-fold imputation.", call. = FALSE)
 
   normalization <- settings$normalization$method %||% "none"
   normalized_test <- supervised_normalize_test(test_x, train_x, normalization)
   normalized_train <- normalize_matrix(train_x, normalization)
   if (isTRUE(settings$qc_rsd_filter$enabled)) {
     qc_rows <- which(role_rows(metadata, roles, "qc"))
-    if (length(qc_rows) < 3L) stop("QC RSD filtering requires at least three QCs.", call. = FALSE)
-    qc_x <- raw[qc_rows, keep, drop = FALSE]
-    qc_x <- normalize_matrix(impute_matrix(qc_x, imputation), normalization)
-    qc_rsd <- 100 * apply(qc_x, 2, stats::sd, na.rm = TRUE) / colMeans(qc_x, na.rm = TRUE)
-    stable <- is.finite(qc_rsd) & qc_rsd <= as.numeric(settings$qc_rsd_filter$threshold_percent %||% 30)
+    qc_x <- raw[qc_rows, colnames(train_x), drop = FALSE]
+    qc_diagnostics <- qc_rsd_diagnostics(qc_x, settings$qc_rsd_filter, imputation, normalization)
+    stable <- !qc_diagnostics$removed_by_qc_rsd
     if (!any(stable)) stop("PLS-DA training fold has no features after QC filtering.", call. = FALSE)
     normalized_train <- normalized_train[, stable, drop = FALSE]
     normalized_test <- normalized_test[, stable, drop = FALSE]
@@ -174,6 +176,9 @@ run_supervised <- function(dataset, recipe, progress = NULL) {
   if (any(counts < 4L)) return(withheld("PLS-DA needs at least four biological samples per group for repeated validation."))
   if (settings$folds > min(counts)) return(withheld("PLS-DA folds exceed the smallest group size."))
   if (ncol(dataset$raw) < 1L) return(withheld("PLS-DA needs at least one measured feature."))
+  if (isTRUE(recipe$preprocessing$qc_drift$enabled))
+    dataset$raw <- qc_drift_correct(dataset$raw, dataset$sample_metadata, roles,
+                                    recipe$preprocessing$qc_drift)$data
   set.seed(as.integer(recipe$seed %||% 1L))
   folds_per_validation <- settings$repeats * settings$folds
   total_fits <- as.double(folds_per_validation) * (settings$permutations + 1) + 1

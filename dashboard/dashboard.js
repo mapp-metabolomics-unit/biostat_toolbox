@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'statistics', 'plsda', 'features', 'classes', 'display', 'downloads'];
+  const tabs = ['overview', 'pca', 'pcoa', 'heatmap', 'volcano', 'statistics', 'plsda', 'features', 'classes', 'display', 'downloads'];
   const hex = /^[0-9a-f]{64}$/;
   const outputPath = /^(tables\/[A-Za-z0-9_.-]+\.tsv|plots\/[A-Za-z0-9_.-]+\.(?:png|pdf))$/;
   const palette = ['#0074e8', '#ec432d', '#05a566', '#963be1', '#db8b00', '#e32f85',
@@ -19,7 +19,7 @@
   let defaultGroup = '';
   let selectedFeature = '';
   let featureCandidate = 0;
-  const plotTabs = new Set(['pca','pcoa','volcano','plsda','features','classes']);
+  const plotTabs = new Set(['pca','pcoa','heatmap','volcano','plsda','features','classes']);
   const colorCode = /^#[0-9a-f]{6}$/i;
 
   let groupColors = new Map();
@@ -118,6 +118,7 @@
     };
   }
   function plotShareTarget(filename) {
+    if (filename === 'heatmap-plotted.tsv') return ['heatmap','heatmap-plot'];
     if (filename.startsWith('feature-')) return ['features','feature-intensities'];
     if (filename.startsWith('npc-')) return ['classes','npc-intensities'];
     if (filename === 'volcano-plotted.tsv') return ['volcano','volcano-plot'];
@@ -144,7 +145,9 @@
       ...(tab === 'classes' ? {classes:ctx.classView ?
         {field:ctx.classView.field,first:ctx.classView.first,second:ctx.classView.second,
           path:ctx.classView.path,filters:ctx.classView.filters,
-          tableFilters:ctx.classView.tableFilters ?? {}} : null} : {})};
+          tableFilters:ctx.classView.tableFilters ?? {}} : null} : {}),
+      ...(tab === 'heatmap' ? {heatmap:ctx.heatmapView ?
+        {...ctx.heatmapView,groups:ctx.heatmapView.groups === null ? null : [...ctx.heatmapView.groups]} : null} : {})};
   }
   function shareUrl(ctx,tab,plot) {
     const data = new TextEncoder().encode(JSON.stringify(shareState(ctx,tab,plot)));
@@ -248,6 +251,16 @@
         });
         ctx.featurePlotSettings = savedFeaturePlotSettings(ctx,stages,facets,state.featurePlot);
       }
+    }
+    if (state.tab === 'heatmap' && state.heatmap && typeof state.heatmap === 'object') {
+      const view = state.heatmap;
+      if (sampleGroupColumns.includes(view.field) &&
+          [10,25,50,75,100].includes(view.count) &&
+          typeof view.search === 'string' && view.search.length <= 128 &&
+          [view.time,view.batch].every((field) => field === '' || heatmapAnnotationFields().includes(field)) &&
+          (view.groups === null || Array.isArray(view.groups) && view.groups.length <= 30 &&
+            view.groups.every((name) => typeof name === 'string' && name.length <= 128)))
+        ctx.heatmapView = {...view,groups:view.groups === null ? null : new Set(view.groups)};
     }
     if (state.tab === 'volcano' && state.volcano &&
         typeof state.volcano.left === 'string' && typeof state.volcano.right === 'string')
@@ -1069,8 +1082,8 @@
       return;
     }
     const dispatch = {overview:renderOverview, pca:(ctx,target,token) => renderOrdination(ctx,target,token,'pca','PC'),
-      pcoa:(ctx,target,token) => renderOrdination(ctx,target,token,'pcoa','PCoA'), volcano:renderVolcano,
-      statistics:renderStatistics, plsda:renderPlsda,
+      pcoa:(ctx,target,token) => renderOrdination(ctx,target,token,'pcoa','PCoA'), heatmap:renderHeatmap,
+      volcano:renderVolcano, statistics:renderStatistics, plsda:renderPlsda,
       features:(ctx,target,token) => renderFeatures(ctx,target,token,detachedMode),
       classes:renderClasses, downloads:renderDownloads};
     safeRender(activeTab, dispatch[activeTab]);
@@ -1108,6 +1121,10 @@
   }
   function sampleKey(row) { return row.filename || row.sample || row.sample_id; }
   function groupName(row,field = defaultGroup) { return label(row[field]); }
+  function heatmapAnnotationFields() {
+    return Object.keys(metadata[0] ?? {}).filter((field) =>
+      !/^(sample|sample_id|filename)$|path|file|dir|uri|url/i.test(field));
+  }
   function displaySample(ctx,row) {
     const view = ctx.display;
     return (!view.role || row.sample_type === view.role) &&
@@ -1346,6 +1363,7 @@
       display:sameStudy ? previous.display : undefined,
       groupColors:sameStudy ? previous.groupColors : new Map(),
       scoreMaps:sameStudy ? {...previous.scoreMaps} : undefined,
+      heatmapView:sameStudy ? previous.heatmapView : undefined,
       featureColorField:sameStudy ? previous.featureColorField : '',
       featureCategoryColors:sameStudy ? previous.featureCategoryColors : new Map()};
     current = ctx;
@@ -1605,10 +1623,11 @@
   });
 
   async function renderOverview(ctx, target, token) {
-    const [raw, retained, annotations, differential, blank, qc] = await Promise.all([
+    const [raw, retained, annotations, differential, blank, qc, detection, drift] = await Promise.all([
       rows(ctx,'matrix_raw',true), rows(ctx,'variable_metadata',true),
       rows(ctx,'annotation_candidates',true), rows(ctx,'differential',true),
-      rows(ctx,'blank_filter',true), rows(ctx,'qc_rsd',true)]);
+      rows(ctx,'blank_filter',true), rows(ctx,'qc_rsd',true),
+      rows(ctx,'feature_detection',true), rows(ctx,'qc_drift',true)]);
     if (!viewValid(ctx,'overview',token)) return;
     const metadataHeaders = Object.keys(metadata[0]);
     const rawIds = raw?.length ? Object.keys(raw[0]).filter((key) => key !== 'sample') : [];
@@ -1627,12 +1646,17 @@
     if (blank && qc && rawCount !== null && retainedCount !== null) {
       const blankById = new Map(blank.map((row) => [row.feature_id,row]));
       const qcById = new Map(qc.map((row) => [row.feature_id,row]));
+      const detectionById = new Map((detection ?? []).map((row) => [row.feature_id,row]));
       const afterBlank = rawIds.filter((id) => blankById.get(id)?.removed_as_blank === 'FALSE');
-      const kept = afterBlank.filter((id) => qcById.get(id)?.removed_by_qc_rsd === 'FALSE');
+      const afterDetection = afterBlank.filter((id) =>
+        detectionById.get(id)?.excluded_no_biological_detection !== 'TRUE');
+      const kept = afterDetection.filter((id) => qcById.get(id)?.removed_by_qc_rsd === 'FALSE');
       const complete = blank.length === rawCount && blankById.size === rawCount &&
         rawIds.every((id) => ['TRUE','FALSE'].includes(blankById.get(id)?.removed_as_blank)) &&
-        qc.length === afterBlank.length && qcById.size === afterBlank.length &&
-        afterBlank.every((id) => ['TRUE','FALSE'].includes(qcById.get(id)?.removed_by_qc_rsd)) &&
+        (!detection || detection.length === rawCount && detectionById.size === rawCount &&
+          rawIds.every((id) => ['TRUE','FALSE'].includes(detectionById.get(id)?.excluded_no_biological_detection))) &&
+        qc.length === afterDetection.length && qcById.size === afterDetection.length &&
+        afterDetection.every((id) => ['TRUE','FALSE'].includes(qcById.get(id)?.removed_by_qc_rsd)) &&
         kept.length === retainedCount && kept.every((id) => retainedIds.has(id));
       if (complete) {
         const settings = ctx.run.preprocessing_filters ?? {};
@@ -1641,7 +1665,8 @@
         retention.push(metrics([
           ['Removed by blank filter',rawCount-afterBlank.length],
           ['Remaining after blank filter',afterBlank.length],
-          ['Removed by QC-RSD filter',afterBlank.length-kept.length],
+          ...(detection ? [['Excluded: no biological detection',afterBlank.length-afterDetection.length]] : []),
+          ['Removed by QC-RSD filter',afterDetection.length-kept.length],
           ['Remaining for analysis',kept.length]
         ]));
         if (Number.isFinite(number(blankSettings.minimum_blank_prevalence)) &&
@@ -1653,32 +1678,47 @@
             '× the blank median. Both conditions must hold.'));
         }
         if (Number.isFinite(number(qcSettings.threshold_percent))) {
-          retention.push(note('QC-RSD filter: among features passing the blank filter, remove those with QC relative standard deviation above ' +
-            number(qcSettings.threshold_percent) + '% (or a non-finite RSD). Calculated across the QC injections after ' +
-            (settings.missing_values?.method === 'half_minimum' ? 'half-minimum' :
-              label(settings.missing_values?.method)) + ' imputation and ' +
-            (settings.normalization?.method === 'pqn' ? 'PQN' :
-              label(settings.normalization?.method)) + ' normalization.'));
+          retention.push(note(detection ?
+            'QC-RSD filter: after blank and no-biological-detection exclusions, require at least '+
+              (100*number(qcSettings.minimum_qc_fraction ?? 0.8))+
+              '% observed positive QC measurements (minimum three), then remove features with QC RSD above '+
+              number(qcSettings.threshold_percent)+'% or non-finite RSD. Reported RSD is calculated at observed QC positions after the saved normalization.' :
+            'QC-RSD filter: among features passing the blank filter, remove those with QC relative standard deviation above '+
+              number(qcSettings.threshold_percent)+'% (or a non-finite RSD).'));
         }
-        retention.push(note('The table below lists each measured feature and its first exclusion stage. Blank-removed features were not tested for QC-RSD; click an ID to inspect its saved raw intensities. Filtering is separate from annotation coverage and downstream PCA/PLS-DA.'));
+        retention.push(note('The table below lists each measured feature and its first exclusion stage. Blank-removed'+
+          (detection ? ' and undetected biological' : '')+
+          ' features were not tested for QC-RSD; click an ID to inspect saved raw intensities. Filtering is separate from annotation coverage and downstream PCA/PLS-DA.'));
         const headers = ['Feature ID','Outcome','Sample median','Blank median',
           'Blank prevalence (%)','Sample / blank ratio','QC RSD (%)'];
         const auditRows = rawIds.map((id) => {
-          const b = blankById.get(id), q = qcById.get(id);
+          const b = blankById.get(id), q = qcById.get(id), d = detectionById.get(id);
           return [id,b.removed_as_blank === 'TRUE' ? 'Removed: blank filter' :
-            q.removed_by_qc_rsd === 'TRUE' ? 'Removed: QC-RSD' : 'Retained',
+            d?.excluded_no_biological_detection === 'TRUE' ? 'Excluded: no biological detection' :
+              q.removed_by_qc_rsd === 'TRUE' ? 'Removed: QC-RSD' : 'Retained',
           b.sample_median,b.blank_median,(100*number(b.blank_prevalence)).toString(),
           b.sample_to_blank_ratio,q?.qc_rsd_percent ?? ''];
         });
         retention.push(el('details',{class:'retention-audit'},
           el('summary',{text:'Inspect all '+rawCount+' feature filter decisions'}),
           table(headers,auditRows,(id) => openFeature(id),'feature-filter-audit.tsv')));
-      } else retention.push(note('Saved blank/QC filter diagnostics do not reconcile with the raw and retained feature IDs; the feature-by-feature audit cannot be shown safely.',true));
+      } else retention.push(note('Saved blank, biological-detection and QC filter diagnostics do not reconcile with retained feature IDs; the combined filter audit cannot be shown safely.',true));
     } else retention.push(note('This run has no complete saved blank/QC filter diagnostics; individual exclusion reasons are unavailable.'));
+    const diagnosticTable = (records, filename) => {
+      const fields = Object.keys(records[0] ?? {feature_id:''});
+      return table(fields,records.map((row) => fields.map((field) => row[field])),
+        (id) => openFeature(id),filename);
+    };
     target.replaceChildren(metrics([
       ['Samples in dataset',metadata.length], ['Raw features',rawCount],
       ['Retained features',retainedCount], ['Annotation candidates',candidates.length], ['Saved contrasts',contrasts.length]
     ]), card('Feature retention & annotation',...retention),
+    ...(detection ? [card('Biological detection · saved study diagnostics',
+      note('Counts refer to observed positive biological measurements before imputation; nonpositive or missing values are not detected. Features never detected in biological samples are excluded before QC-RSD filtering. Shared study diagnostics are unchanged when selecting a comparison.'),
+      diagnosticTable(detection,'feature-detection-filtered.tsv'))] : []),
+    ...(drift ? [card('Pooled QC drift · saved study diagnostics',
+      note('QC RSD and Spearman correlation with injection order use observed positive pooled-QC values. NA means the metric was not estimable; trend_status states why. Status “disabled” means correction was not applied. A trend can be confounded by acquisition order, batch and biological composition and does not establish that correction is appropriate. Comparison selection does not change these study diagnostics.'),
+      diagnosticTable(drift,'qc-drift-filtered.tsv'))] : []),
     card('Samples by ' + defaultGroup,
       table(['Group','Samples'], [...new Set(metadata.map((row) => groupName(row)))].sort().map((name) =>
         [name,metadata.filter((row) => groupName(row) === name).length]),null,'sample-groups.tsv')),
@@ -3460,8 +3500,265 @@
         button);
     }));
   }
+  // Euclidean distances followed by average-linkage agglomeration; ties follow input order.
+  function heatmapCluster(vectors) {
+    const n = vectors.length;
+    if (n < 2) return vectors.map((_,i) => i);
+    const distances = new Float64Array(n*n);
+    for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++) {
+      let sum = 0;
+      for (let k = 0; k < vectors[i].length; k++) {
+        const delta = vectors[i][k]-vectors[j][k];
+        sum += delta*delta;
+      }
+      distances[i*n+j] = distances[j*n+i] = Math.sqrt(sum);
+    }
+    const active = new Uint8Array(n).fill(1);
+    const sizes = new Uint16Array(n).fill(1);
+    const nodes = Array.from({length:n},(_,i) => i);
+    for (let remaining = n; remaining > 1; remaining--) {
+      let left = -1, right = -1, best = Infinity;
+      for (let i = 0; i < n; i++) if (active[i])
+        for (let j = i+1; j < n; j++) if (active[j] && distances[i*n+j] < best) {
+          left = i; right = j; best = distances[i*n+j];
+        }
+      for (let k = 0; k < n; k++) if (active[k] && k !== left && k !== right)
+        distances[k*n+left] = distances[left*n+k] =
+          (sizes[left]*distances[left*n+k]+sizes[right]*distances[right*n+k])/
+          (sizes[left]+sizes[right]);
+      nodes[left] = [nodes[left],nodes[right]];
+      sizes[left] += sizes[right];
+      active[right] = 0;
+    }
+    const order = [];
+    function visit(node) {
+      if (Array.isArray(node)) { visit(node[0]); visit(node[1]); }
+      else order.push(node);
+    }
+    visit(nodes[active.indexOf(1)]);
+    return order;
+  }
+
+  async function renderHeatmap(ctx,target,token) {
+    if (!available(ctx,'matrix_scaled')) {
+      message(target,'No saved scaled study matrix is published for this run; no descriptive heatmap can be drawn.');
+      return;
+    }
+    const matrix = await rows(ctx,'matrix_scaled');
+    if (!viewValid(ctx,'heatmap',token)) return;
+    if (!matrix.length || !Object.hasOwn(matrix[0],'sample')) {
+      message(target,'Saved scaled matrix has no sample rows.',true);
+      return;
+    }
+    const features = Object.keys(matrix[0]).filter((field) => field !== 'sample');
+    const bySample = new Map(matrix.map((row) => [row.sample,row]));
+    if (bySample.size !== matrix.length) {
+      message(target,'Saved scaled matrix contains duplicate sample keys.',true);
+      return;
+    }
+    const roles = ctx.run.effective_dataset?.roles ??
+      catalogue.find((run) => run.hash === ctx.run.study_hash)?.effective_dataset?.roles;
+    const roleColumn = roles?.column ?? 'sample_type';
+    const biologicalRole = roles?.levels?.sample ?? 'sample';
+    const biological = metadata.filter((row) => row[roleColumn] === biologicalRole &&
+      (!ctx.comparisonSamples || ctx.comparisonSamples.has(sampleKey(row))));
+    if (!biological.length || biological.some((row) => !bySample.has(sampleKey(row)))) {
+      message(target,'Saved biological-sample metadata and scaled study matrix do not match.',true);
+      return;
+    }
+    if (!features.length) {
+      message(target,'The saved scaled study matrix has no feature columns.');
+      return;
+    }
+    const initialField = ctx.run.kind === 'comparison' && sampleGroupColumns.includes('analysis_group') ?
+      'analysis_group' : ctx.display.field;
+    const annotationFields = heatmapAnnotationFields();
+    const firstMatch = (pattern) => annotationFields.find((field) => pattern.test(field)) ?? '';
+    const view = ctx.heatmapView ??= {field:initialField,count:50,groups:null,search:'',
+      time:firstMatch(/time|stage|day/i),batch:firstMatch(/batch|plate/i)};
+    if (!sampleGroupColumns.includes(view.field)) view.field = initialField;
+    const groupControl = control('Group samples by','heatmap-group-field',
+      sampleGroupColumns.map((field) => [field,field]),view.field);
+    const groupSelect = el('select',{id:'heatmap-groups',multiple:'','aria-label':'Groups to show'});
+    const groupPicker = el('div',{},el('label',{for:'heatmap-groups',text:'Biological groups · Ctrl/Cmd-click for multiple'}),groupSelect);
+    const searchControl = el('div',{},el('label',{for:'heatmap-search',text:'Find sample ID / filename'}),
+      el('input',{id:'heatmap-search',type:'search',maxlength:'128',placeholder:'All selected biological samples'}));
+    const countControl = control('Top features by variance','heatmap-count',
+      [10,25,50,75,100].map((count) => [String(count),String(count)]),String(view.count));
+    const fields = [['','None'],...annotationFields.map((field) => [field,field])];
+    const timeControl = control('Time / stage annotation','heatmap-time',fields,view.time);
+    const batchControl = control('Batch / plate annotation','heatmap-batch',fields,view.batch);
+    const selection = el('div',{class:'controls heatmap-controls'},groupControl,groupPicker,
+      searchControl,countControl,timeControl,batchControl);
+    const explanation = note('Source: checksum-verified tables/matrix_scaled.tsv (saved transformed and scaled biological intensities). Only biological samples are shown; pooled QCs and blanks are excluded even if Display settings includes all roles. '+
+      (ctx.comparisonSamples ? 'In this comparison, the initial sample universe is its saved selected biological samples; intensities still come from the shared study. ' : '')+
+      'Selections, variance ranking and clustering are descriptive only; no test, p-value or q-value is recalculated.');
+    const limit = note('Performance limit: up to 400 selected samples and 100 features. Narrow groups or search to fit; samples are never silently dropped.');
+    const summary = el('p',{class:'note',role:'status','aria-live':'polite'});
+    const result = el('div',{class:'heatmap-result'});
+    target.replaceChildren(card('Saved scaled study matrix · clustered feature heatmap',
+      explanation,selection,limit,summary,result));
+    searchControl.querySelector('input').value = view.search;
+    function chooseGroups() {
+      const names = [...new Set(biological.map((row) => groupName(row,view.field)))].sort();
+      groupSelect.replaceChildren(...names.map((name) => {
+        const option = el('option',{value:name,text:name});
+        option.selected = view.groups === null || view.groups.has(name);
+        return option;
+      }));
+      groupSelect.size = Math.min(7,Math.max(2,names.length));
+    }
+    chooseGroups();
+    let searchTimer;
+    function update() {
+      clearTimeout(searchTimer);
+      if (!viewValid(ctx,'heatmap',token)) return;
+      const needle = view.search.trim().toLocaleLowerCase();
+      const samples = biological.filter((row) =>
+        (view.groups === null || view.groups.has(groupName(row,view.field))) &&
+        (!needle || [sampleKey(row),row.sample_id,row.filename].some((value) =>
+          text(value).toLocaleLowerCase().includes(needle))));
+      if (window.Plotly) result.querySelectorAll('.plot').forEach((node) => Plotly.purge(node));
+      result.replaceChildren();
+      summary.textContent = samples.length+' of '+biological.length+' biological samples selected · '+
+        Math.min(view.count,features.length)+' requested features from '+features.length+
+        ' saved scaled features.';
+      if (!samples.length) {
+        result.append(note('No biological samples match these groups and search terms.'));
+        return;
+      }
+      if (samples.length > 400) {
+        result.append(note(samples.length+' samples exceed the 400-sample performance limit. Narrow groups or search; no samples were omitted.',true));
+        return;
+      }
+      if (samples.length < 2) {
+        result.append(note('Select at least two biological samples to rank variance and cluster.'));
+        return;
+      }
+      const samplesWithMatrix = samples.map((sample) => ({sample,row:bySample.get(sampleKey(sample))}));
+      const ranked = [];
+      let excluded = 0;
+      for (const id of features) {
+        let sum = 0, squares = 0, complete = true;
+        for (const entry of samplesWithMatrix) {
+          const value = number(entry.row[id]);
+          if (!Number.isFinite(value)) { complete = false; break; }
+          sum += value; squares += value*value;
+        }
+        if (complete) ranked.push({id,variance:Math.max(0,(squares-sum*sum/samples.length)/(samples.length-1))});
+        else excluded++;
+      }
+      ranked.sort((a,b) => b.variance-a.variance ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const selected = ranked.slice(0,view.count);
+      if (!selected.length) {
+        result.append(note('No features have finite saved scaled values in every selected biological sample.',true));
+        return;
+      }
+      const sampleOrder = heatmapCluster(samplesWithMatrix.map(({row}) =>
+        selected.map(({id}) => number(row[id]))));
+      const featureOrder = heatmapCluster(selected.map(({id}) =>
+        samplesWithMatrix.map(({row}) => number(row[id]))));
+      const orderedSamples = sampleOrder.map((index) => samplesWithMatrix[index]);
+      const orderedFeatures = featureOrder.map((index) => selected[index]);
+      const annotations = [...new Set([view.field,view.time,view.batch].filter(Boolean))];
+      summary.textContent = samples.length+' of '+biological.length+' biological samples · '+
+        selected.length+' of '+ranked.length+' complete features (top variance among selected samples)'+
+        (excluded ? ' · '+excluded+' features excluded for missing/non-finite scaled values' : '')+
+        '. Euclidean distance, average-linkage hierarchical clustering on both axes; ties follow saved matrix order.';
+      const tools = el('div',{class:'heatmap-tools'});
+      const exportData = plotDataButton(ctx,tools,'heatmap-plotted.tsv');
+      const columns = ['feature_id','sample','sample_id',...annotations,'scaled_value'];
+      exportData(columns,orderedFeatures.flatMap(({id}) => orderedSamples.map(({sample,row}) =>
+        [id,sampleKey(sample),sample.sample_id ?? '',...annotations.map((field) => sample[field] ?? ''),row[id]])));
+      result.append(tools);
+      const plot = plotNode(result,true);
+      plot.classList.add('heatmap-plot');
+      plot.style.height = Math.max(500,Math.min(1350,selected.length*15+130))+'px';
+      const labels = orderedSamples.map(({sample}) => sampleKey(sample));
+      const z = orderedFeatures.map(({id}) => orderedSamples.map(({row}) => number(row[id])));
+      const sortedValues = z.flat().sort((a,b) => a-b);
+      const low = sortedValues[Math.floor((sortedValues.length-1)*.02)];
+      const high = sortedValues[Math.ceil((sortedValues.length-1)*.98)];
+      const diverging = low < 0 && high > 0;
+      const bound = Math.max(Math.abs(low),Math.abs(high));
+      const colorMin = diverging ? -bound : low;
+      const colorMax = diverging ? bound : high > low ? high : low+1;
+      const sampleInfo = orderedSamples.map(({sample}) =>
+        ['Sample ID: '+escapePlot(sample.sample_id || sampleKey(sample)),
+          ...annotations.map((field) => escapePlot(field)+': '+escapePlot(label(sample[field])))].join('<br>'));
+      const traces = [{type:'heatmap',x:labels,y:orderedFeatures.map((_,i) => i),z,
+        zmin:colorMin,zmax:colorMax,colorscale:diverging ? 'RdBu' : 'Viridis',
+        reversescale:diverging,
+        colorbar:{title:{text:'Scaled value'},len:.8},
+        customdata:orderedFeatures.map(() => sampleInfo),
+        hovertemplate:'Feature %{text}<br>Sample %{x}<br>%{customdata}<br>Saved scaled value %{z:.4g}<extra></extra>',
+        text:orderedFeatures.map(({id}) => orderedSamples.map(() => id)),
+        showscale:true}];
+      annotations.forEach((field,index) => {
+        const categories = [...new Set(orderedSamples.map(({sample}) => groupName(sample,field)))].sort();
+        const codes = new Map(categories.map((name,i) => [name,i]));
+        const colorscale = categories.flatMap((name,i) => [
+          [i/categories.length,groupColor(name)],
+          [(i+1)/categories.length,groupColor(name)]
+        ]);
+        traces.push({type:'heatmap',x:labels,y:[-(index+1)],
+          z:[orderedSamples.map(({sample}) => codes.get(groupName(sample,field))+.5)],
+          text:[orderedSamples.map(({sample}) => escapePlot(label(sample[field])))],
+          zmin:0,zmax:categories.length,colorscale,showscale:false,
+          hovertemplate:'Sample %{x}<br>'+escapePlot(field)+': %{text}<extra></extra>'});
+      });
+      plotting(ctx,plot,traces,{
+        margin:{l:150,b:100,r:55,t:30},hovermode:'closest',
+        xaxis:{title:{text:'Biological samples · clustered'},tickangle:65,
+          tickfont:{size:9},nticks:Math.min(25,samples.length)},
+        yaxis:{title:{text:'Features · clustered'},
+          range:[selected.length-.5,-annotations.length-.7],
+          tickmode:'array',tickvals:[...annotations.map((_,i) => -i-1),
+            ...orderedFeatures.map((_,i) => i)],
+          ticktext:[...annotations,...orderedFeatures.map(({id}) => id)],
+          tickfont:{size:10}}});
+      plot.on('plotly_click',(event) => {
+        if (event.points[0]?.curveNumber === 0) {
+          const feature = orderedFeatures[event.points[0].y];
+          if (feature) openFeature(feature.id);
+        }
+      });
+      result.append(note('Colours show saved scaled values (colour range '+colorMin.toPrecision(3)+
+        ' to '+colorMax.toPrecision(3)+'; extreme colours clipped at the selected cells’ 2nd/98th percentiles for readability). '+
+        'Hover and TSV retain exact values. Metadata strips above the heatmap label selected group/time/batch fields. Click a feature cell or ID below to inspect it; clustering has no inferential significance.'));
+      result.append(el('details',{class:'heatmap-feature-list'},
+        el('summary',{text:'Open a plotted feature ('+orderedFeatures.length+')'}),
+        el('div',{class:'heatmap-feature-links'},...orderedFeatures.map(({id}) =>
+          el('button',{type:'button',class:'text-button',text:id,onClick:() => openFeature(id)})))));
+    }
+    groupControl.querySelector('select').addEventListener('change',(event) => {
+      view.field = event.target.value; view.groups = null; chooseGroups(); update();
+    });
+    groupSelect.addEventListener('change',() => {
+      view.groups = new Set([...groupSelect.selectedOptions].map((option) => option.value));
+      update();
+    });
+    searchControl.querySelector('input').addEventListener('input',(event) => {
+      view.search = event.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(update,180);
+    });
+    countControl.querySelector('select').addEventListener('change',(event) => {
+      view.count = Number(event.target.value); update();
+    });
+    timeControl.querySelector('select').addEventListener('change',(event) => {
+      view.time = event.target.value; update();
+    });
+    batchControl.querySelector('select').addEventListener('change',(event) => {
+      view.batch = event.target.value; update();
+    });
+    update();
+  }
   async function renderStatistics(ctx,target,token) {
     const reports = [
+      ['omnibus','Standard omnibus F-tests',
+        'The standard omnibus F-test asks whether tested biological group means are equal (group-level null), after any block adjustment specified in the saved analysis. Saved p-values and FDR-adjusted q-values do not identify which pair differs. This is separate from the adjusted nested feature-wise model tests below. Dashboard grouping never changes these saved values.'],
       ['model_contrasts','Feature-wise adjusted contrasts',
         'Each effect compares model coefficients after adjusting for the other configured factors. q-values control the false-discovery rate among testable features within this contrast.'],
       ['model_omnibus','Feature-wise model tests',
@@ -3478,13 +3775,14 @@
     const availableReports = reports.filter(([name]) => available(ctx,name));
     if (!availableReports.length) {
       message(target,ctx.run.kind === 'study' ?
-        'Choose a sealed comparison to view saved statistical model results.' :
-        'This comparison has no saved factorial or variance analysis. Differential tests remain in the Volcano tab.');
+        'No saved omnibus or model tables in this shared study. Choose a sealed comparison for its saved statistical tests.' :
+        'No saved omnibus or model tables in this run. Differential tests, if available, remain in the Volcano tab.');
       return;
     }
     const data = await Promise.all(availableReports.map(([name]) => rows(ctx,name)));
     if (!viewValid(ctx,'statistics',token)) return;
     target.replaceChildren(note('Saved, checksum-verified results from this run only. Filtering and sorting below never refits a model.'),
+      ...(!available(ctx,'omnibus') ? [note('No standard omnibus F-test table was saved for this run; any feature-wise model tests below are different analyses.')] : []),
       ...availableReports.map(([name,title,description],index) => {
         const records = data[index], fields = Object.keys(records[0] ?? {});
         if (!fields.length) return card(title,note('No saved rows.'));

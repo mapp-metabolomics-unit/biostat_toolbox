@@ -325,12 +325,15 @@ validate_recipe_config <- function(recipe) {
   }
 
   preprocessing <- recipe$preprocessing %||% list()
-  config_fields(preprocessing, c("blank_filter", "qc_rsd_filter", "missing_values", "normalization", "transformation", "scaling"), "preprocessing")
+  config_fields(preprocessing, c("blank_filter", "qc_rsd_filter", "qc_drift", "missing_values", "normalization", "transformation", "scaling"), "preprocessing")
   sections <- list(blank_filter = c("enabled", "minimum_sample_to_blank_ratio", "minimum_blank_prevalence"),
-                   qc_rsd_filter = c("enabled", "threshold_percent"), missing_values = "method",
-                   normalization = "method", transformation = "method", scaling = "method")
+                   qc_rsd_filter = c("enabled", "threshold_percent", "minimum_qc_fraction"),
+                   qc_drift = c("enabled", "method", "order_column", "span", "minimum_qc",
+                                "minimum_qc_fraction", "maximum_gap_fraction", "maximum_fold_change"),
+                   missing_values = "method", normalization = "method",
+                   transformation = "method", scaling = "method")
   for (section in names(sections)) config_fields(preprocessing[[section]] %||% list(), sections[[section]], paste0("preprocessing.", section))
-  for (section in c("blank_filter", "qc_rsd_filter")) {
+  for (section in c("blank_filter", "qc_rsd_filter", "qc_drift")) {
     enabled <- preprocessing[[section]]$enabled
     if (!is.null(enabled)) config_boolean(enabled, paste0("preprocessing.", section, ".enabled"))
   }
@@ -339,6 +342,21 @@ validate_recipe_config <- function(recipe) {
   if (!is.null(blank$minimum_sample_to_blank_ratio)) config_number(blank$minimum_sample_to_blank_ratio, "blank filter ratio", 0)
   if (!is.null(blank$minimum_blank_prevalence)) config_number(blank$minimum_blank_prevalence, "blank filter prevalence", 0, 1)
   if (!is.null(qc$threshold_percent)) config_number(qc$threshold_percent, "QC RSD threshold", 0)
+  if (!is.null(qc$minimum_qc_fraction))
+    config_number(qc$minimum_qc_fraction, "QC RSD minimum_qc_fraction", 0.5, 1)
+  drift <- preprocessing$qc_drift
+  if (!is.null(drift$method)) config_choice(drift$method, "loess", "preprocessing.qc_drift.method")
+  if (!is.null(drift$order_column)) config_text(drift$order_column, "preprocessing.qc_drift.order_column")
+  if (!is.null(drift$span)) config_number(drift$span, "preprocessing.qc_drift.span", 0.5, 1)
+  if (!is.null(drift$minimum_qc)) config_number(drift$minimum_qc, "preprocessing.qc_drift.minimum_qc", 6, integer = TRUE)
+  if (!is.null(drift$minimum_qc_fraction))
+    config_number(drift$minimum_qc_fraction, "preprocessing.qc_drift.minimum_qc_fraction", 0.5, 1)
+  if (!is.null(drift$maximum_gap_fraction))
+    config_number(drift$maximum_gap_fraction, "preprocessing.qc_drift.maximum_gap_fraction", 0.05, 1)
+  if (!is.null(drift$maximum_fold_change))
+    config_number(drift$maximum_fold_change, "preprocessing.qc_drift.maximum_fold_change", 1, 100)
+  if (isTRUE(drift$enabled) && (is.null(drift$method) || is.null(drift$order_column)))
+    stop("Enabled preprocessing.qc_drift requires method: loess and order_column.", call. = FALSE)
   methods <- list(missing_values = c("none", "half_minimum"), normalization = c("none", "total_sum", "median", "pqn"),
                   transformation = c("none", "log2", "log10", "log1p"), scaling = c("none", "pareto", "autoscale"))
   for (section in names(methods)) {

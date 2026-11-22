@@ -108,6 +108,17 @@ select[multiple] option { padding: .3rem; }
 .class-trail [aria-current="page"] { color: #152638; text-decoration: none; cursor: default; }
 .plot { width: 100%; min-height: 390px; }
 .plot.large { min-height: 480px; }
+.heatmap-controls { margin: 1rem 0; align-items: start; }
+.heatmap-controls > div { flex-basis: 175px; }
+.heatmap-controls #heatmap-groups { min-height: 5.5rem; }
+.heatmap-result { min-width: 0; }
+.heatmap-tools { display: flex; flex-wrap: wrap; gap: .55rem; margin: 1rem 0 .5rem; }
+.heatmap-feature-list { margin-top: 1rem; }
+.heatmap-feature-list summary { cursor: pointer; color: #155f66; font-weight: 700; }
+.heatmap-feature-links { display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .8rem 0; }
+.heatmap-plot { min-width: 550px; }
+.main.drawer-open .heatmap-result { overflow-x: auto; }
+@media (max-width: 850px) { .heatmap-result { overflow-x: auto; } }
 .hover-settings summary { cursor: pointer; font-size: .87rem; font-weight: 750; color: #155f66; margin-bottom: .6rem; }
 .hover-settings .hint { margin: .5rem 0 .9rem; }
 .hover-settings fieldset { border: 1px solid #dfe7e7; border-radius: .5rem; padding: .6rem; margin: 0 0 .8rem; max-height: 240px; overflow: auto; }

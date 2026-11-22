@@ -17,6 +17,8 @@ export_results <- function(dataset, processed, analyses, manifest, directory) {
   write_tsv(processed$variable_metadata, file.path(directory, "tables", "variable_metadata.tsv"))
   if (nrow(processed$diagnostics$blank)) write_tsv(processed$diagnostics$blank, file.path(directory, "tables", "blank_filter.tsv"))
   if (nrow(processed$diagnostics$qc)) write_tsv(processed$diagnostics$qc, file.path(directory, "tables", "qc_rsd.tsv"))
+  write_tsv(processed$diagnostics$detection, file.path(directory, "tables", "feature_detection.tsv"))
+  write_tsv(processed$diagnostics$drift, file.path(directory, "tables", "qc_drift.tsv"))
   for (stage in names(processed$matrices)) {
     stage_matrix <- processed$matrices[[stage]]
     write_tsv(data.frame(sample = rownames(stage_matrix), stage_matrix, check.names = FALSE), file.path(directory, "tables", paste0("matrix_", stage, ".tsv")))
