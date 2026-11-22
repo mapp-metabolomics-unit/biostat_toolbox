@@ -28,6 +28,8 @@ local({
   }
   stopifnot(identical(expand_biostats_contrasts(list(contrasts = "all"), c("WT_O", "WT_N"))[[1]]$name,
                       "WT_O_vs_WT_N"))
+  design$contrasts <- list(list(numerator = "F", denominator = "A"))
+  stopifnot(identical(expand_biostats_contrasts(design, LETTERS[1:6])[[1]]$name, "F_vs_A"))
   design$contrasts <- list(list(name = "custom_label", numerator = "F", denominator = "A"))
   stopifnot(identical(expand_biostats_contrasts(design, LETTERS[1:6])[[1]]$name, "custom_label"))
   expect_error(expand_biostats_contrasts(design, LETTERS[1:5]), "Contrast levels")
@@ -355,6 +357,16 @@ local({
   stopifnot(is.null(parent$study_filters),
             identical(filtered_entry$study_filters, expected_filters),
             identical(filtered_child_entry$study_filters, expected_filters))
+  leaf_entry <- Filter(function(item) identical(item$hash, basename(leaf_dir)), entries)[[1L]]
+  stopifnot(grepl("group: WT → WT, mutant → mutant; mutant vs WT", child$description,
+                  fixed = TRUE),
+            identical(child$selection$group_column, "group"),
+            identical(vapply(child$selection$groups, `[[`, character(1), "source"),
+                      c("WT", "mutant")),
+            grepl("group + part:", leaf_entry$description, fixed = TRUE),
+            identical(leaf_entry$selection$second_column, "part"),
+            grepl('["mutant","leaf"] → mutant', leaf_entry$description, fixed = TRUE),
+            !identical(child$description, leaf_entry$description))
   stopifnot(identical(parent$hashes$dataset_hash, study_manifest$hashes$dataset_hash),
             identical(parent$hashes$preprocess_hash, study_manifest$hashes$preprocess_hash),
             identical(child$hashes$dataset_hash, parent$hashes$dataset_hash),
@@ -394,6 +406,27 @@ local({
   mismatched <- dataset
   mismatched$sample_metadata$biological_unit[6] <- "leaf_2"
   expect_error(validate_dataset(mismatched, recipe), "exactly one sample from each group")
+})
+local({
+  metadata <- data.frame(group = rep(c("A", "B"), each = 4L),
+                         row.names = paste0("stable_", seq_len(8L)))
+  variable <- c(1, 3, 4, 8, 2, 3, 5, 9)
+  near_constant <- c(rep(3, 4L), rep(3 + 1e-14, 4L))
+  values <- cbind(variable = variable, numerical_noise = near_constant)
+  rownames(values) <- rownames(metadata)
+  design <- list(group = "group", contrasts = list(list(numerator = "B", denominator = "A")))
+  differential <- run_differential(values, metadata, design, "log2")
+  reference <- stats::t.test(variable[5:8], variable[1:4], var.equal = TRUE)$p.value
+  stable <- differential[differential$feature_id == "variable", ]
+  artifact <- differential[differential$feature_id == "numerical_noise", ]
+  stopifnot(isTRUE(all.equal(stable$p_value, reference)),
+            isTRUE(all.equal(stable$q_value, reference)),
+            is.na(artifact$statistic), is.na(artifact$p_value), is.na(artifact$q_value))
+  omnibus <- run_omnibus(values, metadata, "group")
+  stable <- omnibus[omnibus$feature_id == "variable", ]
+  artifact <- omnibus[omnibus$feature_id == "numerical_noise", ]
+  stopifnot(isTRUE(all.equal(stable$q_value, stable$p_value)),
+            is.na(artifact$statistic), is.na(artifact$p_value), is.na(artifact$q_value))
 })
 
 local({

@@ -1,6 +1,6 @@
 source_biostats_modules <- function(repo_root) {
   module_dir <- file.path(repo_root, "src", "biostats")
-  for (module in c("utils.R", "config.R", "dataset.R", "preprocess.R", "analysis.R", "supervised.R", "annotations.R", "export.R"))
+  for (module in c("utils.R", "config.R", "dataset.R", "preprocess.R", "analysis.R", "linear_model.R", "variance.R", "supervised.R", "annotations.R", "export.R"))
     source(file.path(module_dir, module), local = .GlobalEnv)
 }
 
@@ -199,7 +199,10 @@ execute_biostats_run <- function(config, force = FALSE) {
     samples <- rownames(validation$dataset$sample_metadata)[
       role_rows(validation$dataset$sample_metadata, recipe$roles, "sample")]
     transformed <- study_processed$matrices$transformed[samples, , drop = FALSE]
-    processed <- list(matrices = list(transformed = transformed),
+    matrices <- list(transformed = transformed)
+    if (isTRUE(recipe$analyses$variance$enabled))
+      matrices$normalized <- study_processed$matrices$normalized[samples, , drop = FALSE]
+    processed <- list(matrices = matrices,
                       sample_metadata = validation$dataset$sample_metadata[samples, , drop = FALSE],
                       methods = study_processed$methods)
   }

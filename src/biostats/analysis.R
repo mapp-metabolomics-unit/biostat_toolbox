@@ -66,6 +66,15 @@ design_matrix <- function(metadata, group_column, block_column = NULL) {
   list(matrix = matrix, group = group)
 }
 
+# Residuals at machine precision do not estimate biological variation. Keep
+# untestable features out of the BH denominator, rather than assigning p = 1.
+mask_unstable_p <- function(p, standard_error) {
+  testable <- is.finite(p) & p >= 0 & p <= 1 &
+    is.finite(standard_error) & standard_error > 1e-9
+  p[!testable] <- NA_real_
+  list(p_value = p, q_value = stats::p.adjust(p, method = "BH"))
+}
+
 fit_contrast <- function(fit, numerator, denominator, contrast_name, effect_label) {
   design <- fit$design
   if (!all(c(numerator, denominator) %in% colnames(design))) stop("Contrast levels are absent from the design: ", numerator, ", ", denominator, call. = FALSE)
@@ -75,12 +84,14 @@ fit_contrast <- function(fit, numerator, denominator, contrast_name, effect_labe
   effects <- as.numeric(crossprod(contrast, fit$coefficients))
   standard_error <- sqrt(as.numeric(crossprod(contrast, fit$covariance %*% contrast)) * fit$sigma2)
   statistic <- effects / standard_error
-  p_value <- 2 * stats::pt(abs(statistic), df = fit$residual_df, lower.tail = FALSE)
+  tests <- mask_unstable_p(2 * stats::pt(abs(statistic), df = fit$residual_df, lower.tail = FALSE),
+                           standard_error)
+  statistic[is.na(tests$p_value)] <- NA_real_
   data.frame(
     feature_id = fit$feature_ids, contrast = contrast_name, numerator = numerator, denominator = denominator,
     effect = effects, effect_scale = effect_label, standard_error = standard_error,
-    statistic = statistic, degrees_of_freedom = fit$residual_df, p_value = p_value,
-    q_value = stats::p.adjust(p_value, method = "BH"), stringsAsFactors = FALSE
+    statistic = statistic, degrees_of_freedom = fit$residual_df, p_value = tests$p_value,
+    q_value = tests$q_value, stringsAsFactors = FALSE
   )
 }
 
@@ -125,9 +136,12 @@ run_omnibus <- function(x, metadata, group_column, block_column = NULL) {
   if (full$rank < ncol(design_full) || reduced$rank < ncol(design_reduced) || df1 < 1L || df2 < 1L) stop("Omnibus design is rank-deficient or lacks test degrees of freedom.", call. = FALSE)
   rss_full <- colSums(full$residuals^2)
   rss_reduced <- colSums(reduced$residuals^2)
+  residual_se <- sqrt(rss_full / df2)
   statistic <- (pmax(0, rss_reduced - rss_full) / df1) / (rss_full / df2)
-  p_value <- stats::pf(statistic, df1, df2, lower.tail = FALSE)
-  data.frame(feature_id = colnames(x), statistic = statistic, numerator_df = df1, denominator_df = df2, p_value = p_value, q_value = stats::p.adjust(p_value, "BH"))
+  tests <- mask_unstable_p(stats::pf(statistic, df1, df2, lower.tail = FALSE), residual_se)
+  statistic[is.na(tests$p_value)] <- NA_real_
+  data.frame(feature_id = colnames(x), statistic = statistic, numerator_df = df1, denominator_df = df2,
+             p_value = tests$p_value, q_value = tests$q_value)
 }
 
 add_ordination_groups <- function(ordination, metadata, roles, group_column) {
@@ -175,6 +189,16 @@ run_analyses <- function(processed, recipe, on_stage = NULL) {
   if (isTRUE(analyses$differential$enabled)) {
     if (!is.null(on_stage)) on_stage("differential contrasts")
     result$differential <- run_differential(processed$matrices$transformed, processed$sample_metadata, recipe$design, processed$methods$transformation$method %||% "log2")
+  }
+  if (isTRUE(analyses$linear_model$enabled)) {
+    if (!is.null(on_stage)) on_stage("configured batch-adjusted linear models")
+    result$linear_model <- run_configured_models(processed$matrices$transformed,
+                                                processed$sample_metadata, analyses$linear_model)
+  }
+  if (isTRUE(analyses$variance$enabled)) {
+    if (!is.null(on_stage)) on_stage("Hellinger PERMANOVA and dispersion")
+    result$variance <- run_permanova_dispersion(processed$matrices$normalized,
+                                               processed$sample_metadata, analyses$variance)
   }
   result
 }

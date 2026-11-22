@@ -55,7 +55,7 @@ design:
   block: ATTRIBUTE_experimental_unit
   block_verified: true
   contrasts:
-    - {name: treated_vs_control, numerator: treated, denominator: control}
+    - {numerator: treated, denominator: control}
 analyses:
   omnibus: {enabled: false}
   differential: {enabled: true}
@@ -64,11 +64,61 @@ analyses:
 
 For its unpaired counterpart, remove both `block` and `block_verified` (keep the rest). Run the generated `validate`, `plan`, `run` commands for each recipe. When the sealed study uses `log2` transformation, the blocked two-group model tests the three within-unit differences in **log2-transformed, normalized** intensity against zero (two residual degrees of freedom); without the block it tests group differences without matching. Report the effect's direction, p-values and per-contrast BH q-values separately for each comparison.
 
+For an explicitly selected pair, omit `name` to generate `<numerator>_vs_<denominator>` deterministically from the analysis-group targets (for example, `treated_vs_control`). Specify `name` only to override that label. The `sample_plan.groups` source-to-target mappings remain explicit: they determine which biological samples enter each group and can intentionally rename or combine source labels. With `design.contrasts: all` (or an omitted contrasts field), all distinct pairs are generated in sorted group order; use an explicit list of numerator/denominator pairs to select only the scientifically requested comparisons and their effect directions.
+
 ## What the analyses mean
 
 Blank filtering first excludes features dominated by blanks. Biological intensities are then imputed and normalized; when QC filtering is enabled, the QC intensities are independently imputed and normalized to calculate each feature's RSD. Retained **whole-study** biological intensities are transformed and scaled as configured. Shared PCA describes scaled whole-study sample variation; Bray–Curtis PCoA ordains normalized nonnegative whole-study sample dissimilarities and has no intrinsic feature loadings. Comparison omnibus tests and differential contrasts use only the selected biological sample columns from the **already transformed study matrix**, so a per-comparison normalization, filter or ordination would estimate a different quantity and is not implied. PLS-DA fits its training-fold preprocessing within each comparison. When using log2 transformation, contrast effects are log2 fold changes; Benjamini–Hochberg q-values are adjusted **within each contrast**, not across every contrast-feature combination.
 
 PLS-DA, when enabled, reports repeated held-out predictions and label-permutation results. Completion of that validation is not proof of chemical identification, external generalization, or statistical significance. CANOPUS classes and spectral matches are candidate annotations, not confirmed identities. Review thresholds, replication, contrasts, and supervised results with the scientific owner.
+
+### Numerical stability and reusable follow-up models
+
+Differential contrasts and omnibus F-tests mark a feature **untestable** when its fitted standard error (or full-model residual standard deviation) is at most `1e-9` transformed-intensity units or its p-value is invalid. For such features the saved statistic, p-value and q-value are missing; Benjamini–Hochberg correction includes only testable features in each contrast or omnibus test. This prevents ratios of floating-point residual noise from being reported as evidence after constant-value imputation. Check the intensity scale before using the fixed numerical tolerance for non-log-transformed data.
+
+Three methods formerly implemented by batch-owned scripts belong in the toolbox, not in each study:
+
+| Reusable method | Toolbox configuration and sealed output | Choices that still belong in a batch recipe |
+| --- | --- | --- |
+| Near-zero-residual masking and BH correction | Standard differential/omnibus fits and saved `differential.tsv` / `omnibus.tsv` | Biological sample selection, group contrasts, interpretation |
+| Factor-adjusted linear models, interactions, matched changes and nested F-tests | `analyses.linear_model` on the study's **transformed** matrix; `model_contrasts.tsv` and `model_omnibus.tsv` | Factor columns and reference levels, timepoints, unit identifiers, coefficient contrasts and named scientific questions |
+| Hellinger/Euclidean PERMANOVA and centroid-spread permutation tests | `analyses.variance` on the study's **normalized nonnegative** matrix; four `variance_*.tsv` tables | Treatment/stratum columns, included groups, sensitivity scopes, seed, permutation count and interpretation |
+
+For a comparison with two groups in multiple batches, configure a factor-adjusted contrast and an added-batch test:
+
+```yaml
+analyses:
+  linear_model:
+    enabled: true
+    factors:
+      group: {column: analysis_group, levels: [WT, mutant]}
+      batch: {column: ATTRIBUTE_batch, levels: [B1, B2, B3]}
+    terms: [group, batch]
+    contrasts:
+      - name: mutant_minus_WT
+        coefficients: {groupmutant: 1}
+    tests:
+      - {name: batch_after_group, reduced_terms: [group], full_terms: [group, batch]}
+```
+
+Interaction fits use `terms: [group, batch, "group:batch"]`; the named model coefficient `groupmutant:batchB2` then measures how the mutant-minus-WT effect in B2 differs from B1. `coefficients` may combine multiple model terms with signed weights for a difference-in-differences. A nested test can compare `[group, batch]` against `[group, batch, "group:batch"]`. For matched trajectories, add `paired_change: {unit: ATTRIBUTE_plant_uid, time: ATTRIBUTE_timepoint, from: T0, to: T1}`; the model fits each matched unit's T1-minus-T0 transformed intensities after checking unique pairing and invariant factor values. The comparison's `sample_plan` still chooses the biological groups; it never reprocesses the parent study.
+
+```yaml
+analyses:
+  variance:
+    enabled: true
+    group_column: analysis_group
+    strata_column: ATTRIBUTE_batch
+    permutations: 9999
+    seed: 2803
+    scopes:
+      - {name: primary, exclude_groups: [reference_extra]}
+      - {name: with_reference_extra}
+```
+
+Each scope reports PERMANOVA within strata, within-stratum group spread, descriptive group-centroid distances, and an **approximate** across-strata spread test that permutes stratum labels within treatment groups. Every group must have at least two replicates in each stratum. Unequal spread complicates the interpretation of PERMANOVA; neither method identifies individual metabolites or proves causality. The dashboard's **Statistical models** tab displays and filters these SHA-256-verified saved tables; selecting the tab or a feature never refits or changes the sealed tests. Link directly to a saved comparison using `dashboard/?run=<comparison-hash>&tab=statistics`.
+
+For reproducible multi-comparison execution, run `run-recipes --dataset <batch>/recipes/dataset.yaml --recipe-dir <batch>/recipes` through `src/mapp_stats.R` in the pinned R environment. It executes each comparison YAML in filename order, reuses already completed sealed runs, and publishes the dashboard once after all comparisons succeed. Keep study-specific selections in the YAML recipes, not in batch-owned statistical or orchestration scripts.
 
 ## Results and links
 

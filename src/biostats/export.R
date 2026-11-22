@@ -63,6 +63,15 @@ export_comparison_results <- function(dataset, analyses, manifest, directory) {
     write_tsv(analyses$omnibus, file.path(directory, "tables", "omnibus.tsv"))
   if (!is.null(analyses$differential))
     write_tsv(analyses$differential, file.path(directory, "tables", "differential.tsv"))
+  if (!is.null(analyses$linear_model)) {
+    if (nrow(analyses$linear_model$contrasts))
+      write_tsv(analyses$linear_model$contrasts, file.path(directory, "tables", "model_contrasts.tsv"))
+    if (nrow(analyses$linear_model$omnibus))
+      write_tsv(analyses$linear_model$omnibus, file.path(directory, "tables", "model_omnibus.tsv"))
+  }
+  if (!is.null(analyses$variance))
+    for (name in c("permanova", "dispersion", "groups", "across_strata"))
+      write_tsv(analyses$variance[[name]], file.path(directory, "tables", paste0("variance_", name, ".tsv")))
   if (!is.null(analyses$plsda)) {
     write_tsv(data.frame(status = analyses$plsda$status, reason = analyses$plsda$reason),
               file.path(directory, "tables", "plsda_status.tsv"))

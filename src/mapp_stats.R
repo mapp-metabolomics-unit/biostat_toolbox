@@ -21,6 +21,7 @@ usage <- function() {
     "  Rscript src/mapp_stats.R validate --dataset DATASET.yaml --recipe RECIPE.yaml",
     "  Rscript src/mapp_stats.R plan     --dataset DATASET.yaml --recipe RECIPE.yaml",
     "  Rscript src/mapp_stats.R run      --dataset DATASET.yaml --recipe RECIPE.yaml",
+    "  Rscript src/mapp_stats.R run-recipes --dataset DATASET.yaml --recipe-dir DIR",
     sep = "\n"
   ), "\n")
 }
@@ -34,6 +35,37 @@ flag <- function(name) {
   args[index + 1]
 }
 dataset_yaml <- flag("--dataset")
+publish_batch <- function(batch_dir) {
+  publisher <- file.path(repo_root, "scripts", "publish_stats_dashboard.R")
+  publication_failure <- function(detail) {
+    stop("sealed run succeeded but dashboard publication failed: ", detail, call. = FALSE)
+  }
+  status <- tryCatch(
+    system2(file.path(R.home("bin"), "Rscript"),
+            args = c(shQuote(publisher), "--batch", shQuote(batch_dir)),
+            stdout = "", stderr = ""),
+    error = function(error) publication_failure(conditionMessage(error))
+  )
+  if (status != 0L) publication_failure(paste("publisher exited with status", status))
+}
+if (command == "run-recipes") {
+  recipe_dir <- normalizePath(flag("--recipe-dir"), mustWork = TRUE)
+  if (!dir.exists(recipe_dir)) stop("--recipe-dir must be a directory.", call. = FALSE)
+  files <- list.files(recipe_dir, pattern = "\\.yaml$", full.names = TRUE)
+  recipes <- Filter(function(file) identical(read_yaml_file(file)$kind, "comparison"), files)
+  if (!length(recipes)) stop("No comparison recipes found in ", recipe_dir, call. = FALSE)
+  configs <- lapply(recipes, function(file) resolve_biostats_config(dataset_yaml, file, repo_root))
+  batches <- vapply(configs, function(config) config$dataset$batch_dir, character(1))
+  if (any(batches != batches[[1L]]))
+    stop("All comparison recipes must resolve to the same batch.", call. = FALSE)
+  for (index in seq_along(configs)) {
+    message("Running comparison recipe ", basename(recipes[[index]]), " (",
+            index, "/", length(recipes), ")")
+    execute_biostats_run(configs[[index]])
+  }
+  publish_batch(batches[[1L]])
+  quit(status = 0)
+}
 recipe_yaml <- flag("--recipe")
 config <- resolve_biostats_config(dataset_yaml, recipe_yaml, repo_root)
 
@@ -75,18 +107,7 @@ if (command == "validate") {
     validation = checked$validation, preprocessing_preview = preprocessing_summary)))
 } else if (command == "run") {
   execute_biostats_run(config)
-  publisher <- file.path(repo_root, "scripts", "publish_stats_dashboard.R")
-  batch_dir <- config$dataset$batch_dir
-  publication_failure <- function(detail) {
-    stop("sealed run succeeded but dashboard publication failed: ", detail, call. = FALSE)
-  }
-  status <- tryCatch(
-    system2(file.path(R.home("bin"), "Rscript"),
-            args = c(shQuote(publisher), "--batch", shQuote(batch_dir)),
-            stdout = "", stderr = ""),
-    error = function(error) publication_failure(conditionMessage(error))
-  )
-  if (status != 0L) publication_failure(paste("publisher exited with status", status))
+  publish_batch(config$dataset$batch_dir)
 } else {
   usage()
   stop("Unknown command: ", command, call. = FALSE)

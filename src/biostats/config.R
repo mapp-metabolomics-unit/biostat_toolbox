@@ -27,6 +27,105 @@ config_number <- function(value, context, minimum = 0, maximum = Inf, integer = 
     stop(context, " must be ", if (integer) "an integer" else "a number", " in [", minimum, ", ", maximum, "].", call. = FALSE)
 }
 
+analysis_sequence <- function(values, label, minimum = 1L) {
+  if (!(is.list(values) || is.character(values)) || length(values) < minimum || !is.null(names(values)))
+    stop(label, " must be a sequence with at least ", minimum, " entries.", call. = FALSE)
+  values
+}
+
+validate_model_terms <- function(terms, factors, label) {
+  terms <- unlist(analysis_sequence(terms, label), use.names = FALSE)
+  if (!is.character(terms) || anyDuplicated(terms)) stop(label, " must have distinct terms.", call. = FALSE)
+  for (term in terms) {
+    parts <- strsplit(term, ":", fixed = TRUE)[[1L]]
+    if (length(parts) > 2L || startsWith(term, ":") || endsWith(term, ":") ||
+        anyDuplicated(parts) || !all(parts %in% factors))
+      stop(label, " contains an unsupported factor or interaction: ", term, call. = FALSE)
+  }
+  terms
+}
+
+validate_model_analysis <- function(model) {
+  config_fields(model, c("enabled", "factors", "terms", "contrasts", "tests", "paired_change"), "analyses.linear_model")
+  if (!is.null(model$enabled)) config_boolean(model$enabled, "analyses.linear_model.enabled")
+  if (!isTRUE(model$enabled)) return(invisible(model))
+  factors <- model$factors
+  if (!is.list(factors) || !length(factors) || is.null(names(factors)) ||
+      anyDuplicated(names(factors)) || any(!grepl("^[A-Za-z][A-Za-z0-9_]*$", names(factors))))
+    stop("analyses.linear_model.factors must map unique safe aliases to metadata columns.", call. = FALSE)
+  for (name in names(factors)) {
+    factor <- factors[[name]]
+    config_fields(factor, c("column", "levels"), paste0("model factor ", name))
+    if (!setequal(names(factor), c("column", "levels"))) stop("Model factors require column and levels.", call. = FALSE)
+    config_text(factor$column, paste0("model factor ", name, ".column"))
+    levels <- unlist(analysis_sequence(factor$levels, paste0("model factor ", name, ".levels"), 2L), use.names = FALSE)
+    if (!is.character(levels) || anyNA(levels) || any(!nzchar(levels)) || anyDuplicated(levels))
+      stop("Model factor levels must be unique nonempty strings.", call. = FALSE)
+  }
+  if (!is.null(model$terms))
+    validate_model_terms(model$terms, names(factors), "analyses.linear_model.terms")
+  else if (length(model$contrasts))
+    stop("Linear model contrasts require model terms.", call. = FALSE)
+  if (!length(model$contrasts) && !length(model$tests))
+    stop("A linear model requires contrasts or nested tests.", call. = FALSE)
+  if (!is.null(model$contrasts)) for (contrast in analysis_sequence(model$contrasts, "model contrasts")) {
+    config_fields(contrast, c("name", "coefficients"), "model contrast")
+    if (!setequal(names(contrast), c("name", "coefficients")))
+      stop("Model contrast requires name and coefficients.", call. = FALSE)
+    config_text(contrast$name, "model contrast.name")
+    weights <- contrast$coefficients
+    if (!is.list(weights) || !length(weights) || is.null(names(weights)) ||
+        anyDuplicated(names(weights)) || any(!nzchar(names(weights))))
+      stop("Model contrast coefficients must map coefficient names to weights.", call. = FALSE)
+    for (weight in weights) config_number(weight, "model contrast weight", -Inf, Inf)
+  }
+  if (!is.null(model$tests)) for (test in analysis_sequence(model$tests, "model tests")) {
+    config_fields(test, c("name", "reduced_terms", "full_terms"), "model test")
+    if (!setequal(names(test), c("name", "reduced_terms", "full_terms")))
+      stop("Model test requires name, reduced_terms and full_terms.", call. = FALSE)
+    config_text(test$name, "model test.name")
+    reduced <- validate_model_terms(test$reduced_terms, names(factors), "model test.reduced_terms")
+    full <- validate_model_terms(test$full_terms, names(factors), "model test.full_terms")
+    if (!all(reduced %in% full) || length(full) <= length(reduced))
+      stop("A model test requires a strictly larger full model.", call. = FALSE)
+  }
+  if (!is.null(model$paired_change)) {
+    change <- model$paired_change
+    config_fields(change, c("unit", "time", "from", "to"), "model paired_change")
+    if (!setequal(names(change), c("unit", "time", "from", "to")))
+      stop("paired_change requires unit, time, from and to.", call. = FALSE)
+    for (field in names(change)) config_text(change[[field]], paste0("paired_change.", field))
+    if (identical(change$from, change$to))
+      stop("paired_change.from and paired_change.to must differ.", call. = FALSE)
+  }
+  invisible(model)
+}
+
+validate_variance_analysis <- function(variance) {
+  config_fields(variance, c("enabled", "group_column", "strata_column", "permutations", "seed", "scopes"), "analyses.variance")
+  if (!is.null(variance$enabled)) config_boolean(variance$enabled, "analyses.variance.enabled")
+  if (!isTRUE(variance$enabled)) return(invisible(variance))
+  config_text(variance$group_column, "variance.group_column")
+  config_text(variance$strata_column, "variance.strata_column")
+  if (identical(variance$group_column, variance$strata_column))
+    stop("Variance group and strata columns must differ.", call. = FALSE)
+  config_number(variance$permutations, "variance.permutations", 99, integer = TRUE)
+  config_number(variance$seed, "variance.seed", 0, .Machine$integer.max, integer = TRUE)
+  scopes <- analysis_sequence(variance$scopes, "variance.scopes")
+  for (scope in scopes) {
+    config_fields(scope, c("name", "exclude_groups"), "variance scope")
+    config_text(scope$name, "variance scope.name")
+    if (!is.null(scope$exclude_groups)) {
+      excluded <- unlist(analysis_sequence(scope$exclude_groups, "variance scope.exclude_groups"), use.names = FALSE)
+      if (!is.character(excluded) || anyNA(excluded) || any(!nzchar(excluded)) || anyDuplicated(excluded))
+        stop("variance scope.exclude_groups must contain distinct group labels.", call. = FALSE)
+    }
+  }
+  if (anyDuplicated(vapply(scopes, `[[`, character(1), "name")))
+    stop("Variance scope names must be distinct.", call. = FALSE)
+  invisible(variance)
+}
+
 expand_biostats_contrasts <- function(design, group_levels) {
   contrasts <- design$contrasts
   if (is.null(contrasts) || identical(contrasts, "all")) {
@@ -261,7 +360,7 @@ validate_recipe_config <- function(recipe) {
 
   analyses <- recipe$analyses %||% list()
   allowed_analyses <- if (identical(recipe$kind, "study")) c("pca", "pcoa") else
-    c("omnibus", "differential", "plsda")
+    c("omnibus", "differential", "linear_model", "variance", "plsda")
   config_fields(analyses, allowed_analyses, paste0(recipe$kind, " analyses"))
   options <- list(pca = c("enabled", "components", "include_qc", "include_blanks"),
                   pcoa = c("enabled", "components", "stage", "distance", "include_qc", "include_blanks"),
@@ -273,6 +372,8 @@ validate_recipe_config <- function(recipe) {
     if (!is.null(value$enabled)) config_boolean(value$enabled, paste0("analyses.", analysis, ".enabled"))
     if (!is.null(value$components)) config_number(value$components, paste0("analyses.", analysis, ".components"), 1, integer = TRUE)
   }
+  if (!is.null(analyses$linear_model)) validate_model_analysis(analyses$linear_model)
+  if (!is.null(analyses$variance)) validate_variance_analysis(analyses$variance)
   for (analysis in c("pca", "pcoa"))
     for (role in c("include_qc", "include_blanks"))
       if (!is.null(analyses[[analysis]][[role]]))

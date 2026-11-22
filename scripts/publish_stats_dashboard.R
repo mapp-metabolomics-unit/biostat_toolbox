@@ -101,7 +101,8 @@ readme_facts <- function(manifest) {
     stop("Inconsistent validated injection and group counts", call. = FALSE)
   }
   analysis_labels <- c(pca = "PCA", pcoa = "PCoA", omnibus = "omnibus",
-                       differential = "differential", plsda = "PLS-DA")
+                       differential = "differential", linear_model = "batch-adjusted linear models",
+                       variance = "PERMANOVA and dispersion", plsda = "PLS-DA")
   enabled <- names(analysis_labels)[vapply(names(analysis_labels), function(name)
     isTRUE(manifest$effective_recipe$analyses[[name]]$enabled), logical(1))]
   list(
@@ -154,6 +155,51 @@ derived_description <- function(manifest) {
     paste(pairs, collapse = ", ")
   } else {
     "no contrasts"
+  }
+  plan <- recipe$sample_plan
+  if (identical(manifest$kind, "comparison") && is.list(plan) &&
+      length(plan$groups) && is.list(plan$groups)) {
+    column <- required_string(plan$group_column, "sample plan group column")
+    mappings <- vapply(plan$groups, function(group)
+      paste0(required_string(group$source, "sample plan source"), " → ",
+             required_string(group$target, "sample plan target")), character(1))
+    # Keep the original selection ahead of analysis details: the same high/low
+    # targets can represent entirely different biological groups and batches.
+    prefix <- paste0(column,
+                     if (!is.null(plan$second_column))
+                       paste0(" + ", required_string(plan$second_column,
+                                                     "sample plan second column")),
+                     ": ")
+    contrast_label <- paste0("; ", comparison)
+    if (nchar(contrast_label, type = "chars") > 50L)
+      contrast_label <- paste0("; ", if (is.list(contrasts)) length(contrasts) else "all",
+                               " contrasts")
+    available <- 160L - nchar(prefix, type = "chars") -
+      nchar(contrast_label, type = "chars")
+    selected <- paste(mappings, collapse = ", ")
+    if (nchar(selected, type = "chars") > available) {
+      selected <- mappings[[1L]]
+      included <- 1L
+      if (length(mappings) > 1L) {
+        for (index in seq.int(2L, length(mappings))) {
+          candidate <- paste0(selected, ", ", mappings[[index]])
+          suffix <- if (index < length(mappings))
+            paste0(" (+", length(mappings) - index, " more)") else ""
+          if (nchar(paste0(candidate, suffix), type = "chars") > available) break
+          selected <- candidate
+          included <- index
+        }
+        remaining <- length(mappings) - included
+        suffix <- if (remaining) paste0(" (+", remaining, " more)") else ""
+        if (nchar(paste0(selected, suffix), type = "chars") <= available)
+          selected <- paste0(selected, suffix)
+      }
+      if (nchar(selected, type = "chars") > available) {
+        selected <- paste0(substr(selected, 1L, max(1L, available - 1L)), "…")
+      }
+    }
+    return(valid_description(paste0(prefix, selected, contrast_label),
+                             "derived description"))
   }
   if (nchar(comparison, type = "chars") > 80L && is.list(contrasts)) {
     comparison <- paste(length(contrasts), "planned contrasts")
@@ -356,13 +402,20 @@ read_run <- function(run_dir, hash, child = FALSE) {
        study_filters = if (identical(kind, "study") && length(recipe$study_filters))
          lapply(recipe$study_filters, function(filter)
            list(column = filter$column, values = as.list(filter$values))) else NULL,
+       selection = if (child && is.list(recipe$sample_plan)) c(list(
+         group_column = required_string(recipe$sample_plan$group_column, "sample plan group column"),
+         groups = lapply(recipe$sample_plan$groups, function(group) list(
+           source = required_string(group$source, "sample plan source"),
+           target = required_string(group$target, "sample plan target")))),
+         if (!is.null(recipe$sample_plan$second_column))
+           list(second_column = required_string(recipe$sample_plan$second_column,
+                                                "sample plan second column"))) else NULL,
        hashes = manifest$hashes, effective_dataset = manifest$effective_dataset,
        preprocessing = manifest$effective_recipe$preprocessing,
        dataset_id = dataset_id, created_at = created_at,
        description = description, recipe_sha256 = sha256_object(recipe),
        readme = c(readme_facts(manifest), list(
-         description = if ("description" %in% names(manifest))
-           markdown_text(manifest$description, "run description") else NULL)),
+         description = markdown_text(description, "run description"))),
        comparison = list(recipe = recipe, inputs = manifest$inputs, mapping = mapping,
                          environment = manifest$environment),
        schema_version = manifest$schema_version, outputs = outputs,
@@ -429,7 +482,7 @@ if (dir.exists(comparison_root)) {
       }
       child_paths <- names(child$outputs)
       if (any(child_paths %in% names(parent$outputs)) ||
-          !all(grepl("^(tables/(comparison_sample_metadata|omnibus|differential|plsda_[A-Za-z_]+)\\.tsv|plots/volcano_[^/]+\\.(png|pdf)|objects/[^/]+)$",
+          !all(grepl("^(tables/(comparison_sample_metadata|omnibus|differential|model_(contrasts|omnibus)|variance_(permanova|dispersion|groups|across_strata)|plsda_[A-Za-z_]+)\\.tsv|plots/volcano_[^/]+\\.(png|pdf)|objects/[^/]+)$",
                      child_paths)) ||
           !"tables/comparison_sample_metadata.tsv" %in% child_paths) {
         stop("Invalid child-owned outputs: ", child_dir, call. = FALSE)
@@ -523,6 +576,7 @@ local({
     }
     if (is.null(run$study_hash)) run$study_hash <- NULL
     if (is.null(run$study_filters)) run$study_filters <- NULL
+    if (is.null(run$selection)) run$selection <- NULL
     run
   })
   catalogue <- list(schema_version = 1L, runs = runs)
@@ -560,6 +614,20 @@ if (length(runs)) {
                paste0("- Enabled analyses: ", facts$analyses, "."))
     if (!is.null(facts$description))
       lines <- c(lines, paste0("- Description: ", facts$description))
+    if (!is.null(run$selection)) {
+      selection <- run$selection
+      lines <- c(lines,
+        paste0("- Comparison attribute: ",
+               markdown_text(selection$group_column, "sample plan group column"),
+               if (!is.null(selection$second_column))
+                 paste0(" + ", markdown_text(selection$second_column, "sample plan second column")),
+               "."),
+        paste0("- Selected source → analysis group: ",
+               paste(vapply(selection$groups, function(group)
+                 paste0(markdown_text(group$source, "sample plan source"), " → ",
+                        markdown_text(group$target, "sample plan target")),
+                 character(1)), collapse = "; "), "."))
+    }
     c(lines, "")
   }
   for (run in c(studies, standalone)) {

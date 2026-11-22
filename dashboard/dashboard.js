@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'plsda', 'features', 'classes', 'display', 'downloads'];
+  const tabs = ['overview', 'pca', 'pcoa', 'volcano', 'statistics', 'plsda', 'features', 'classes', 'display', 'downloads'];
   const hex = /^[0-9a-f]{64}$/;
   const outputPath = /^(tables\/[A-Za-z0-9_.-]+\.tsv|plots\/[A-Za-z0-9_.-]+\.(?:png|pdf))$/;
   const palette = ['#0074e8', '#ec432d', '#05a566', '#963be1', '#db8b00', '#e32f85',
@@ -120,6 +120,7 @@
   function plotShareTarget(filename) {
     if (filename.startsWith('feature-')) return ['features','feature-intensities'];
     if (filename.startsWith('npc-')) return ['classes','npc-intensities'];
+    if (filename === 'volcano-plotted.tsv') return ['volcano','volcano-plot'];
     const key = filename.replace(/-plotted\.tsv$/,'');
     const tab = key.split('-')[0];
     return plotTabs.has(tab) ? [tab,key] : null;
@@ -1069,7 +1070,8 @@
     }
     const dispatch = {overview:renderOverview, pca:(ctx,target,token) => renderOrdination(ctx,target,token,'pca','PC'),
       pcoa:(ctx,target,token) => renderOrdination(ctx,target,token,'pcoa','PCoA'), volcano:renderVolcano,
-      plsda:renderPlsda, features:(ctx,target,token) => renderFeatures(ctx,target,token,detachedMode),
+      statistics:renderStatistics, plsda:renderPlsda,
+      features:(ctx,target,token) => renderFeatures(ctx,target,token,detachedMode),
       classes:renderClasses, downloads:renderDownloads};
     safeRender(activeTab, dispatch[activeTab]);
   }
@@ -1274,6 +1276,12 @@
       ...(run.kind === 'study' || run.kind === 'comparison' ?
         [['Study biological filters',run.study_filters?.map(({column,values}) =>
           `${column} = ${values.join(' or ')}`).join('; ') || 'All biological samples']] : []),
+      ...(run.selection ? [
+        ['Comparison attribute',run.selection.group_column +
+          (run.selection.second_column ? ' + ' + run.selection.second_column : '')],
+        ['Selected source → analysis group',run.selection.groups.map(({source,target}) =>
+          source + ' → ' + target).join('; ')]
+      ] : []),
       ['Description',run.description ?? 'Not in this catalogue'],
       ['Recipe SHA-256',run.recipe_sha256 ?? 'Not in this catalogue'],
       ['Changes vs previous dataset run',run.changes_vs_previous_dataset_run ?? 'Not in this catalogue'],
@@ -1330,7 +1338,7 @@
     comparisonPicker.hidden = study.kind !== 'study';
     $('comparison-select').replaceChildren(el('option', {value:'',text:'None · shared study only'}),
       ...children.map((item) => el('option', {value:item.hash,
-        text:item.hash.slice(0,12) + ' · ' + (item.description ?? 'Saved comparison') + ' · ' + label(item.created_at)})));
+        text:(item.description ?? 'Saved comparison') + ' · ' + item.hash.slice(0,12)})));
     $('comparison-select').value = run.kind === 'comparison' ? run.hash : '';
     const sameStudy = previous && (previous.run.study_hash ?? previous.run.hash) ===
       (run.study_hash ?? run.hash);
@@ -1389,6 +1397,13 @@
               run.study_filters.some((filter) => !filter || typeof filter !== 'object' ||
                 typeof filter.column !== 'string' || !Array.isArray(filter.values) || !filter.values.length ||
                 filter.values.some((value) => typeof value !== 'string')))) ||
+            (run.selection !== undefined && (run.kind !== 'comparison' ||
+              typeof run.selection?.group_column !== 'string' ||
+              !Array.isArray(run.selection.groups) || !run.selection.groups.length ||
+              (run.selection.second_column != null && typeof run.selection.second_column !== 'string') ||
+              run.selection.groups.some((group) => !group ||
+                typeof group.source !== 'string' || !group.source ||
+                typeof group.target !== 'string' || !group.target))) ||
             (run.description !== undefined && (typeof run.description !== 'string' || !run.description ||
               run.description.trim() !== run.description || [...run.description].length > 160 ||
               /[\x00-\x1f\x7f-\x9f]/u.test(run.description))) ||
@@ -1425,7 +1440,7 @@
             Object.entries(run.outputs).some(([path, sha]) =>
               Object.hasOwn(sources,path) ?
                 Object.hasOwn(study.outputs,path) ||
-                  !(/^(?:tables\/(?:comparison_sample_metadata|omnibus|differential|plsda_[A-Za-z0-9_.-]+)\.tsv|plots\/volcano_[A-Za-z0-9_.-]+\.(?:png|pdf)|objects\/[A-Za-z0-9_.-]+)$/.test(path)) :
+                  !(/^(?:tables\/(?:comparison_sample_metadata|omnibus|differential|model_(?:contrasts|omnibus)|variance_(?:permanova|dispersion|groups|across_strata)|plsda_[A-Za-z0-9_.-]+)\.tsv|plots\/volcano_[A-Za-z0-9_.-]+\.(?:png|pdf)|objects\/[A-Za-z0-9_.-]+)$/.test(path)) :
                 study.outputs[path] !== sha) ||
             Object.keys(study.outputs).some((path) => run.outputs[path] !== study.outputs[path]))
           throw new Error('Invalid or incomplete comparison sources in runs.json');
@@ -1440,6 +1455,7 @@
       const requested = new URL(location.href).searchParams.get('run');
       const share = linkedPlot();
       if (share) selectTab(share.tab,false);
+      else if (new URL(location.href).searchParams.get('tab') === 'statistics') selectTab('statistics',false);
       await chooseRun(requested === null ? parents[0].hash : requested,false,
         detachedMode ? new URL(location.href).searchParams.get('feature') || '' : share?.feature ?? '',share);
       if (detachedMode) window.opener?.postMessage({kind:'mapp-feature-ready'},location.origin);
@@ -1488,6 +1504,7 @@
     restoredLocation = location.href;
     const url = new URL(location.href), share = linkedPlot();
     if (share) selectTab(share.tab,false);
+    else if (url.searchParams.get('tab') === 'statistics') selectTab('statistics',false);
     chooseRun(url.searchParams.get('run') ?? catalogue.find((run) => run.kind !== 'comparison')?.hash,false,
       detachedMode ? url.searchParams.get('feature') || '' : share?.feature ?? '',share);
   }
@@ -2289,6 +2306,10 @@
     const pool = el('div',{class:'volcano-groups'});
     const instruction = note('Drag a group card to Left or Right, or select a card then activate a target. The horizontal effect is Right relative to Left.');
     const chooser = el('div',{class:'volcano-chooser'},pool);
+    const namedContrast = el('select',{'aria-label':'Saved contrast'},
+      el('option',{value:'',text:'Choose a saved contrast…'}),
+      ...all.map((item) => el('option',{value:item.name,text:item.name})));
+    chooser.prepend(el('label',{class:'volcano-contrast'},'Saved contrast',namedContrast));
     const sides = {};
     function assign(side,group) {
       if (!validGroups.has(group)) return;
@@ -2323,7 +2344,9 @@
     }});
     chooser.append(swap);
     const description = note('');
-    const cardPlot = card('Saved differential tests',instruction,chooser,description,
+    const cardPlot = card('Saved differential tests',
+      ...(ctx.run.kind === 'comparison' ? [note('Selected comparison: ' + ctx.run.description)] : []),
+      instruction,chooser,description,
       note('q ≤ 0.05 marks saved adjusted significance. Filters on samples do not alter p or q.'));
     const setVolcano = plotDataButton(ctx,cardPlot,'volcano-plotted.tsv');
     const plot = plotNode(cardPlot,true);
@@ -2336,7 +2359,10 @@
     const links = card('Saved original plots');
     target.replaceChildren(cardPlot,links);
     const cards = groups.map((group) => {
-      const button = el('button',{type:'button',class:'volcano-group',draggable:'true',text:group,'aria-pressed':'false'});
+      const sources = ctx.run.selection?.groups.filter((item) => item.target === group)
+        .map((item) => item.source) ?? [];
+      const button = el('button',{type:'button',class:'volcano-group',draggable:'true',
+        text:sources.length ? group + ' · ' + sources.join(', ') : group,'aria-pressed':'false'});
       button.addEventListener('click',() => { selectedGroup = group; update(); });
       button.addEventListener('dragstart',(event) => {
         selectedGroup = group;
@@ -2346,6 +2372,13 @@
       });
       pool.append(button);
       return button;
+    });
+    namedContrast.addEventListener('change',() => {
+      const match = all.find((item) => item.name === namedContrast.value);
+      if (!match) return;
+      left = match.denominator;
+      right = match.numerator;
+      update();
     });
     function update() {
       ctx.volcanoView = {left,right};
@@ -2361,6 +2394,7 @@
       });
       const match = all.find((item) => item.numerator === right && item.denominator === left) ||
         all.find((item) => item.numerator === left && item.denominator === right);
+      namedContrast.value = match?.name ?? '';
       hideFeatureHover();
       if (plot.data && window.Plotly) Plotly.purge(plot);
       plot.replaceChildren();
@@ -3426,6 +3460,43 @@
         button);
     }));
   }
+  async function renderStatistics(ctx,target,token) {
+    const reports = [
+      ['model_contrasts','Feature-wise adjusted contrasts',
+        'Each effect compares model coefficients after adjusting for the other configured factors. q-values control the false-discovery rate among testable features within this contrast.'],
+      ['model_omnibus','Feature-wise model tests',
+        'Nested models ask whether adding the configured term improves fit after accounting for other terms. Partial R² is the share of variation attributed to that term.'],
+      ['variance_permanova','Group separation by stratum',
+        'PERMANOVA asks whether treatment profiles separate within each stratum. R² describes the fraction explained; a small permutation p-value is not proof that individual compounds differ.'],
+      ['variance_dispersion','Within-stratum group spread',
+        'A spread test checks whether groups vary in their distance from their own centroid; unequal spread can complicate the interpretation of PERMANOVA.'],
+      ['variance_groups','Group centroid distances',
+        'These are descriptive distances to the centre of each group, adjusted for different group sizes.'],
+      ['variance_across_strata','Across-stratum spread',
+        'This approximate test compares spread between strata after accounting for treatment, with permutation within treatment groups.']
+    ];
+    const availableReports = reports.filter(([name]) => available(ctx,name));
+    if (!availableReports.length) {
+      message(target,ctx.run.kind === 'study' ?
+        'Choose a sealed comparison to view saved statistical model results.' :
+        'This comparison has no saved factorial or variance analysis. Differential tests remain in the Volcano tab.');
+      return;
+    }
+    const data = await Promise.all(availableReports.map(([name]) => rows(ctx,name)));
+    if (!viewValid(ctx,'statistics',token)) return;
+    target.replaceChildren(note('Saved, checksum-verified results from this run only. Filtering and sorting below never refits a model.'),
+      ...availableReports.map(([name,title,description],index) => {
+        const records = data[index], fields = Object.keys(records[0] ?? {});
+        if (!fields.length) return card(title,note('No saved rows.'));
+        const columns = fields.includes('feature_id') ?
+          ['feature_id',...fields.filter((field) => field !== 'feature_id')] : fields;
+        const values = records.map((row) => columns.map((field) => row[field]));
+        return card(title,note(description),
+          table(columns,values,columns[0] === 'feature_id' ? (id) => openFeature(id) : null,
+            name+'-filtered.tsv'));
+      }));
+  }
+
   function renderDownloads(ctx,target) {
     const files = Object.keys(ctx.run.outputs).filter((path) => outputPath.test(path)).sort();
     const tsv = files.filter((path) => path.startsWith('tables/'));

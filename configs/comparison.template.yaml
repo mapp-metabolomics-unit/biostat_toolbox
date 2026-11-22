@@ -17,8 +17,9 @@ design:
   # block: ATTRIBUTE_experimental_unit
   # block_verified: true
   # Omit both keys for the separate unpaired analysis of the same samples.
+  # Name defaults to <numerator>_vs_<denominator>; add name only to override it.
   contrasts:
-    - {name: mutant_vs_WT, numerator: mutant, denominator: WT}
+    - {numerator: mutant, denominator: WT}
 analyses:
   omnibus: {enabled: true}
   differential: {enabled: true}

@@ -123,6 +123,7 @@ select[multiple] option { padding: .3rem; }
 .feature-hover img { display: block; width: 100%; height: 160px; object-fit: contain; background: #fff; }
 .feature-hover .note { font-size: .74rem; margin: .3rem 0 0; overflow-wrap: anywhere; }
 .volcano-chooser { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem; margin: 1rem 0; }
+.volcano-contrast { grid-column: 1/-1; display: grid; gap: .4rem; }
 .volcano-groups { grid-column: 1/-1; display: flex; flex-wrap: wrap; gap: .5rem; }
 .volcano-group { padding: .55rem .8rem; border: 1px solid #b9ced0; border-radius: .55rem; color: #155f66; background: #fff; font-weight: 650; cursor: grab; }
 .volcano-group.in-use { border-color: #ca7544; }
