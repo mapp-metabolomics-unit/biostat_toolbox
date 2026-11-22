@@ -130,6 +130,11 @@ local({
             sparse$status == "insufficient_qc", sparse$qc_observed == 1L,
             sparse$qc_missing == 5L, sparse$qc_zero == 5L, sparse$corrected_positive == 0L,
             corrected$matrices$imputed["injection2", "sparse_qc"] == 20)
+  text_order <- dataset
+  text_order$sample_metadata$injection_order <- as.character(text_order$sample_metadata$injection_order)
+  corrected_text_order <- preprocess_dataset(text_order, recipe)
+  stopifnot(identical(corrected_text_order$diagnostics$drift$status, d$status),
+            isTRUE(all.equal(corrected_text_order$matrices$imputed, corrected$matrices$imputed)))
 
   recipe$preprocessing$qc_drift$maximum_gap_fraction <- 0.1
   no_fit <- preprocess_dataset(dataset, recipe)

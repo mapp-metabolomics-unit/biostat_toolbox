@@ -87,6 +87,9 @@ qc_drift_correct <- function(x, metadata, roles, settings) {
     stop("QC drift requires an existing order_column in sample metadata.", call. = FALSE)
   injection_order <- if (is.character(order_column) && length(order_column) == 1L &&
                          !is.na(order_column) && order_column %in% names(metadata)) metadata[[order_column]] else NULL
+  # Curated metadata columns remain text to preserve IDs; parse only the nominated order.
+  if (is.character(injection_order))
+    injection_order <- suppressWarnings(as.numeric(injection_order))
   valid_order <- is.numeric(injection_order) && length(injection_order) == nrow(x) &&
     all(is.finite(injection_order) & injection_order > 0) && !anyDuplicated(injection_order)
   if (enabled && !valid_order)
